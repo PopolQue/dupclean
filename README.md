@@ -193,3 +193,60 @@ make cross-windows
 # All platforms
 make release
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how to help:
+
+### Reporting Issues
+
+- Found a bug? [Open an issue](https://github.com/PopolQue/dupclean/issues)
+- Include steps to reproduce, expected vs actual behavior
+- Include your OS, Go version, and relevant details
+
+### Submitting Changes
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b my-feature`
+3. **Make** your changes
+4. **Test** with `go test ./...`
+5. **Commit** with clear messages: `git commit -m "Add feature X"`
+6. **Push** and submit a PR
+
+### Code Style
+
+- Run `go fmt` before committing
+- Keep functions small and focused
+- Add tests for new functionality
+- Update documentation for user-facing changes
+
+### Testing
+
+```bash
+# Run all tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+```
+
+### Project Structure
+
+```
+dupclean/
+├── main.go          # Entry point
+├── gui/app.go       # GUI implementation (Fyne)
+├── scanner/         # Core duplicate detection
+│   └── scanner.go   # Hashing & file scanning
+├── ui/              # Terminal UI
+│   └── ui.go       # Interactive CLI prompts
+└── Makefile        # Build commands
+```
+
+---
+
+## License
+
+MIT License — see LICENSE file for details.
