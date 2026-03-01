@@ -6,25 +6,41 @@ on:
       - 'v*'
 
 jobs:
-  build-mac:
-    runs-on: macos-latest
+  build-mac-arm64:
+    runs-on: macos-latest  # GitHub's macos-latest is arm64 (M1)
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Install macOS deps
-        run: brew install pkg-config
-      - name: Install Fyne tool
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest
-      - name: Build macOS arm64
-        run: GOARCH=arm64 go build -o dist/dupclean-darwin-arm64 .
-      - name: Build macOS amd64
-        run: GOARCH=amd64 go build -o dist/dupclean-darwin-amd64 .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: mac-binaries
-          path: dist/
+        - uses: actions/checkout@v4
+        - uses: actions/setup-go@v5
+          with:
+            go-version: '1.22'
+        - name: Install macOS deps
+          run: brew install pkg-config
+        - name: Build macOS arm64
+          run: |
+            mkdir -p dist
+            go build -o dist/dupclean-darwin-arm64 .
+        - uses: actions/upload-artifact@v4
+          with:
+            name: mac-arm64
+            path: dist/
+
+  build-mac-amd64:
+    runs-on: macos-13  # macos-13 is the last Intel runner on GitHub Actions
+    steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-go@v5
+          with:
+            go-version: '1.22'
+        - name: Install macOS deps
+          run: brew install pkg-config
+        - name: Build macOS amd64
+          run: |
+            mkdir -p dist
+            go build -o dist/dupclean-darwin-amd64 .
+        - uses: actions/upload-artifact@v4
+          with:
+            name: mac-amd64
+            path: dist/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -57,7 +73,7 @@ jobs:
           path: dist/
 
   release:
-    needs: [build-mac, build-linux, build-windows]
+    needs: [build-mac-arm64, build-mac-amd64, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
