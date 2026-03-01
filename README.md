@@ -99,7 +99,7 @@ dupclean --gui
 2. **Pre-filters** by file size — only files sharing the same size could be duplicates
 3. **SHA-256 hashes** the content of those candidates (fast: skips unique-size files entirely)
 4. **Groups** files with matching hashes and presents them
-5. **Moves** your chosen files to Trash (safe — nothing is permanently deleted)
+5. **Keeps** your chosen file and moves to duplicates to Trash (safe — nothing is permanently deleted)
 
 ---
 
