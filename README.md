@@ -1,4 +1,4 @@
-# 🎧 DupClean — Audio Duplicate Cleaner
+# 🎧 DupClean — Duplicate File Cleaner
 
 A fast, content-aware duplicate file scanner for music producers and DJs.
 
