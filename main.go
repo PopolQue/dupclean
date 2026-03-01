@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	groups, stats, err := scanner.FindDuplicates(folder, scanAll)
+	groups, stats, err := scanner.FindDuplicates(folder, scanAll, nil)
 	if err != nil {
 		fmt.Printf("Scan error: %v\n", err)
 		os.Exit(1)

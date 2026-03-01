@@ -40,14 +40,14 @@ type DuplicateGroup struct {
 
 // ScanStats holds summary statistics from a scan
 type ScanStats struct {
-	TotalScanned  int
-	TotalDupes    int
-	WastedBytes   int64
-	ScanDuration  time.Duration
+	TotalScanned int
+	TotalDupes   int
+	WastedBytes  int64
+	ScanDuration time.Duration
 }
 
 // FindDuplicates scans a folder and returns groups of duplicate files
-func FindDuplicates(folder string, includeAll bool) ([]DuplicateGroup, ScanStats, error) {
+func FindDuplicates(folder string, includeAll bool, onProgress func(int)) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
 
@@ -84,7 +84,7 @@ func FindDuplicates(folder string, includeAll bool) ([]DuplicateGroup, ScanStats
 
 	// Second pass: hash only files that share a size (potential duplicates)
 	byHash := make(map[string][]FileInfo)
-	
+
 	hashCount := 0
 	for _, paths := range bySize {
 		if len(paths) < 2 {
@@ -103,13 +103,11 @@ func FindDuplicates(folder string, includeAll bool) ([]DuplicateGroup, ScanStats
 				Hash:    hash,
 			})
 			hashCount++
-			fmt.Printf("\r  🔍 Hashing files... %d", hashCount)
+			if onProgress != nil {
+				onProgress(hashCount)
+			}
 		}
 	}
-	if hashCount > 0 {
-		fmt.Println()
-	}
-
 	// Collect groups with 2+ files
 	var groups []DuplicateGroup
 	for hash, files := range byHash {

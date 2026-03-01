@@ -152,7 +152,7 @@ func startScan(state *AppState, folderEntry *widget.Entry, progressBar *widget.P
 	progressBar.SetValue(0)
 
 	go func() {
-		groups, stats, err := scanner.FindDuplicates(state.FolderPath, state.ScanAll)
+		groups, stats, err := scanner.FindDuplicates(state.FolderPath, state.ScanAll, nil)
 		if err != nil {
 			state.IsScanning = false
 			progressLabel.SetText(fmt.Sprintf("Error: %v", err))
