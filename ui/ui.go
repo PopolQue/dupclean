@@ -1,4 +1,4 @@
-package internal
+package ui
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/davidcutura/dupclean/internal/scanner"
+	"dupclean/scanner"
 )
 
 const (

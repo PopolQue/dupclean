@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/davidcutura/dupclean/gui"
-	"github.com/davidcutura/dupclean/internal/scanner"
-	"github.com/davidcutura/dupclean/internal/ui"
+	"dupclean/gui"
+	"dupclean/scanner"
+	"dupclean/ui"
 )
 
 func main() {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidcutura/dupclean/scanner/scanner"
+	"dupclean/scanner"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
