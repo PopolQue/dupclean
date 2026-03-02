@@ -23,7 +23,7 @@ jobs:
         - name: Build and package macOS arm64
           run: |
             mkdir -p dist
-            fyne package --target darwin  --name DupClean --appID com.dupclean.app --icon Icon.png
+            fyne package --target darwin  --name DupClean --app-id com.dupclean.app --icon Icon.png
             mv DupClean.app dist/
 
         - name: Create DMG
@@ -52,7 +52,7 @@ jobs:
         - name: Build and package macOS amd64
           run: |
             mkdir -p dist
-            fyne package --target darwin --name DupClean --appID com.dupclean.app --icon Icon.png
+            fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon Icon.png
             mv DupClean.app dist/
 
         - name: Create DMG
