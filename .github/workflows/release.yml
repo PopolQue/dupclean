@@ -12,12 +12,12 @@ jobs:
   build-mac-arm64:
     runs-on: macos-latest  # GitHub's macos-latest is arm64 (M1)
     steps:
-        - name: Install Fyne tool
-          run: go install fyne.io/fyne/v2/cmd/fyne@latest
         - uses: actions/checkout@v4
         - uses: actions/setup-go@v5
           with:
             go-version: '1.22'
+        - name: Install Fyne tool
+          run: go install fyne.io/fyne/v2/cmd/fyne@latest
         - name: Install macOS deps
           run: brew install pkg-config
         - name: Build and package macOS arm64
@@ -41,12 +41,12 @@ jobs:
   build-mac-amd64:
     runs-on: macos-15-intel  # macos-13 is the last Intel runner on GitHub Actions
     steps:
-        - name: Install Fyne tool
-          run: go install fyne.io/fyne/v2/cmd/fyne@latest
         - uses: actions/checkout@v4
         - uses: actions/setup-go@v5
           with:
             go-version: '1.22'
+        - name: Install Fyne tool
+          run: go install fyne.io/fyne/v2/cmd/fyne@latest    
         - name: Install macOS deps
           run: brew install pkg-config
         - name: Build and package macOS amd64
