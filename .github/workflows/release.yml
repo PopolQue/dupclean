@@ -30,7 +30,7 @@ jobs:
           run: |
             hdiutil create -volname "DupClean" \
               -srcfolder dist/DupClean.app \
-              -v -foramte UDZO \
+              -v -foramt UDZO \
               dist/dupclean-darwin-arm64.dmg
 
         - uses: actions/upload-artifact@v4
