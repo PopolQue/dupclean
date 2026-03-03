@@ -152,21 +152,31 @@ func createMainUI(state *AppState) fyne.CanvasObject {
 	)
 }
 
-func startScan(state *AppState, folderEntry *widget.Entry, progressBar *widget.ProgressBar, progressLabel *widget.Label) {
+func startScan(state *AppState, _ *widget.Entry, progressBar *widget.ProgressBar, progressLabel *widget.Label) {
 	state.IsScanning = true
 	progressLabel.SetText("Scanning folder...")
 	progressBar.SetValue(0)
 
 	go func() {
-		groups, stats, err := scanner.FindDuplicates(state.FolderPath, state.ScanAll, func(n int) { progressLabel.SetText(fmt.Sprintf("Hashing... %d files", n)) }, state.IgnoreFolders, state.IgnoreExtensions)
+		progressCallback := func(progress scanner.ScanProgress) {
+			fyne.Do(func() {
+				progressBar.SetValue(progress.Percent)
+				progressLabel.SetText(fmt.Sprintf("[%d%%] %s", int(progress.Percent*100), progress.Phase))
+			})
+		}
+		groups, stats, err := scanner.FindDuplicates(state.FolderPath, state.ScanAll, progressCallback, state.IgnoreFolders, state.IgnoreExtensions)
 		if err != nil {
 			state.IsScanning = false
-			progressLabel.SetText(fmt.Sprintf("Error: %v", err))
+			fyne.Do(func() {
+				progressLabel.SetText(fmt.Sprintf("Error: %v", err))
+			})
 			return
 		}
 
-		progressLabel.SetText(fmt.Sprintf("Found %d duplicate groups", len(groups)))
-		progressBar.SetValue(1)
+		fyne.Do(func() {
+			progressLabel.SetText(fmt.Sprintf("Found %d duplicate groups", len(groups)))
+			progressBar.SetValue(1)
+		})
 
 		state.Groups = groups
 		state.IsScanning = false
@@ -308,7 +318,7 @@ func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject
 	)
 }
 
-func createFileRow(num int, f scanner.FileInfo, state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
+func createFileRow(num int, f scanner.FileInfo, state *AppState, _ scanner.ScanStats) fyne.CanvasObject {
 	card := widget.NewCard(fmt.Sprintf("[%d] %s", num, f.Name), f.Path,
 		container.NewVBox(
 			widget.NewLabel(fmt.Sprintf("Size: %s | Modified: %s", formatBytes(f.Size), f.ModTime.Format("2006-01-02 15:04"))),
@@ -465,7 +475,6 @@ func formatBytes(b int64) string {
 }
 
 func playFile(state *AppState, path string) {
-	// Always stop whatever is playing first
 	if state.StopPlayer != nil {
 		state.StopPlayer()
 		state.StopPlayer = nil
@@ -494,7 +503,6 @@ func playFile(state *AppState, path string) {
 
 	go func() {
 		cmd.Run()
-		// Only clear if this is still the active player
 		if state.CurrentPlayer == cmd {
 			state.CurrentPlayer = nil
 			state.StopPlayer = nil
@@ -507,7 +515,6 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 
 	var folderList *widget.List
 
-	// List widget to display chosen folders
 	folderList = widget.NewList(
 		func() int { return len(ignoredFolders) },
 		func() fyne.CanvasObject {

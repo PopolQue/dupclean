@@ -63,6 +63,9 @@ func TestFileInfoStruct(t *testing.T) {
 	if fi.Hash != "abc123" {
 		t.Errorf("Hash = %q, want %q", fi.Hash, "abc123")
 	}
+	if !fi.ModTime.Equal(now) {
+		t.Errorf("ModTime = %v, want %v", fi.ModTime, now)
+	}
 }
 
 func TestDuplicateGroupStruct(t *testing.T) {
@@ -100,6 +103,9 @@ func TestScanStatsStruct(t *testing.T) {
 	}
 	if stats.WastedBytes != 50000 {
 		t.Errorf("WastedBytes = %d, want %d", stats.WastedBytes, 50000)
+	}
+	if stats.ScanDuration != 10*time.Second {
+		t.Errorf("ScanDuration = %v, want %v", stats.ScanDuration, 10*time.Second)
 	}
 }
 

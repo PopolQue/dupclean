@@ -46,10 +46,22 @@ type ScanStats struct {
 	ScanDuration time.Duration
 }
 
+// ScanProgress holds progress information
+type ScanProgress struct {
+	Phase       string
+	Percent     float64
+	FilesFound  int
+	FilesHashed int
+}
+
 // FindDuplicates scans a folder and returns groups of duplicate files
-func FindDuplicates(folder string, includeAll bool, onProgress func(int), ignoreFolders []string, ignoreExtensions []string) ([]DuplicateGroup, ScanStats, error) {
+func FindDuplicates(folder string, includeAll bool, onProgress func(ScanProgress), ignoreFolders []string, ignoreExtensions []string) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
+
+	if onProgress != nil {
+		onProgress(ScanProgress{Phase: "Scanning for files...", Percent: 0})
+	}
 
 	// First pass: collect files by size (quick pre-filter)
 	bySize := make(map[int64][]string)
@@ -102,10 +114,32 @@ func FindDuplicates(folder string, includeAll bool, onProgress func(int), ignore
 		return nil, stats, err
 	}
 
+	// Count potential duplicates
+	potentialDupes := 0
+	for _, paths := range bySize {
+		if len(paths) >= 2 {
+			potentialDupes += len(paths)
+		}
+	}
+
+	if onProgress != nil {
+		onProgress(ScanProgress{
+			Phase:      fmt.Sprintf("Found %d files (%d potential duplicates)", stats.TotalScanned, potentialDupes),
+			Percent:    0.1,
+			FilesFound: stats.TotalScanned,
+		})
+	}
+
 	// Second pass: hash only files that share a size (potential duplicates)
 	byHash := make(map[string][]FileInfo)
 
 	hashCount := 0
+	totalToHash := potentialDupes
+
+	if onProgress != nil {
+		onProgress(ScanProgress{Phase: "Computing file hashes...", Percent: 0.15})
+	}
+
 	for _, paths := range bySize {
 		if len(paths) < 2 {
 			continue
@@ -123,11 +157,22 @@ func FindDuplicates(folder string, includeAll bool, onProgress func(int), ignore
 				Hash:    hash,
 			})
 			hashCount++
-			if onProgress != nil {
-				onProgress(hashCount)
+			if onProgress != nil && totalToHash > 0 {
+				percent := 0.15 + (float64(hashCount)/float64(totalToHash))*0.8
+				onProgress(ScanProgress{
+					Phase:       fmt.Sprintf("Hashing files... (%d/%d)", hashCount, totalToHash),
+					Percent:     percent,
+					FilesFound:  stats.TotalScanned,
+					FilesHashed: hashCount,
+				})
 			}
 		}
 	}
+
+	if onProgress != nil {
+		onProgress(ScanProgress{Phase: "Comparing hashes...", Percent: 0.95})
+	}
+
 	// Collect groups with 2+ files
 	var groups []DuplicateGroup
 	for hash, files := range byHash {
@@ -141,6 +186,11 @@ func FindDuplicates(folder string, includeAll bool, onProgress func(int), ignore
 	}
 
 	stats.ScanDuration = time.Since(start)
+
+	if onProgress != nil {
+		onProgress(ScanProgress{Phase: "Scan complete", Percent: 1.0})
+	}
+
 	return groups, stats, nil
 }
 
