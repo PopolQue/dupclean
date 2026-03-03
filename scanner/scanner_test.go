@@ -591,3 +591,88 @@ func TestFindDuplicates_ScanDurationRecorded(t *testing.T) {
 		t.Error("ScanDuration should be recorded")
 	}
 }
+
+func TestScanProgressStruct(t *testing.T) {
+	sp := ScanProgress{
+		Phase:       "Testing",
+		Percent:     0.5,
+		FilesFound:  100,
+		FilesHashed: 50,
+	}
+
+	if sp.Phase != "Testing" {
+		t.Errorf("Phase = %q, want %q", sp.Phase, "Testing")
+	}
+	if sp.Percent != 0.5 {
+		t.Errorf("Percent = %f, want %f", sp.Percent, 0.5)
+	}
+	if sp.FilesFound != 100 {
+		t.Errorf("FilesFound = %d, want %d", sp.FilesFound, 100)
+	}
+	if sp.FilesHashed != 50 {
+		t.Errorf("FilesHashed = %d, want %d", sp.FilesHashed, 50)
+	}
+}
+
+func TestFindDuplicates_WithProgressCallback(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), []byte("content1"), 0644)
+
+	progressCalled := false
+	progressCallback := func(progress ScanProgress) {
+		progressCalled = true
+		if progress.Percent < 0 || progress.Percent > 1 {
+			t.Errorf("Progress.Percent should be between 0 and 1, got %f", progress.Percent)
+		}
+		if progress.Phase == "" {
+			t.Error("Progress.Phase should not be empty")
+		}
+	}
+
+	_, _, err := FindDuplicates(tmpDir, false, progressCallback, []string{}, []string{})
+	if err != nil {
+		t.Fatalf("FindDuplicates() error = %v", err)
+	}
+	if !progressCalled {
+		t.Error("Progress callback should have been called")
+	}
+}
+
+func TestFindDuplicates_IgnoreExtensions(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file3.mp3"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file4.mp3"), []byte("content1"), 0644)
+
+	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{".mp3"})
+	if err != nil {
+		t.Fatalf("FindDuplicates() error = %v", err)
+	}
+
+	if len(groups) != 1 {
+		t.Errorf("Expected 1 group (.mp3 ignored), got %d", len(groups))
+	}
+	if stats.TotalScanned != 2 {
+		t.Errorf("TotalScanned = %d, want 2", stats.TotalScanned)
+	}
+}
+
+func TestFindDuplicates_IgnoreExtensionsUpperCase(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file2.WAV"), []byte("content1"), 0644)
+
+	groups, _, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	if err != nil {
+		t.Fatalf("FindDuplicates() error = %v", err)
+	}
+
+	if len(groups) != 1 {
+		t.Errorf("Expected 1 group (.WAV should be treated as .wav), got %d", len(groups))
+	}
+}

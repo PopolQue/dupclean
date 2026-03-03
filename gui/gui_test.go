@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"dupclean/scanner"
 )
 
 func TestFormatBytes(t *testing.T) {
@@ -62,6 +64,95 @@ func TestAppState_Struct(t *testing.T) {
 	}
 	if state.FreedBytes != 0 {
 		t.Errorf("FreedBytes = %d, want 0", state.FreedBytes)
+	}
+}
+
+func TestRuntimeOS(t *testing.T) {
+	result := runtimeOS()
+	if result == "" {
+		t.Error("runtimeOS should return a non-empty string")
+	}
+	if result != "darwin" && result != "linux" && result != "windows" && result != "freebsd" {
+		t.Errorf("runtimeOS returned unexpected value: %s", result)
+	}
+}
+
+func TestStopPlayback_Nil(t *testing.T) {
+	state := &AppState{
+		CurrentPlayer: nil,
+		StopPlayer:    nil,
+	}
+	stopPlayback(state)
+	if state.CurrentPlayer != nil {
+		t.Error("CurrentPlayer should be nil after stopPlayback")
+	}
+}
+
+func TestStopPlayback_WithPlayer(t *testing.T) {
+	state := &AppState{
+		CurrentPlayer: nil,
+		StopPlayer: func() {
+		},
+	}
+	stopPlayback(state)
+	if state.CurrentPlayer != nil {
+		t.Error("CurrentPlayer should be nil after stopPlayback")
+	}
+	if state.StopPlayer != nil {
+		t.Error("StopPlayer should be nil after stopPlayback")
+	}
+}
+
+func TestKeepAndDelete(t *testing.T) {
+	state := &AppState{
+		DeletedCount: 0,
+		FreedBytes:   0,
+		Groups: []scanner.DuplicateGroup{
+			{
+				Hash: "testhash",
+				Files: []scanner.FileInfo{
+					{Path: "/test/file1.wav", Name: "file1.wav", Size: 1024},
+					{Path: "/test/file2.wav", Name: "file2.wav", Size: 1024},
+				},
+			},
+		},
+		CurrentGroupIndex: 0,
+	}
+
+	files := state.Groups[0].Files
+	keepAndDelete(state, 0, files)
+
+	if state.DeletedCount != 1 {
+		t.Errorf("DeletedCount = %d, want 1", state.DeletedCount)
+	}
+	if state.FreedBytes != 1024 {
+		t.Errorf("FreedBytes = %d, want 1024", state.FreedBytes)
+	}
+	if len(state.Groups) != 0 {
+		t.Errorf("Groups should be empty after keepAndDelete, got %d", len(state.Groups))
+	}
+}
+
+func TestKeepAndDelete_LastGroup(t *testing.T) {
+	state := &AppState{
+		DeletedCount:      0,
+		FreedBytes:        0,
+		CurrentGroupIndex: 0,
+		Groups: []scanner.DuplicateGroup{
+			{
+				Hash: "testhash",
+				Files: []scanner.FileInfo{
+					{Path: "/test/file1.wav", Name: "file1.wav", Size: 512},
+				},
+			},
+		},
+	}
+
+	files := state.Groups[0].Files
+	keepAndDelete(state, 0, files)
+
+	if state.DeletedCount != 0 {
+		t.Errorf("DeletedCount = %d, want 0 (no files deleted because only 1 file)", state.DeletedCount)
 	}
 }
 

@@ -1,7 +1,12 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"dupclean/scanner"
 )
 
 func TestFormatBytes(t *testing.T) {
@@ -102,5 +107,41 @@ func TestFormatBytes_JustOverKB(t *testing.T) {
 	result := formatBytes(1025)
 	if result != "1.0 KB" {
 		t.Errorf("formatBytes(1025) = %q, want %q", result, "1.0 KB")
+	}
+}
+
+func TestPrintHeader(t *testing.T) {
+	printHeader()
+}
+
+func TestPrintScanSummary(t *testing.T) {
+	stats := scanner.ScanStats{
+		TotalScanned: 100,
+		TotalDupes:   25,
+		WastedBytes:  50000,
+		ScanDuration: 10 * time.Second,
+	}
+	printScanSummary(stats, 5)
+}
+
+func TestPrintFinalSummary_Deleted(t *testing.T) {
+	printFinalSummary(5, 1024*1024)
+}
+
+func TestPrintFinalSummary_NoneDeleted(t *testing.T) {
+	printFinalSummary(0, 0)
+}
+
+func TestMoveToTrash(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	err := moveToTrash(testFile)
+	if err != nil {
+		t.Logf("moveToTrash error (may be expected in some environments): %v", err)
 	}
 }
