@@ -1,6 +1,6 @@
 # 🎧 DupClean — Redundant File Cleaner
 
-[![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml)
+[![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml) [![Coverage](https://raw.githubusercontent.com/PopolQue/dupclean/main/coverage.svg)](https://github.com/PopolQue/dupclean/actions/workflows/coverage.yml)
 
 A fast, content-aware duplicate file scanner for music producers, DJs, and anyone with a messy hard drive.
 
