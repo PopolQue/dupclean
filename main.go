@@ -67,7 +67,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	groups, stats, err := scanner.FindDuplicates(absPath, scanAll, nil, []string{}, []string{})
+	groups, stats, err := func() ([]scanner.DuplicateGroup, scanner.ScanStats, error) {
+		if scanAll {
+			// ByteScanner for all file types
+			byteScanner := scanner.NewByteScanner()
+			return byteScanner.Scan(absPath, scanner.Options{
+				IncludeHidden: false,
+				MinSize:       0,
+			})
+		}
+		// AudioScanner for audio files only
+		audioScanner := scanner.NewAudioScanner()
+		return audioScanner.Scan(absPath, scanner.Options{
+			IncludeHidden: false,
+			MinSize:       0,
+		})
+	}()
 	if err != nil {
 		fmt.Printf("Error: scan failed: %v\n", err)
 		os.Exit(1)

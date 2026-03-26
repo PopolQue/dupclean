@@ -7,29 +7,16 @@ import (
 	"time"
 )
 
-var audioExtensions = map[string]bool{
-	".wav":  true,
-	".aiff": true,
-	".aif":  true,
-	".mp3":  true,
-	".flac": true,
-	".ogg":  true,
-	".m4a":  true,
-	".aac":  true,
-	".opus": true,
-	".wma":  true,
+// ByteScanner implements duplicate detection for all file types using SHA-256
+type ByteScanner struct{}
+
+// NewByteScanner creates a new ByteScanner instance
+func NewByteScanner() *ByteScanner {
+	return &ByteScanner{}
 }
 
-// AudioScanner implements duplicate detection for audio files
-type AudioScanner struct{}
-
-// NewAudioScanner creates a new AudioScanner instance
-func NewAudioScanner() *AudioScanner {
-	return &AudioScanner{}
-}
-
-// Scan implements the Scanner interface for audio files
-func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
+// Scan implements the Scanner interface for general file duplicate detection
+func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
 
@@ -62,8 +49,8 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 			}
 		}
 
-		// Audio mode: only scan audio files
-		if !audioExtensions[ext] {
+		// Skip directories
+		if info.IsDir() {
 			return nil
 		}
 
@@ -85,14 +72,13 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 }
 
 // detectDuplicates performs the multi-stage duplicate detection algorithm
-func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats) ([]DuplicateGroup, ScanStats, error) {
+func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats) ([]DuplicateGroup, ScanStats, error) {
 	// Stage 2: Partial hash (first 8KB)
 	partialHashGroups := make(map[string][]string)
-	for size, paths := range bySize {
+	for _, paths := range bySize {
 		if len(paths) < 2 {
 			continue
 		}
-		_ = size // unused for now
 		for _, path := range paths {
 			partialHash, err := hashFilePartial(path, partialHashSize)
 			if err != nil {
@@ -155,27 +141,4 @@ func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Ti
 
 	stats.ScanDuration = time.Since(start)
 	return groups, stats, nil
-}
-
-// Legacy function for backwards compatibility
-// Deprecated: Use AudioScanner.Scan() or ByteScanner.Scan() instead
-func FindDuplicates(folder string, includeAll bool, onProgress func(ScanProgress), ignoreFolders []string, ignoreExtensions []string) ([]DuplicateGroup, ScanStats, error) {
-	var scanner Scanner
-	if includeAll {
-		scanner = NewByteScanner()
-	} else {
-		scanner = NewAudioScanner()
-	}
-	
-	opts := Options{
-		IncludeHidden:    false,
-		MinSize:          0,
-		IgnoreFolders:    ignoreFolders,
-		IgnoreExtensions: ignoreExtensions,
-	}
-	
-	// TODO: Implement progress callback
-	_ = onProgress
-	
-	return scanner.Scan(folder, opts)
 }
