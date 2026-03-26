@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"dupclean/diskanalyzer"
 	"dupclean/scanner"
 	"dupclean/ui"
 )
@@ -42,6 +44,100 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Check for subcommands
+	if os.Args[1] == "analyze" {
+		runAnalyze(os.Args[2:])
+		return
+	}
+
+	// Legacy duplicate finder mode
+	runDuplicateFinder(os.Args)
+}
+
+func runAnalyze(args []string) {
+	// Parse analyze-specific flags
+	root := ""
+	opts := diskanalyzer.DefaultOptions()
+	cliOpts := diskanalyzer.CLIOptions{
+		Depth: 2,
+	}
+	jsonOutput := false
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "--") {
+			switch {
+			case arg == "--json":
+				jsonOutput = true
+			case arg == "--by-type":
+				cliOpts.ByType = true
+			case strings.HasPrefix(arg, "--top="):
+				cliOpts.TopN, _ = strconv.Atoi(strings.TrimPrefix(arg, "--top="))
+			case strings.HasPrefix(arg, "--depth="):
+				cliOpts.Depth, _ = strconv.Atoi(strings.TrimPrefix(arg, "--depth="))
+			case strings.HasPrefix(arg, "--older-than="):
+				cliOpts.OlderThan, _ = strconv.Atoi(strings.TrimPrefix(arg, "--older-than="))
+			case strings.HasPrefix(arg, "--min-size="):
+				sizeMB, _ := strconv.Atoi(strings.TrimPrefix(arg, "--min-size="))
+				cliOpts.MinSize = int64(sizeMB) * 1024 * 1024
+			case arg == "--no-hidden":
+				opts.IncludeHidden = false
+			case arg == "--follow-symlinks":
+				opts.FollowSymlinks = true
+			case strings.HasPrefix(arg, "--exclude="):
+				opts.ExcludePaths = append(opts.ExcludePaths, strings.TrimPrefix(arg, "--exclude="))
+			case strings.HasPrefix(arg, "--workers="):
+				opts.Concurrency, _ = strconv.Atoi(strings.TrimPrefix(arg, "--workers="))
+			case arg == "--help":
+				printAnalyzeHelp()
+				os.Exit(0)
+			}
+		} else if root == "" {
+			root = arg
+		}
+	}
+
+	if root == "" {
+		fmt.Println("Error: Please specify a folder to analyze")
+		printAnalyzeHelp()
+		os.Exit(1)
+	}
+
+	// Validate path
+	info, err := os.Stat(root)
+	if err != nil {
+		fmt.Printf("Error: cannot access '%s': %v\n", root, err)
+		os.Exit(1)
+	}
+	if !info.IsDir() {
+		fmt.Printf("Error: '%s' is not a valid directory\n", root)
+		os.Exit(1)
+	}
+
+	// Run analysis
+	result, errors, err := diskanalyzer.Walk(root, opts)
+	if err != nil {
+		fmt.Printf("Error: analysis failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print non-fatal errors to stderr
+	for _, e := range errors {
+		fmt.Fprintf(os.Stderr, "Warning: %v\n", e)
+	}
+
+	// Output
+	if jsonOutput {
+		if err := diskanalyzer.ExportJSON(result, os.Stdout); err != nil {
+			fmt.Printf("Error: JSON export failed: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		diskanalyzer.RenderCLI(result, cliOpts)
+	}
+}
+
+func runDuplicateFinder(args []string) {
 	// Parse arguments
 	folder := ""
 	mode := "audio" // default mode
@@ -104,10 +200,10 @@ func main() {
 
 	// Configure scanner options
 	opts := scanner.Options{
-		IncludeHidden:  false,
-		MinSize:        0,
-		SimilarityPct:  similarity,
-		IgnoreFolders:  []string{},
+		IncludeHidden:    false,
+		MinSize:          0,
+		SimilarityPct:    similarity,
+		IgnoreFolders:    []string{},
 		IgnoreExtensions: []string{},
 	}
 
@@ -125,13 +221,25 @@ func printHelp() {
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  dupclean <folder> [options]     Scan folder for duplicates")
+	fmt.Println("  dupclean analyze <folder> [opts]  Analyze disk usage")
 	fmt.Println("  dupclean --gui                  Launch GUI (not available in CLI build)")
 	fmt.Println("  dupclean --help                 Show this help")
 	fmt.Println()
-	fmt.Println("Options:")
+	fmt.Println("Duplicate Finder Options:")
 	fmt.Println("  --mode=<mode>       Scanner mode: audio (default), byte, photo")
 	fmt.Println("  --all               Scan all file types (same as --mode=byte)")
 	fmt.Println("  --similarity=<pct>  Minimum similarity for photo mode (0-100, default: 90)")
+	fmt.Println()
+	fmt.Println("Disk Analyzer Options:")
+	fmt.Println("  --top=N            Show N largest files (default: 20)")
+	fmt.Println("  --depth=N          Tree depth in CLI view (default: 2)")
+	fmt.Println("  --min-size=MB      Exclude files smaller than MB megabytes")
+	fmt.Println("  --older-than=days  Only include files not modified in N days")
+	fmt.Println("  --by-type          Show type breakdown instead of tree")
+	fmt.Println("  --json             Output JSON to stdout")
+	fmt.Println("  --no-hidden        Skip hidden files and folders")
+	fmt.Println("  --follow-symlinks  Follow symbolic links")
+	fmt.Println("  --exclude=pattern  Glob pattern to exclude (repeatable)")
 	fmt.Println()
 	fmt.Println("Modes:")
 	fmt.Println("  audio   - Audio files only (.wav, .mp3, .flac, etc.)")
@@ -142,4 +250,29 @@ func printHelp() {
 	fmt.Println("Supported photo formats: .jpg, .png, .gif, .webp, .bmp, .tiff")
 	fmt.Println()
 	fmt.Println("Full version with GUI: https://github.com/PopolQue/dupclean/releases")
+}
+
+func printAnalyzeHelp() {
+	fmt.Println("DupClean — Disk Space Analyzer")
+	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  dupclean analyze <folder> [options]")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  --top=N            Show N largest files (default: 20)")
+	fmt.Println("  --depth=N          Tree depth in CLI view (default: 2)")
+	fmt.Println("  --min-size=MB      Exclude files smaller than MB megabytes")
+	fmt.Println("  --older-than=days  Only include files not modified in N days")
+	fmt.Println("  --by-type          Show type breakdown instead of tree")
+	fmt.Println("  --json             Output JSON to stdout")
+	fmt.Println("  --no-hidden        Skip hidden files and folders")
+	fmt.Println("  --follow-symlinks  Follow symbolic links")
+	fmt.Println("  --exclude=pattern  Glob pattern to exclude (repeatable)")
+	fmt.Println("  --workers=N        Number of concurrent stat workers")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  dupclean analyze ~/Music")
+	fmt.Println("  dupclean analyze ~/Documents --top=50 --by-type")
+	fmt.Println("  dupclean analyze ~/Photos --older-than=365 --min-size=10")
+	fmt.Println("  dupclean analyze / --json > disk-usage.json")
 }
