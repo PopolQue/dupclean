@@ -86,11 +86,11 @@ func RunGUI() {
 
 func createMainUI(state *AppState) fyne.CanvasObject {
 	// Header with logo and title
-	title := canvas.NewText("DupClean", theme.PrimaryColor())
+	title := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
 	title.TextSize = 32
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText("Duplicate File Finder", theme.ForegroundColor())
+	subtitle := canvas.NewText("Duplicate File Finder", theme.Color(theme.ColorNameForeground))
 	subtitle.TextSize = 16
 	subtitle.TextStyle = fyne.TextStyle{Italic: true}
 
@@ -284,7 +284,7 @@ func showResults(state *AppState, stats scanner.ScanStats) {
 }
 
 func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
-	title := canvas.NewText("No Duplicates Found!", theme.SuccessColor())
+	title := canvas.NewText("No Duplicates Found!", theme.Color(theme.ColorNameSuccess))
 	title.TextSize = 32
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
@@ -321,7 +321,7 @@ func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasO
 
 func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
 	// Header
-	title := canvas.NewText("Scan Results", theme.PrimaryColor())
+	title := canvas.NewText("Scan Results", theme.Color(theme.ColorNamePrimary))
 	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -418,11 +418,11 @@ func createGroupDisplay(state *AppState) fyne.CanvasObject {
 
 		// Group header
 		headerText := fmt.Sprintf("Identical files (%s each)", fileSize)
-		header := canvas.NewText(headerText, theme.PrimaryColor())
+		header := canvas.NewText(headerText, theme.Color(theme.ColorNamePrimary))
 		header.TextSize = 18
 		header.TextStyle = fyne.TextStyle{Bold: true}
-		content.AddObject(header)
-		content.AddObject(widget.NewSeparator())
+		content.Add(header)
+		content.Add(widget.NewSeparator())
 
 		// Sort files
 		files := group.Files
@@ -438,7 +438,7 @@ func createGroupDisplay(state *AppState) fyne.CanvasObject {
 		// File cards
 		for idx, f := range files {
 			fileCard := createFileCard(idx+1, f, state)
-			content.AddObject(fileCard)
+			content.Add(fileCard)
 		}
 
 		scroll.Content = content
@@ -554,7 +554,7 @@ func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 }
 
 func createFinalUI(state *AppState) fyne.CanvasObject {
-	title := canvas.NewText("Complete!", theme.SuccessColor())
+	title := canvas.NewText("Complete!", theme.Color(theme.ColorNameSuccess))
 	title.TextSize = 32
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
