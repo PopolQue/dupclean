@@ -529,7 +529,7 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 		pathEntry,
 		metaLabel,
 	)
-	
+
 	cardContent := container.NewBorder(nil, nil, content, buttons)
 
 	card := widget.NewCard("", "", cardContent)

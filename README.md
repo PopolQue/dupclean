@@ -100,15 +100,6 @@ dupclean ~/Music/Samples --all
 dupclean --help
 ```
 
-### GUI Mode (macOS/Windows/Linux with display)
-
-```bash
-# Launch GUI
-dupclean
-# or
-dupclean --gui
-```
-
 ---
 
 ## How it works
@@ -117,7 +108,7 @@ dupclean --gui
 2. **Pre-filters** by file size — only files sharing the same size could be duplicates
 3. **SHA-256 hashes** the content of those candidates (fast: skips unique-size files entirely)
 4. **Groups** files with matching hashes and presents them
-5. **Keeps** your chosen file and moves to duplicates to Trash (safe — nothing is permanently deleted)
+5. **Keeps** your chosen file and moves duplicates to Trash (safe — nothing is permanently deleted)
 
 ---
 
@@ -150,8 +141,6 @@ Then choose which copy to **keep** (others go to Trash), or **skip** the group.
   🗑  Trashed: Kick Hard v2 FINAL.wav
 ```
 
-### Controls
-=======
 **Controls:**
 
 | Input | Action |
@@ -160,16 +149,6 @@ Then choose which copy to **keep** (others go to Trash), or **skip** the group.
 | `s` or Enter  | Skip this group |
 | `a`           | Skip all remaining groups |
 | `q`           | Quit |
-
----
-
-## How It Works
-
-1. **Walks** the folder recursively, skipping hidden files and ignored paths
-2. **Pre-filters** by file size — only same-size files can be duplicates
-3. **SHA-256 hashes** the content of candidates (skips unique-size files entirely for speed)
-4. **Groups** files with matching hashes and presents them for review
-5. **Moves** chosen files to Trash — nothing is permanently deleted
 
 ---
 
