@@ -86,24 +86,34 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 // detectDuplicates performs the multi-stage duplicate detection algorithm
 func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats) ([]DuplicateGroup, ScanStats, error) {
+	// Count potential duplicates for progress
+	potentialDupes := 0
+	for _, paths := range bySize {
+		if len(paths) >= 2 {
+			potentialDupes += len(paths)
+		}
+	}
+
 	// Stage 2: Partial hash (first 8KB)
 	partialHashGroups := make(map[string][]string)
-	for size, paths := range bySize {
+	hashCount := 0
+	for _, paths := range bySize {
 		if len(paths) < 2 {
 			continue
 		}
-		_ = size // unused for now
 		for _, path := range paths {
 			partialHash, err := hashFilePartial(path, partialHashSize)
 			if err != nil {
 				continue
 			}
 			partialHashGroups[partialHash] = append(partialHashGroups[partialHash], path)
+			hashCount++
 		}
 	}
 
 	// Stage 3: Full hash
 	fullHashGroups := make(map[string][]FileInfo)
+	fullHashCount := 0
 	for _, paths := range partialHashGroups {
 		if len(paths) < 2 {
 			continue
@@ -120,6 +130,7 @@ func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Ti
 				ModTime: info.ModTime(),
 				Hash:    fullHash,
 			})
+			fullHashCount++
 		}
 	}
 
