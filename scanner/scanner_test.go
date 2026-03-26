@@ -389,9 +389,9 @@ func TestHashFile(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "test.wav")
 	os.WriteFile(filePath, testContent, 0644)
 
-	hash, info, err := hashFile(filePath)
+	hash, info, err := hashFileFull(filePath)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
 	if hash == "" {
@@ -417,14 +417,14 @@ func TestHashFile_SameContentSameHash(t *testing.T) {
 	os.WriteFile(file1, content, 0644)
 	os.WriteFile(file2, content, 0644)
 
-	hash1, _, err := hashFile(file1)
+	hash1, _, err := hashFileFull(file1)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
-	hash2, _, err := hashFile(file2)
+	hash2, _, err := hashFileFull(file2)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
 	if hash1 != hash2 {
@@ -440,14 +440,14 @@ func TestHashFile_DifferentContentDifferentHash(t *testing.T) {
 	os.WriteFile(file1, []byte("content 1"), 0644)
 	os.WriteFile(file2, []byte("content 2"), 0644)
 
-	hash1, _, err := hashFile(file1)
+	hash1, _, err := hashFileFull(file1)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
-	hash2, _, err := hashFile(file2)
+	hash2, _, err := hashFileFull(file2)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
 	if hash1 == hash2 {
@@ -456,7 +456,7 @@ func TestHashFile_DifferentContentDifferentHash(t *testing.T) {
 }
 
 func TestHashFile_NonExistentFile(t *testing.T) {
-	_, _, err := hashFile("/nonexistent/path/file.wav")
+	_, _, err := hashFileFull("/nonexistent/path/file.wav")
 	if err == nil {
 		t.Error("Expected error for non-existent file")
 	}
@@ -683,9 +683,9 @@ func TestHashFile_EmptyFile(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "empty.wav")
 	os.WriteFile(filePath, []byte{}, 0644)
 
-	hash, info, err := hashFile(filePath)
+	hash, info, err := hashFileFull(filePath)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
 	if hash == "" {
@@ -708,9 +708,9 @@ func TestHashFile_LargeFile(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "large.wav")
 	os.WriteFile(filePath, content, 0644)
 
-	hash, info, err := hashFile(filePath)
+	hash, info, err := hashFileFull(filePath)
 	if err != nil {
-		t.Fatalf("hashFile() error = %v", err)
+		t.Fatalf("hashFileFull() error = %v", err)
 	}
 
 	if hash == "" {

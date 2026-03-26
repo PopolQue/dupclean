@@ -1,4 +1,4 @@
-.PHONY: build install clean run test install-dmg
+.PHONY: build install clean run test lint fmt coverage
 
 BINARY = dupclean
 APP_ID = com.dupclean.app
@@ -10,18 +10,8 @@ build:
 
 install: build
 	@echo "Installing dupclean CLI..."
-	@read -q "REPLY?Add dupclean to PATH (y/n)? "; echo; \
-	if [ "$$REPLY" = "y" ]; then \
-		sudo mv $(BINARY) $(INSTALL_PATH); \
-		echo "✅ Installed to $(INSTALL_PATH)"; \
-	else \
-		mv $(BINARY) ~/Applications/dupclean; \
-		echo "✅ Moved to ~/Applications/dupclean"; \
-	fi
-	@echo ""
-	@echo "Usage:"
-	@echo "  dupclean <folder>     Scan folder (CLI mode)"
-	@echo "  dupclean              Launch GUI"
+	sudo mv $(BINARY) $(INSTALL_PATH)
+	@echo "✅ Installed to $(INSTALL_PATH)"
 
 uninstall:
 	sudo rm -f $(INSTALL_PATH)
@@ -33,10 +23,29 @@ run:
 test:
 	go test ./...
 
+test-verbose:
+	go test -v ./...
+
+coverage:
+	go test -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Coverage report generated: coverage.html"
+
+lint:
+	golangci-lint run
+
+fmt:
+	go fmt ./...
+	goimports -w -local dupclean .
+
+vet:
+	go vet ./...
+
 clean:
 	rm -f $(BINARY)
 	rm -rf dist/
 	rm -rf fyne-cross/
+	rm -f coverage.out coverage.html
 
 # Cross-compilation using fyne-cross (requires Docker)
 cross: cross-linux cross-darwin cross-windows

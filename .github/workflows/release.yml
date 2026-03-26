@@ -1,6 +1,3 @@
-permissions: 
-    contents: write
-
 name: Build & Release
 
 on:
@@ -8,109 +5,124 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  build-mac-arm64:
-    runs-on: macos-latest
-    steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-go@v5
-          with:
-            go-version: '1.22'
-        - name: Install macOS deps
-          run: brew install pkg-config
-        - name: Install Fyne tool
-          run: go install fyne.io/tools/cmd/fyne@latest
-        - name: Build and package macOS arm64
-          run: |
-            mkdir -p dist
-            fyne package --target darwin  --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
-            mv DupClean.app dist/
-
-        - name: Create DMG
-          run: |
-            hdiutil create -volname "DupClean" \
-              -srcfolder dist/DupClean.app \
-              -ov -format UDZO \
-              dist/dupclean-darwin-arm64.dmg
-
-        - uses: actions/upload-artifact@v4
-          with:
-            name: mac-arm64
-            path: dist/dupclean-darwin-arm64.dmg
-
-  build-mac-amd64:
-    runs-on: macos-15-intel 
-    steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-go@v5
-          with:
-            go-version: '1.22'
-        - name: Install macOS deps
-          run: brew install pkg-config
-        - name: Install Fyne tool
-          run: go install fyne.io/tools/cmd/fyne@latest    
-        - name: Build and package macOS amd64
-          run: |
-            mkdir -p dist
-            fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
-            mv DupClean.app dist/
-
-        - name: Create DMG
-          run: |
-            hdiutil create -volname "DupClean" \
-              -srcfolder dist/DupClean.app \
-              -ov -format UDZO \
-              dist/dupclean-intel-amd64.dmg
-
-        - uses: actions/upload-artifact@v4
-          with:
-            name: mac-amd64
-            path: dist/dupclean-darwin-amd64.dmg
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Install Fyne deps
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
-      - name: Build Linux
-        run: GOOS=linux GOARCH=amd64 go build -o dist/dupclean-linux-amd64 .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-binary
-          path: dist/
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Build Windows
-        run: go build -o dist/dupclean-windows-amd64.exe .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-binary
-          path: dist/
-
   release:
-    needs: [build-mac-arm64, build-mac-amd64, build-linux, build-windows]
-    runs-on: ubuntu-latest
-    permissions:
-        contents: write
+    name: Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact: dupclean-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            artifact: dupclean-linux-arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact: dupclean-darwin-arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            artifact: dupclean-darwin-amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            artifact: dupclean-windows-amd64.exe
+
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-            path: artifacts/
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/mac-arm64/*
-            artifacts/mac-amd64/*
-            artifacts/linux-binary/*
-            artifacts/windows-binary/*
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Install dependencies (Linux)
+      if: matrix.goos == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+    - name: Install dependencies (macOS)
+      if: matrix.goos == 'darwin'
+      run: |
+        brew install glfw
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 1
+      run: |
+        go build -o ${{ matrix.artifact }} -ldflags="-s -w" .
+
+    - name: Create tarball (Unix)
+      if: matrix.goos != 'windows'
+      run: tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
+
+    - name: Create zip (Windows)
+      if: matrix.goos == 'windows'
+      run: Compress-Archive -Path ${{ matrix.artifact }} -DestinationPath ${{ matrix.artifact }}.zip
+
+    - name: Upload release asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ${{ matrix.artifact }}.tar.gz
+          ${{ matrix.artifact }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -z "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:'- %s (%h)' HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:'- %s (%h)' $PREVIOUS_TAG..HEAD)
+        fi
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: DupClean ${{ github.ref_name }}
+        body: |
+          ## Changes
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          ### Homebrew (macOS)
+          ```bash
+          brew install dupclean
+          ```
+          
+          ### Manual Installation
+          Download the appropriate binary for your system from the assets below.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
