@@ -3,6 +3,7 @@ package diskanalyzer
 import (
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -171,7 +172,7 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 	// Feeder goroutine - walks directory and feeds paths to workers
 	go func() {
 		depth := getDepth(root)
-		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				// Permission denied on directory - skip it
 				return nil
@@ -199,7 +200,9 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 				paths <- path
 			}
 			return nil
-		})
+		}); err != nil {
+			log.Printf("Error walking directory: %v", err)
+		}
 		close(paths)
 	}()
 

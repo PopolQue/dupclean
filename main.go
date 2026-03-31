@@ -158,7 +158,8 @@ func runDuplicateFinder(args []string) {
 			case strings.HasPrefix(arg, flagMode+"="):
 				mode = strings.TrimPrefix(arg, flagMode+"=")
 			case strings.HasPrefix(arg, flagSimilarity+"="):
-				fmt.Sscanf(strings.TrimPrefix(arg, flagSimilarity+"="), "%d", &similarity)
+				_, _ = fmt.Sscanf(strings.TrimPrefix(arg, flagSimilarity+"="), "%d", &similarity)
+				// Note: error intentionally ignored, similarity stays at default if parsing fails
 			}
 		} else if folder == "" {
 			folder = arg

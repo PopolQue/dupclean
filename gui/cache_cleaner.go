@@ -221,7 +221,7 @@ func displayCacheResults(state *CacheCleanerState, resultsContainer *fyne.Contai
 	sort.Strings(catNames)
 
 	// Create total label - will be updated on selection
-	totalLabel := canvas.NewText(fmt.Sprintf("Selected: 0 B"), theme.Color(theme.ColorNamePrimary))
+	totalLabel := canvas.NewText("Selected: 0 B", theme.Color(theme.ColorNamePrimary))
 
 	// Create category sections
 	for _, cat := range catNames {
@@ -230,21 +230,21 @@ func displayCacheResults(state *CacheCleanerState, resultsContainer *fyne.Contai
 		catLabel := canvas.NewText(cat, theme.Color(theme.ColorNamePrimary))
 		catLabel.TextSize = 18
 		catLabel.TextStyle = fyne.TextStyle{Bold: true}
-		resultsContainer.AddObject(catLabel)
-		resultsContainer.AddObject(widget.NewSeparator())
+		resultsContainer.Add(catLabel)
+		resultsContainer.Add(widget.NewSeparator())
 
 		for _, t := range targets {
 			targetCard := createCacheTargetCard(state, t, totalLabel, cleanBtn)
-			resultsContainer.AddObject(targetCard)
+			resultsContainer.Add(targetCard)
 		}
 
-		resultsContainer.AddObject(layout.NewSpacer())
+		resultsContainer.Add(layout.NewSpacer())
 	}
 
 	// Add total label
 	totalLabel.TextSize = 18
 	totalLabel.TextStyle = fyne.TextStyle{Bold: true}
-	resultsContainer.AddObject(totalLabel)
+	resultsContainer.Add(totalLabel)
 
 	scroll.Show()
 	scroll.Refresh()

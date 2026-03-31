@@ -46,9 +46,7 @@ func Squarify(nodes []*DirNode, bounds Rect) []LayoutNode {
 	// Convert to LayoutNodes
 	result := make([]LayoutNode, 0)
 	for _, row := range rows {
-		for _, node := range row {
-			result = append(result, node)
-		}
+		result = append(result, row...)
 	}
 
 	return result

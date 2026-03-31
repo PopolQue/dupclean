@@ -5,3 +5,5 @@ dupclean.app/
 dupclean.app
 dupclean
 .qwen/
+coverage.out
+coverage.txt
