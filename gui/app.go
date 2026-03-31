@@ -33,6 +33,7 @@ func init() {
 
 type AppState struct {
 	Window             fyne.Window
+	ContentContainer   *fyne.Container  // Reference to content area (preserves sidebar)
 	FolderPath         string
 	ScanAll            bool
 	IsScanning         bool
@@ -51,6 +52,14 @@ type AppState struct {
 	progressComponents *progressComponents
 }
 
+// updateContent updates the content container (preserves sidebar)
+func (state *AppState) updateContent(content fyne.CanvasObject) {
+	if state.ContentContainer != nil {
+		state.ContentContainer.Objects = []fyne.CanvasObject{content}
+		state.ContentContainer.Refresh()
+	}
+}
+
 func RunGUI() {
 	log.Println("RunGUI: starting...")
 
@@ -60,11 +69,11 @@ func RunGUI() {
 	fyneApp.SetIcon(theme.FolderOpenIcon())
 
 	log.Println("RunGUI: creating window...")
-	w := fyneApp.NewWindow("DupClean - Duplicate File Finder")
-	w.Resize(fyne.NewSize(1100, 750))
+	w := fyneApp.NewWindow("DupClean - Duplicate File Finder & Cache Cleaner")
+	w.Resize(fyne.NewSize(1200, 800))
 
-	log.Println("RunGUI: creating state...")
-	state := &AppState{
+	log.Println("RunGUI: creating states...")
+	dupState := &AppState{
 		Window:            w,
 		FolderPath:        "",
 		ScanAll:           false,
@@ -77,45 +86,108 @@ func RunGUI() {
 		FreedBytes:        0,
 	}
 
-	w.SetContent(createMainUI(state))
+	cacheState := NewCacheCleanerState(w)
+
+	log.Println("RunGUI: creating main layout with sidebar...")
+	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState))
 
 	log.Println("RunGUI: showing window...")
 	w.ShowAndRun()
 	log.Println("RunGUI: window closed")
 }
 
-func createMainUI(state *AppState) fyne.CanvasObject {
-	// Header with logo and title
-	title := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 32
+// createMainLayoutWithSidebar creates the main application layout with sidebar navigation
+func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerState) fyne.CanvasObject {
+	// App header
+	appName := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
+	appName.TextSize = 24
+	appName.TextStyle = fyne.TextStyle{Bold: true}
+
+	appSubtitle := canvas.NewText("All-in-one disk cleanup tool", theme.Color(theme.ColorNameForeground))
+	appSubtitle.TextSize = 14
+	appSubtitle.TextStyle = fyne.TextStyle{Italic: true}
+
+	header := container.NewHBox(
+		container.NewVBox(appName, appSubtitle),
+		layout.NewSpacer(),
+	)
+
+	// Create content area
+	contentContainer := container.NewStack()
+
+	// Create view widgets
+	duplicateFinderView := DuplicateFinderWidget(dupState)
+	cacheCleanerView := CacheCleanerWidget(cacheState)
+	diskAnalyzerView := createDiskAnalyzerPlaceholder()
+
+	// Store content container reference in states
+	dupState.ContentContainer = contentContainer
+	cacheState.ContentContainer = contentContainer
+
+	// Navigation callback - updates content container
+	onNavigate := func(viewIndex int) {
+		switch viewIndex {
+		case 0:
+			contentContainer.Objects = []fyne.CanvasObject{duplicateFinderView}
+		case 1:
+			contentContainer.Objects = []fyne.CanvasObject{cacheCleanerView}
+		case 2:
+			contentContainer.Objects = []fyne.CanvasObject{diskAnalyzerView}
+		}
+		contentContainer.Refresh()
+	}
+
+	// Create sidebar
+	sidebar := CreateSidebar()
+
+	// Connect sidebar to navigation
+	sidebarList := sidebar.(*container.Scroll).Content.(*widget.List)
+	sidebarList.OnSelected = func(id widget.ListItemID) {
+		onNavigate(id)
+	}
+
+	// Initialize with duplicate finder view
+	onNavigate(0)
+
+	// Main layout with split - sidebar on left, content on right
+	split := container.NewHSplit(sidebar, contentContainer)
+	split.Offset = 0.2 // Sidebar takes 20% of width
+
+	// Main layout
+	mainContent := container.NewBorder(
+		header, // top
+		nil,    // bottom
+		nil,    // left (sidebar is in split)
+		nil,    // right
+		split,
+	)
+
+	return mainContent
+}
+
+func createDiskAnalyzerPlaceholder() fyne.CanvasObject {
+	title := canvas.NewText("Disk Analyzer", theme.Color(theme.ColorNamePrimary))
+	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
+	title.Alignment = fyne.TextAlignCenter
 
-	subtitle := canvas.NewText("Duplicate File Finder", theme.Color(theme.ColorNameForeground))
-	subtitle.TextSize = 16
-	subtitle.TextStyle = fyne.TextStyle{Italic: true}
+	infoLabel := widget.NewLabel("Disk Analyzer is available in CLI mode only.\n\nUse: dupclean analyze <folder>")
+	infoLabel.Alignment = fyne.TextAlignCenter
 
-	header := container.NewVBox(title, subtitle)
+	icon := canvas.NewImageFromResource(theme.StorageIcon())
+	icon.FillMode = canvas.ImageFillContain
+	icon.SetMinSize(fyne.NewSize(80, 80))
 
-	// Folder selection card
-	folderCard := createSelectionCard(state)
-
-	// Options card
-	optionsCard := createOptionsCard(state)
-
-	// Progress card
-	progressCard := createProgressCard(state)
-
-	// Action buttons
-	scanBtn := createScanButton(state, folderCard, progressCard)
+	cliCmd := canvas.NewText("dupclean analyze ~/Music", theme.Color(theme.ColorNameForeground))
+	cliCmd.TextStyle = fyne.TextStyle{Monospace: true}
+	cliCmd.Alignment = fyne.TextAlignCenter
 
 	content := container.NewVBox(
-		header,
+		icon,
+		title,
+		infoLabel,
 		layout.NewSpacer(),
-		folderCard,
-		optionsCard,
-		progressCard,
-		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
+		cliCmd,
 		layout.NewSpacer(),
 	)
 
@@ -127,8 +199,7 @@ func createSelectionCard(state *AppState) *widget.Card {
 	folderLabel.TextStyle = fyne.TextStyle{Bold: true}
 
 	folderEntry := widget.NewEntry()
-	folderEntry.Disable()
-	folderEntry.SetPlaceHolder("Select a folder...")
+	folderEntry.SetPlaceHolder("Select a folder or paste path here...")
 
 	browseBtn := widget.NewButtonWithIcon("Browse", theme.FolderOpenIcon(), func() {
 		dialog.ShowFolderOpen(func(dir fyne.ListableURI, err error) {
@@ -277,10 +348,10 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 
 func showResults(state *AppState, stats scanner.ScanStats) {
 	if len(state.Groups) == 0 {
-		state.Window.SetContent(createNoDuplicatesUI(state, state.Stats))
+		state.updateContent(createNoDuplicatesUI(state, state.Stats))
 		return
 	}
-	state.Window.SetContent(createResultsUI(state, state.Stats))
+	state.updateContent(createResultsUI(state, state.Stats))
 }
 
 func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
@@ -303,7 +374,7 @@ func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasO
 	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
 
 	backBtn := widget.NewButtonWithIcon("Back to Home", theme.HomeIcon(), func() {
-		state.Window.SetContent(createMainUI(state))
+		state.updateContent(DuplicateFinderWidget(state))
 	})
 	backBtn.Importance = widget.HighImportance
 
@@ -338,7 +409,7 @@ func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject
 	prevBtn := widget.NewButtonWithIcon("Previous", theme.NavigateBackIcon(), func() {
 		if state.CurrentGroupIndex > 0 {
 			state.CurrentGroupIndex--
-			state.Window.SetContent(createResultsUI(state, state.Stats))
+			state.updateContent(createResultsUI(state, state.Stats))
 		}
 	})
 	prevBtn.Importance = widget.LowImportance
@@ -346,7 +417,7 @@ func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject
 	nextBtn := widget.NewButtonWithIcon("Next", theme.NavigateNextIcon(), func() {
 		if state.CurrentGroupIndex < len(state.Groups)-1 {
 			state.CurrentGroupIndex++
-			state.Window.SetContent(createResultsUI(state, state.Stats))
+			state.updateContent(createResultsUI(state, state.Stats))
 		}
 	})
 	nextBtn.Importance = widget.LowImportance
@@ -360,15 +431,15 @@ func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject
 	skipGroupBtn := widget.NewButton("Skip Group", func() {
 		state.CurrentGroupIndex++
 		if state.CurrentGroupIndex >= len(state.Groups) {
-			state.Window.SetContent(createFinalUI(state))
+			state.updateContent(createFinalUI(state))
 		} else {
-			state.Window.SetContent(createResultsUI(state, state.Stats))
+			state.updateContent(createResultsUI(state, state.Stats))
 		}
 	})
 	skipGroupBtn.Importance = widget.LowImportance
 
 	skipAllBtn := widget.NewButton("Skip All", func() {
-		state.Window.SetContent(createFinalUI(state))
+		state.updateContent(createFinalUI(state))
 	})
 	skipAllBtn.Importance = widget.LowImportance
 
@@ -377,9 +448,9 @@ func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject
 			group := state.Groups[state.CurrentGroupIndex]
 			keepAndDelete(state, 0, group.Files)
 			if len(state.Groups) == 0 {
-				state.Window.SetContent(createFinalUI(state))
+				state.updateContent(createFinalUI(state))
 			} else {
-				state.Window.SetContent(createResultsUI(state, state.Stats))
+				state.updateContent(createResultsUI(state, state.Stats))
 			}
 		}
 	})
@@ -510,7 +581,7 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 						}
 
 						// Refresh UI
-						state.Window.SetContent(createResultsUI(state, state.Stats))
+						state.updateContent(createResultsUI(state, state.Stats))
 					} else {
 						dialog.ShowError(fmt.Errorf("failed to delete: %w", err), state.Window)
 					}
@@ -587,7 +658,7 @@ func createFinalUI(state *AppState) fyne.CanvasObject {
 		state.DeletedCount = 0
 		state.FreedBytes = 0
 		state.FolderPath = ""
-		state.Window.SetContent(createMainUI(state))
+		state.updateContent(DuplicateFinderWidget(state))
 	})
 	backBtn.Importance = widget.HighImportance
 

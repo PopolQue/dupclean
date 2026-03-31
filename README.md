@@ -61,14 +61,12 @@ sudo mv dupclean /usr/local/bin/
 
 ---
 
-### CLI Version (Homebrew)
+### CLI Version only (coming soon)
 
 **macOS & Linux**
 ```bash
-brew install dupclean
+coming soon
 ```
-
-> **Note:** The Homebrew version is CLI-only. For the full version with GUI, download from [Releases](https://github.com/PopolQue/dupclean/releases)
 
 ---
 

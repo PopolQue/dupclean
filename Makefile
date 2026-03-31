@@ -1,4 +1,4 @@
-.PHONY: build install clean run test lint fmt coverage
+.PHONY: build build-gui install clean run test lint fmt coverage
 
 BINARY = dupclean
 APP_ID = com.dupclean.app
@@ -6,7 +6,11 @@ INSTALL_PATH = /usr/local/bin/$(BINARY)
 
 build:
 	go build -o $(BINARY) .
-	@echo "✅ Built: ./$(BINARY)"
+	@echo "✅ Built CLI: ./$(BINARY)"
+
+build-gui:
+	go build -tags gui -o $(BINARY) .
+	@echo "✅ Built GUI: ./$(BINARY)"
 
 install: build
 	@echo "Installing dupclean CLI..."
@@ -99,6 +103,6 @@ release: cross-darwin-local package-only
 # Build macOS locally (requires macOS)
 cross-darwin-local:
 	@echo "Building macOS locally (arm64)..."
-	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/darwin/dupclean-darwin-arm64 .
-	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o dist/darwin/dupclean-darwin-amd64 .
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags gui -o dist/darwin/dupclean-darwin-arm64 .
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags gui -o dist/darwin/dupclean-darwin-amd64 .
 	@echo "✅ Local macOS builds: dist/darwin/"

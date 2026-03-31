@@ -55,6 +55,9 @@ type Options struct {
 
 	// IgnoreExtensions is a list of file extensions to skip
 	IgnoreExtensions []string
+
+	// OnProgress is called periodically during scanning
+	OnProgress func(ScanProgress)
 }
 
 // Scanner defines the interface for duplicate detection strategies

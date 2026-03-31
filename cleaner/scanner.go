@@ -71,15 +71,22 @@ func Scan(targets []*CleanTarget, opts ScanOptions) (*ScanResult, error) {
 			defer wg.Done()
 			for target := range jobs {
 				scanTarget(target, opts)
-				results <- target
 				done.Add(1)
+				
+				// Send progress BEFORE sending result to avoid blocking
 				if opts.OnProgress != nil {
+					current := currentTarget.Load()
+					if current == nil {
+						current = ""
+					}
 					opts.OnProgress(Progress{
 						Total:   len(targets),
 						Done:    int(done.Load()),
-						Current: currentTarget.Load().(string),
+						Current: current.(string),
 					})
 				}
+				
+				results <- target
 			}
 		}()
 	}

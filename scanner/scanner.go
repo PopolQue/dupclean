@@ -35,6 +35,7 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 	// Stage 1: Collect files and group by size
 	bySize := make(map[int64][]string)
+	filesCollected := 0
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -74,6 +75,17 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 		bySize[info.Size()] = append(bySize[info.Size()], path)
 		stats.TotalScanned++
+		filesCollected++
+
+		// Report progress
+		if opts.OnProgress != nil {
+			opts.OnProgress(ScanProgress{
+				Phase:      "Collecting files",
+				Percent:    0.3, // Stage 1 is 30% of work
+				FilesFound: filesCollected,
+			})
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -81,11 +93,11 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	}
 
 	// Stage 2-4: Multi-pass duplicate detection
-	return s.detectDuplicates(bySize, start, stats)
+	return s.detectDuplicates(bySize, start, stats, opts.OnProgress)
 }
 
 // detectDuplicates performs the multi-stage duplicate detection algorithm
-func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats) ([]DuplicateGroup, ScanStats, error) {
+func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats, onProgress func(ScanProgress)) ([]DuplicateGroup, ScanStats, error) {
 	// Count potential duplicates for progress
 	potentialDupes := 0
 	for _, paths := range bySize {
@@ -108,6 +120,15 @@ func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Ti
 			}
 			partialHashGroups[partialHash] = append(partialHashGroups[partialHash], path)
 			hashCount++
+
+			// Report progress
+			if onProgress != nil {
+				onProgress(ScanProgress{
+					Phase:       "Hashing files (partial)",
+					Percent:     0.3 + (float64(hashCount) / float64(potentialDupes) * 0.3),
+					FilesHashed: hashCount,
+				})
+			}
 		}
 	}
 
@@ -131,6 +152,15 @@ func (s *AudioScanner) detectDuplicates(bySize map[int64][]string, start time.Ti
 				Hash:    fullHash,
 			})
 			fullHashCount++
+
+			// Report progress
+			if onProgress != nil {
+				onProgress(ScanProgress{
+					Phase:       "Hashing files (full)",
+					Percent:     0.6 + (float64(fullHashCount) / float64(potentialDupes) * 0.3),
+					FilesHashed: fullHashCount,
+				})
+			}
 		}
 	}
 
@@ -183,10 +213,8 @@ func FindDuplicates(folder string, includeAll bool, onProgress func(ScanProgress
 		MinSize:          0,
 		IgnoreFolders:    ignoreFolders,
 		IgnoreExtensions: ignoreExtensions,
+		OnProgress:       onProgress,
 	}
-	
-	// TODO: Implement progress callback
-	_ = onProgress
-	
+
 	return scanner.Scan(folder, opts)
 }
