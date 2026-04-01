@@ -96,9 +96,7 @@ jobs:
         sudo apt-get install -y libgl1-mesa-dev xorg-dev
 
     - name: Generate coverage
-      run: go test -race -coverprofile=coverage.txt -covermode=atomic ./... -cover
-      env:
-        GOEXPERIMENT: nocoverdataformat
+      run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
