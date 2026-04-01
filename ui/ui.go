@@ -131,6 +131,9 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 
 // moveToTrash uses macOS `trash` command or AppleScript to move a file to Trash
 func moveToTrash(path string) error {
+	if path == "" {
+		return fmt.Errorf("cannot move empty path to trash")
+	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err

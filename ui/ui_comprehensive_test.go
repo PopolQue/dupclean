@@ -112,7 +112,7 @@ func TestFormatBytes_Comprehensive(t *testing.T) {
 		{1024, "1.0 KB"},
 		{1536, "1.5 KB"},
 		{10240, "10.0 KB"},
-		{102399, "100 KB"},
+		{102399, "100.0 KB"}, // 102399/1024 = 99.999... rounds to 100.0
 
 		// Megabytes
 		{1048576, "1.0 MB"},
@@ -369,7 +369,7 @@ func TestMoveToTrash_NonExistentFile(t *testing.T) {
 func TestMoveToTrash_EmptyPath(t *testing.T) {
 	err := moveToTrash("")
 	if err == nil {
-		t.Log("moveToTrash should error for empty path")
+		t.Error("moveToTrash should error for empty path")
 	}
 }
 
