@@ -12,6 +12,7 @@ jobs:
   release:
     name: Release
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 3
     strategy:
       matrix:
         include:
@@ -19,22 +20,27 @@ jobs:
             goos: linux
             goarch: amd64
             artifact: dupclean-linux-amd64
+            cgo: 1
           - os: ubuntu-latest
             goos: linux
             goarch: arm64
             artifact: dupclean-linux-arm64
+            cgo: 0
           - os: macos-latest
             goos: darwin
             goarch: arm64
             artifact: dupclean-darwin-arm64
+            cgo: 1
           - os: macos-latest
             goos: darwin
             goarch: amd64
             artifact: dupclean-darwin-amd64
+            cgo: 1
           - os: windows-latest
             goos: windows
             goarch: amd64
             artifact: dupclean-windows-amd64.exe
+            cgo: 0
 
     steps:
     - name: Checkout code
@@ -60,7 +66,7 @@ jobs:
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 1
+        CGO_ENABLED: ${{ matrix.cgo }}
       run: |
         go build -o ${{ matrix.artifact }} -ldflags="-s -w" .
 
