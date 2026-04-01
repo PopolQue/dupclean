@@ -1,5 +1,5 @@
 # DupClean — Redundant File Cleaner
-![Coverage](https://img.shields.io/badge/Coverage-24.2%25-red)
+![Coverage](https://img.shields.io/badge/Coverage-27.4%25-red)
 
 [![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml)
 
