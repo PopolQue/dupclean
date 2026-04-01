@@ -29,13 +29,15 @@ func TestGetDeveloperTargetsCrossPlatform(t *testing.T) {
 		}
 	}
 
+	// Check for Go cache target (not present on Windows)
 	goCacheFound := false
 	for _, t := range targets {
 		if t.ID == "dev-go-cache" {
 			goCacheFound = true
 		}
 	}
-	if !goCacheFound {
+	// Go cache target is only available on Unix-like systems
+	if !goCacheFound && runtime.GOOS != "windows" {
 		t.Error("Missing Go cache target")
 	}
 }
