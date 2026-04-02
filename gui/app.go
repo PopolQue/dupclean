@@ -25,12 +25,58 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func init() {
-	logFile, err := os.OpenFile("/tmp/dupclean.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err == nil {
-		log.SetOutput(logFile)
+// getLogFilePath returns a platform-appropriate path for the log file.
+// On Unix-like systems: $TMPDIR/dupclean.log or /tmp/dupclean.log
+// On Windows: %TEMP%\dupclean.log
+// Returns empty string if no suitable temp directory is available.
+func getLogFilePath() string {
+	// Try TMPDIR environment variable (Unix, macOS)
+	if tmpDir := os.Getenv("TMPDIR"); tmpDir != "" {
+		return filepath.Join(tmpDir, "dupclean.log")
 	}
+
+	// Try TEMP environment variable (Windows)
+	if tempDir := os.Getenv("TEMP"); tempDir != "" {
+		return filepath.Join(tempDir, "dupclean.log")
+	}
+
+	// Try TMP environment variable (fallback)
+	if tmpDir := os.Getenv("TMP"); tmpDir != "" {
+		return filepath.Join(tmpDir, "dupclean.log")
+	}
+
+	// Platform-specific defaults
+	switch filepath.Separator {
+	case '\\':
+		// Windows default
+		return filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local", "Temp", "dupclean.log")
+	default:
+		// Unix-like default
+		return "/tmp/dupclean.log"
+	}
+}
+
+func init() {
+	logPath := getLogFilePath()
+	
+	// Ensure directory exists
+	logDir := filepath.Dir(logPath)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		// Can't create log directory, skip logging to file
+		log.Println("DupClean starting (no file logging)...")
+		return
+	}
+	
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		// Can't open log file, skip logging to file
+		log.Println("DupClean starting (no file logging)...")
+		return
+	}
+	
+	log.SetOutput(logFile)
 	log.Println("DupClean starting...")
+	log.Printf("Log file: %s", logPath)
 }
 
 type AppState struct {
