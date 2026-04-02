@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -117,12 +118,16 @@ func scanTarget(target *CleanTarget, opts ScanOptions) {
 
 	for _, path := range target.Paths {
 		if _, err := os.Stat(path); err != nil {
-			continue // skip non-existent paths
+			// Log non-existent paths for visibility
+			log.Printf("[Cleaner] Path does not exist: %s - %v", path, err)
+			continue
 		}
 
 		// Use fsutil to measure
 		measureResult, err := fsutil.MeasureDir(path, target.Patterns, opts.MinAge)
 		if err != nil {
+			// Log measurement errors
+			log.Printf("[Cleaner] Measure error for %s: %v", path, err)
 			continue
 		}
 

@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,8 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			// Log access errors for visibility
+			log.Printf("[ByteScanner] Access error: %v", err)
 			return nil // skip unreadable files
 		}
 
@@ -99,6 +102,7 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 		for _, path := range paths {
 			partialHash, err := hashFilePartial(path, partialHashSize)
 			if err != nil {
+				log.Printf("[ByteScanner] Partial hash error for %s: %v", path, err)
 				continue
 			}
 			partialHashGroups[partialHash] = append(partialHashGroups[partialHash], path)
@@ -114,6 +118,7 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 		for _, path := range paths {
 			fullHash, info, err := hashFileFull(path)
 			if err != nil {
+				log.Printf("[ByteScanner] Full hash error for %s: %v", path, err)
 				continue
 			}
 			fullHashGroups[fullHash] = append(fullHashGroups[fullHash], FileInfo{

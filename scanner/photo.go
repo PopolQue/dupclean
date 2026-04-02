@@ -5,6 +5,7 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,6 +63,8 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			// Log access errors for visibility
+			log.Printf("[PhotoScanner] Access error: %v", err)
 			return nil
 		}
 
@@ -128,7 +131,8 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	for _, path := range photos {
 		hash, info, err := computePerceptualHash(path)
 		if err != nil {
-			// Skip files that can't be decoded
+			// Log files that can't be decoded
+			log.Printf("[PhotoScanner] Hash error for %s: %v", path, err)
 			continue
 		}
 		hashed = append(hashed, hashedPhoto{
