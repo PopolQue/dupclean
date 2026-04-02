@@ -52,6 +52,7 @@ type AppState struct {
 	PlayingPath        string
 	progressComponents *progressComponents
 	mu                 sync.RWMutex // Protects concurrent access to state
+	playerDone         chan struct{} // Signal when player goroutine is done
 }
 
 // updateContent updates the content container (preserves sidebar)
@@ -89,12 +90,20 @@ func RunGUI() {
 		CurrentGroupIndex: 0,
 		DeletedCount:      0,
 		FreedBytes:        0,
+		playerDone:        make(chan struct{}, 1), // Buffered to prevent goroutine leak
 	}
 
 	cacheState := NewCacheCleanerState(w)
 
 	log.Println("RunGUI: creating main layout with sidebar...")
 	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState))
+
+	// Set up cleanup on window close
+	w.SetOnClosed(func() {
+		log.Println("RunGUI: cleaning up...")
+		stopPlayback(dupState)
+		stopPlayback(cacheState)
+	})
 
 	log.Println("RunGUI: showing window...")
 	w.ShowAndRun()
@@ -732,12 +741,19 @@ func playFile(state *AppState, path string, onComplete func()) {
 		return
 	}
 
+	// Create a new done channel for this playback session
 	state.mu.Lock()
+	state.playerDone = make(chan struct{}, 1)
 	state.CurrentPlayer = cmd
 	state.PlayingPath = path
 	state.StopPlayer = func() {
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
+		}
+		// Signal that we're done
+		select {
+		case state.playerDone <- struct{}{}:
+		default:
 		}
 		if onComplete != nil {
 			onComplete()
@@ -752,6 +768,11 @@ func playFile(state *AppState, path string, onComplete func()) {
 			state.CurrentPlayer = nil
 			state.StopPlayer = nil
 			state.PlayingPath = ""
+		}
+		// Signal completion
+		select {
+		case state.playerDone <- struct{}{}:
+		default:
 		}
 		state.mu.Unlock()
 		if onComplete != nil {
@@ -834,14 +855,42 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 	}, state.Window)
 }
 
-func stopPlayback(state *AppState) {
+// stopPlayback stops any ongoing audio playback and waits for the goroutine to finish.
+// This is a no-op for states that don't support audio playback.
+func stopPlayback(state interface{}) {
+	switch s := state.(type) {
+	case *AppState:
+		stopPlaybackInternal(s)
+	case *CacheCleanerState:
+		// CacheCleanerState doesn't have audio playback, nothing to stop
+	}
+}
+
+// stopPlaybackInternal is the internal implementation for AppState
+func stopPlaybackInternal(state *AppState) {
 	state.mu.Lock()
-	defer state.mu.Unlock()
 	
 	if state.StopPlayer != nil {
-		state.StopPlayer()
+		stopFunc := state.StopPlayer
 		state.StopPlayer = nil
-		state.CurrentPlayer = nil
-		state.PlayingPath = ""
+		
+		// Get the done channel before releasing lock
+		playerDone := state.playerDone
+		
+		state.mu.Unlock()
+		
+		// Call stop function (kills process)
+		stopFunc()
+		
+		// Wait for goroutine to finish (with timeout)
+		select {
+		case <-playerDone:
+			// Goroutine finished
+		case <-time.After(2 * time.Second):
+			// Timeout - goroutine may be leaked
+			log.Printf("[stopPlayback] Timeout waiting for player goroutine to finish")
+		}
+	} else {
+		state.mu.Unlock()
 	}
 }
