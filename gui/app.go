@@ -6,11 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"dupclean/cleaner"
 	"dupclean/scanner"
 
 	"fyne.io/fyne/v2"
@@ -682,44 +682,7 @@ func createFinalUI(state *AppState) fyne.CanvasObject {
 }
 
 func moveToTrash(path string) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", absPath).Run()
-	}
-
-	if runtimeOS() == "darwin" {
-		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, absPath)
-		return exec.Command("osascript", "-e", script).Run()
-	}
-
-	if runtimeOS() == "linux" {
-		gvfsPath := filepath.Join(os.Getenv("HOME"), ".local/share/Trash/files")
-		if _, err := os.Stat(gvfsPath); err == nil {
-			trashName := absPath
-			counter := 1
-			for {
-				newPath := filepath.Join(gvfsPath, filepath.Base(trashName))
-				if _, err := os.Stat(newPath); os.IsNotExist(err) {
-					break
-				}
-				ext := filepath.Ext(trashName)
-				base := strings.TrimSuffix(filepath.Base(trashName), ext)
-				trashName = fmt.Sprintf("%s (%d)%s", base, counter, ext)
-				counter++
-			}
-			return os.Rename(absPath, filepath.Join(gvfsPath, trashName))
-		}
-	}
-
-	return os.Remove(absPath)
-}
-
-func runtimeOS() string {
-	return runtime.GOOS
+	return cleaner.SafeMoveToTrash(path)
 }
 
 func formatBytes(b int64) string {
@@ -738,16 +701,9 @@ func formatBytes(b int64) string {
 func playFile(state *AppState, path string, onComplete func()) {
 	stopPlayback(state)
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("afplay", path)
-	case "linux":
-		cmd = exec.Command("aplay", path)
-	case "windows":
-		cmd = exec.Command("powershell", "-c",
-			fmt.Sprintf("(New-Object Media.SoundPlayer '%s').PlaySync()", path))
-	default:
+	cmd, err := cleaner.SafePlayMedia(path)
+	if err != nil {
+		log.Printf("[playFile] Error: %v", err)
 		return
 	}
 

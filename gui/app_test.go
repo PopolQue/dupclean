@@ -3,6 +3,7 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"dupclean/scanner"
@@ -92,7 +93,7 @@ func TestFormatBytes_EdgeCases(t *testing.T) {
 
 // Test runtimeOS returns valid OS
 func TestRuntimeOS_Valid(t *testing.T) {
-	os := runtimeOS()
+	os := runtime.GOOS
 	validOS := map[string]bool{
 		"darwin":  true,
 		"linux":   true,
@@ -103,7 +104,7 @@ func TestRuntimeOS_Valid(t *testing.T) {
 	}
 
 	if !validOS[os] {
-		t.Errorf("runtimeOS returned unexpected OS: %q", os)
+		t.Errorf("runtime.GOOS returned unexpected OS: %q", os)
 	}
 }
 

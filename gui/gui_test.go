@@ -3,6 +3,7 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"dupclean/scanner"
@@ -188,7 +189,7 @@ func TestAppState_Full(t *testing.T) {
 }
 
 func TestRuntimeOS(t *testing.T) {
-	result := runtimeOS()
+	result := runtime.GOOS
 	if result == "" {
 		t.Error("runtimeOS should return a non-empty string")
 	}

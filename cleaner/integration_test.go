@@ -209,9 +209,9 @@ func TestMoveToTrashMacOS(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashMacOS(testFile)
+	err := safeMoveToTrashMacOS(testFile)
 	if err != nil {
-		t.Logf("moveToTrashMacOS error (may fail in CI): %v", err)
+		t.Logf("safeMoveToTrashMacOS error (may fail in CI): %v", err)
 	}
 }
 
@@ -227,9 +227,9 @@ func TestMoveToTrashLinux(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashLinux(testFile)
+	err := safeMoveToTrashLinux(testFile)
 	if err != nil {
-		t.Logf("moveToTrashLinux error (may fail in CI): %v", err)
+		t.Logf("safeMoveToTrashLinux error (may fail in CI): %v", err)
 	}
 }
 
@@ -245,9 +245,9 @@ func TestMoveToTrashWindows(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashWindows(testFile)
+	err := safeMoveToTrashWindows(testFile)
 	if err != nil {
-		t.Logf("moveToTrashWindows error (may fail in CI): %v", err)
+		t.Logf("safeMoveToTrashWindows error (may fail in CI): %v", err)
 	}
 }
 

@@ -129,23 +129,33 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 	printFinalSummary(deletedCount, freedBytes)
 }
 
-// moveToTrash uses macOS `trash` command or AppleScript to move a file to Trash
+// moveToTrash uses the cleaner package's secure trash mechanism
 func moveToTrash(path string) error {
 	if path == "" {
 		return fmt.Errorf("cannot move empty path to trash")
 	}
+	
+	// Import locally to avoid circular dependency
+	// We inline the safe implementation here
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
 
-	// Try using the `trash` CLI tool first (brew install trash)
+	// Verify path exists
+	if _, err := os.Stat(absPath); err != nil {
+		return err
+	}
+
+	// Try using the `trash` CLI tool first
 	if _, err := exec.LookPath("trash"); err == nil {
 		return exec.Command("trash", absPath).Run()
 	}
 
-	// Fall back to AppleScript (built-in on macOS)
-	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, absPath)
+	// Fall back to AppleScript with proper escaping
+	escapedPath := strings.ReplaceAll(absPath, "\\", "\\\\")
+	escapedPath = strings.ReplaceAll(escapedPath, "\"", "\\\"")
+	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, escapedPath)
 	return exec.Command("osascript", "-e", script).Run()
 }
 

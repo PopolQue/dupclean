@@ -3,10 +3,6 @@ package cleaner
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -200,80 +196,5 @@ func findSubstring(s, substr string) bool {
 
 // moveToTrash moves a file or directory to the trash/recycle bin.
 func moveToTrash(path string) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	switch runtime.GOOS {
-	case "darwin":
-		return moveToTrashMacOS(absPath)
-	case "linux":
-		return moveToTrashLinux(absPath)
-	case "windows":
-		return moveToTrashWindows(absPath)
-	default:
-		// Fallback to permanent delete
-		return os.RemoveAll(path)
-	}
-}
-
-func moveToTrashMacOS(path string) error {
-	// Try using the `trash` CLI tool first (brew install trash)
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
-	}
-
-	// Fall back to AppleScript
-	script := `tell application "Finder" to delete POSIX file "` + path + `"`
-	return exec.Command("osascript", "-e", script).Run()
-}
-
-func moveToTrashLinux(path string) error {
-	// Try using gio (GNOME)
-	if _, err := exec.LookPath("gio"); err == nil {
-		return exec.Command("gio", "trash", path).Run()
-	}
-
-	// Try using trash-cli
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
-	}
-
-	// Try moving to user's trash directory
-	home := os.Getenv("HOME")
-	if home != "" {
-		trashDir := filepath.Join(home, ".local", "share", "Trash", "files")
-		if err := os.MkdirAll(trashDir, 0755); err == nil {
-			trashName := filepath.Base(path)
-			dest := filepath.Join(trashDir, trashName)
-			counter := 1
-			for {
-				if _, err := os.Stat(dest); os.IsNotExist(err) {
-					return os.Rename(path, dest)
-				}
-				ext := filepath.Ext(trashName)
-				base := strings.TrimSuffix(filepath.Base(trashName), ext)
-				dest = filepath.Join(trashDir, base+" ("+string(rune(counter))+")"+ext)
-				counter++
-			}
-		}
-	}
-
-	// Fallback to permanent delete
-	return os.RemoveAll(path)
-}
-
-func moveToTrashWindows(path string) error {
-	// Windows doesn't have a simple trash command
-	// Use PowerShell to move to Recycle Bin
-	psScript := `
-	$shell = New-Object -ComObject Shell.Application
-	$folder = $shell.Namespace(0)
-	$item = $folder.ParseName("` + path + `")
-	if ($item -ne $null) {
-		$item.InvokeVerb("delete")
-	}
-	`
-	return exec.Command("powershell", "-Command", psScript).Run()
+	return SafeMoveToTrash(path)
 }
