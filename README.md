@@ -1,5 +1,5 @@
 # DupClean — Redundant File Cleaner
-![Coverage](https://img.shields.io/badge/Coverage-44.3%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-44.9%25-yellow)
 
 [![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml)
 
@@ -36,23 +36,23 @@ A fast, content-aware duplicate file scanner for music producers, DJs, photograp
 ### Full Version (with GUI)
 
 **macOS**
-1. Download `dupclean.dmg` from [Releases](https://github.com/PopolQue/dupclean/releases)
-2. Double-click to mount
-3. Drag `DupClean.app` to Applications
+1. Download `dupclean-darwin-arm64.tar.gz` from [Releases](https://github.com/PopolQue/dupclean/releases)
+2. Extract the archive
+3. Run `./dupclean-darwin-arm64` or move to Applications
 
-If your Mac warns you that the file is damaged, try removing the quarantine after installing:
+If your Mac warns you that the file is damaged, try removing the quarantine:
 ```bash
-sudo xattr -d com.apple.quarantine /Applications/DupClean.app
+sudo xattr -d com.apple.quarantine dupclean-darwin-arm64
 ```
 
 **Windows**
 1. Download `dupclean-windows-amd64.zip` from [Releases](https://github.com/PopolQue/dupclean/releases)
-2. Extract and run `dupclean.exe`
+2. Extract and run `dupclean-windows-amd64.exe`
 
 **Linux**
 ```bash
 tar -xzf dupclean-linux-amd64.tar.gz
-sudo mv dupclean /usr/local/bin/
+./dupclean-linux-amd64
 ```
 
 **Required dependencies:**
@@ -62,12 +62,9 @@ sudo mv dupclean /usr/local/bin/
 
 ---
 
-### CLI Version only (coming soon)
+### CLI Version
 
-**macOS & Linux**
-```bash
-coming soon
-```
+Download the appropriate binary for your platform from [Releases](https://github.com/PopolQue/dupclean/releases) and run it directly. No installation required.
 
 ---
 
@@ -123,7 +120,7 @@ dupclean --help
 | `--mode=<mode>` | Scanner mode: `audio` (default), `byte`, `photo` |
 | `--all` | Scan all file types (same as `--mode=byte`) |
 | `--similarity=<pct>` | Minimum similarity for photo mode (0-100, default: 90) |
-| `--gui` | Launch GUI (not available in Homebrew build) |
+| `--gui` | Launch GUI |
 | `--help` | Show help |
 
 ### Scan Modes Explained
@@ -280,11 +277,6 @@ go build -tags gui -o dupclean .
 ./dupclean
 ```
 
-**Build CLI-only (for Homebrew):**
-```bash
-CGO_ENABLED=0 go build -o dupclean .
-```
-
 ### Cross-compilation
 
 ```bash
@@ -363,4 +355,3 @@ MIT License — see [LICENSE](LICENSE) file for details.
 
 - [goimagehash](https://github.com/corona10/goimagehash) for perceptual hashing
 - [Fyne](https://fyne.io/) for the cross-platform GUI framework
-- Homebrew community for package distribution
