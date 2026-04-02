@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// MemoryWarningThreshold is the number of files at which we warn about memory usage
+const MemoryWarningThreshold = 100000
+
 // ByteScanner implements duplicate detection for all file types using SHA-256
 type ByteScanner struct{}
 
@@ -17,6 +20,10 @@ func NewByteScanner() *ByteScanner {
 }
 
 // Scan implements the Scanner interface for general file duplicate detection
+// 
+// Memory Note: This function collects all file paths in memory grouped by size.
+// For large directories (100k+ files), this can consume significant memory.
+// Consider using options to limit scan scope (IgnoreFolders, IgnoreExtensions, MinSize).
 func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
@@ -25,7 +32,9 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 	visitedInodes := make(map[uint64]bool)
 
 	// Stage 1: Collect files and group by size
+	// NOTE: This map holds all file paths in memory - can be large for 100k+ files
 	bySize := make(map[int64][]string)
+	fileCount := 0
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -80,11 +89,17 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 		}
 
 		bySize[info.Size()] = append(bySize[info.Size()], path)
+		fileCount++
 		stats.TotalScanned++
 		return nil
 	})
 	if err != nil {
 		return nil, stats, err
+	}
+
+	// Warn about high memory usage
+	if fileCount > MemoryWarningThreshold {
+		log.Printf("[ByteScanner] Warning: Scanned %d files. Memory usage may be high. Consider using filters to reduce scope.", fileCount)
 	}
 
 	// Stage 2-4: Multi-pass duplicate detection

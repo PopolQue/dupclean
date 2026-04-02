@@ -12,6 +12,9 @@ import (
 	"sync"
 )
 
+// MemoryWarningThreshold is the number of entries at which we warn about memory usage
+const MemoryWarningThreshold = 100000
+
 // WalkOptions configures how the filesystem walk is performed.
 type WalkOptions struct {
 	FollowSymlinks bool
@@ -20,9 +23,15 @@ type WalkOptions struct {
 	MaxDepth       int      // 0 = unlimited
 	ExcludePaths   []string // glob patterns, e.g. "node_modules", "*.git"
 	Concurrency    int      // worker pool size; 0 = runtime.NumCPU()
+	MaxEntries     int      // Maximum number of entries to collect (0 = unlimited, recommended: 100000)
 }
 
 // DefaultOptions returns WalkOptions with sensible defaults.
+// 
+// For large directories (100k+ files), consider setting:
+//   - MaxEntries: 100000 (limit memory usage)
+//   - MinSize: Skip very small files
+//   - ExcludePaths: Exclude node_modules, .git, etc.
 func DefaultOptions() WalkOptions {
 	return WalkOptions{
 		FollowSymlinks: false,
@@ -91,10 +100,14 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 }
 
 // statPass performs concurrent os.Stat on all files.
+// 
+// Memory Note: This function collects all file entries in memory.
+// For large directories (100k+ files), consider setting MaxEntries in WalkOptions.
 func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 	var entries []FileEntry
 	var errors []error
 	var mu sync.Mutex
+	entryCount := 0
 
 	// Track visited inodes to avoid counting hard links multiple times
 	visitedInodes := make(map[uint64]struct{})
@@ -218,9 +231,20 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 			errors = append(errors, r.err)
 		} else {
 			mu.Lock()
+			// Check MaxEntries limit
+			if opts.MaxEntries > 0 && entryCount >= opts.MaxEntries {
+				mu.Unlock()
+				continue // Skip additional entries
+			}
 			entries = append(entries, r.entry)
+			entryCount++
 			mu.Unlock()
 		}
+	}
+
+	// Warn about high memory usage
+	if entryCount > MemoryWarningThreshold {
+		log.Printf("[DiskAnalyzer] Warning: Collected %d entries. Memory usage may be high. Consider setting MaxEntries or using filters.", entryCount)
 	}
 
 	return entries, errors, nil
