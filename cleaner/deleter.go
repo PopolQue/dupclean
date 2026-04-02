@@ -191,8 +191,3 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
-
-// moveToTrash moves a file or directory to the trash/recycle bin.
-func moveToTrash(path string) error {
-	return trash.MoveToTrash(path)
-}

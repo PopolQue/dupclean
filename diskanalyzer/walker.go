@@ -27,7 +27,7 @@ type WalkOptions struct {
 }
 
 // DefaultOptions returns WalkOptions with sensible defaults.
-// 
+//
 // For large directories (100k+ files), consider setting:
 //   - MaxEntries: 100000 (limit memory usage)
 //   - MinSize: Skip very small files
@@ -100,7 +100,7 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 }
 
 // statPass performs concurrent os.Stat on all files.
-// 
+//
 // Memory Note: This function collects all file entries in memory.
 // For large directories (100k+ files), consider setting MaxEntries in WalkOptions.
 func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {

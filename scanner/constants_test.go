@@ -12,12 +12,12 @@ func TestDefaultPartialHashSize(t *testing.T) {
 	if DefaultPartialHashSize != expected {
 		t.Errorf("DefaultPartialHashSize = %d, want %d", DefaultPartialHashSize, expected)
 	}
-	
+
 	// Should be positive
 	if DefaultPartialHashSize <= 0 {
 		t.Error("DefaultPartialHashSize should be positive")
 	}
-	
+
 	// Should be reasonable (not too small, not too large)
 	if DefaultPartialHashSize < 1024 {
 		t.Error("DefaultPartialHashSize should be at least 1KB")
@@ -34,12 +34,12 @@ func TestDefaultComparisonBufferSize(t *testing.T) {
 	if DefaultComparisonBufferSize != expected {
 		t.Errorf("DefaultComparisonBufferSize = %d, want %d", DefaultComparisonBufferSize, expected)
 	}
-	
+
 	// Should be positive
 	if DefaultComparisonBufferSize <= 0 {
 		t.Error("DefaultComparisonBufferSize should be positive")
 	}
-	
+
 	// Should be reasonable for I/O buffering
 	if DefaultComparisonBufferSize < 4096 {
 		t.Error("DefaultComparisonBufferSize should be at least 4KB")
@@ -53,7 +53,7 @@ func TestDefaultComparisonBufferSize(t *testing.T) {
 func TestPartialHashSize_BackwardsCompatibility(t *testing.T) {
 	// Legacy constant should equal new constant
 	if partialHashSize != DefaultPartialHashSize {
-		t.Errorf("partialHashSize = %d, should equal DefaultPartialHashSize = %d", 
+		t.Errorf("partialHashSize = %d, should equal DefaultPartialHashSize = %d",
 			partialHashSize, DefaultPartialHashSize)
 	}
 }
@@ -69,7 +69,7 @@ func TestConstants_ReasonableValues(t *testing.T) {
 		{"DefaultPartialHashSize", DefaultPartialHashSize, 1024, 1024 * 1024},
 		{"DefaultComparisonBufferSize", DefaultComparisonBufferSize, 4096, 1024 * 1024},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.value < tt.min {
@@ -87,11 +87,11 @@ func TestConstants_PowerOfTwo(t *testing.T) {
 	isPowerOfTwo := func(n int) bool {
 		return n > 0 && (n&(n-1)) == 0
 	}
-	
+
 	if !isPowerOfTwo(DefaultPartialHashSize) {
 		t.Errorf("DefaultPartialHashSize = %d, should be power of 2 for optimal memory alignment", DefaultPartialHashSize)
 	}
-	
+
 	if !isPowerOfTwo(DefaultComparisonBufferSize) {
 		t.Errorf("DefaultComparisonBufferSize = %d, should be power of 2 for optimal memory alignment", DefaultComparisonBufferSize)
 	}
@@ -101,12 +101,12 @@ func TestConstants_PowerOfTwo(t *testing.T) {
 func TestConstants_Documentation(t *testing.T) {
 	// This is a meta-test to ensure constants have documentation
 	// The constants should have comments explaining their purpose
-	
+
 	// DefaultPartialHashSize should be documented
 	if DefaultPartialHashSize == 0 {
 		t.Error("DefaultPartialHashSize should be non-zero")
 	}
-	
+
 	// DefaultComparisonBufferSize should be documented
 	if DefaultComparisonBufferSize == 0 {
 		t.Error("DefaultComparisonBufferSize should be non-zero")
@@ -117,14 +117,14 @@ func TestConstants_Documentation(t *testing.T) {
 func TestConstants_UsageInFunctions(t *testing.T) {
 	// Test that DefaultPartialHashSize works with hashFilePartial
 	// (This is more of an integration test)
-	
+
 	// Create a temporary file for testing
 	tmpFile := t.TempDir() + "/test.txt"
 	content := []byte("test content for hashing")
 	if err := writeFile(tmpFile, content); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	
+
 	// Hash should work with DefaultPartialHashSize
 	hash, err := hashFilePartial(tmpFile, int64(DefaultPartialHashSize))
 	if err != nil {
@@ -142,7 +142,7 @@ func writeFile(path string, content []byte) error {
 		return err
 	}
 	defer func() { _ = f.Close() }()
-	
+
 	_, err = f.Write(content)
 	return err
 }

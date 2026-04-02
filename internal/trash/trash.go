@@ -145,12 +145,12 @@ func safeMoveToTrashDir(path, trashDir string) error {
 		f, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 		if err == nil {
 			// File created successfully, now rename over it
-			f.Close()
-			os.Remove(dest) // Remove the empty file we just created
+			_ = f.Close()
+			_ = os.Remove(dest) // Remove the empty file we just created
 
 			if err := os.Rename(path, dest); err != nil {
 				// Rename failed, clean up
-				os.Remove(dest)
+				_ = os.Remove(dest)
 				return err
 			}
 			return nil

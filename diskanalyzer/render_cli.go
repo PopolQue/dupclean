@@ -221,11 +221,11 @@ func GetTerminalWidth(defaultWidth int) int {
 		// Not a terminal or error getting size
 		return defaultWidth
 	}
-	
+
 	// Sanity check: terminal width should be reasonable
 	if width < 10 || width > 10000 {
 		return defaultWidth
 	}
-	
+
 	return width
 }

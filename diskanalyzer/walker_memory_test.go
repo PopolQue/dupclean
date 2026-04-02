@@ -69,7 +69,7 @@ func TestMemoryWarningThreshold(t *testing.T) {
 	if MemoryWarningThreshold <= 0 {
 		t.Error("MemoryWarningThreshold should be positive")
 	}
-	
+
 	// Reasonable threshold (100k files)
 	if MemoryWarningThreshold != 100000 {
 		t.Logf("MemoryWarningThreshold = %d (expected 100000)", MemoryWarningThreshold)
@@ -168,7 +168,7 @@ func itoa(i int) string {
 	if i == 0 {
 		return "0"
 	}
-	
+
 	var result []byte
 	for i > 0 {
 		result = append([]byte{byte('0' + i%10)}, result...)

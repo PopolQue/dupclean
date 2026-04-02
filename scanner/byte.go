@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,13 +21,22 @@ func NewByteScanner() *ByteScanner {
 }
 
 // Scan implements the Scanner interface for general file duplicate detection
-// 
+//
 // Memory Note: This function collects all file paths in memory grouped by size.
 // For large directories (100k+ files), this can consume significant memory.
 // Consider using options to limit scan scope (IgnoreFolders, IgnoreExtensions, MinSize).
+//
+// Context Support: The scan can be cancelled via opts.Context. When cancelled,
+// the function returns partial results collected up to the cancellation point.
 func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
+
+	// Create default context if none provided
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	// Track visited inodes to avoid following symlinks and hard links
 	visitedInodes := make(map[uint64]bool)
@@ -37,6 +47,14 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 	fileCount := 0
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		// Check for cancellation before processing each file
+		select {
+		case <-ctx.Done():
+			return ctx.Err() // Return the cancellation error
+		default:
+			// Continue processing
+		}
+
 		if err != nil {
 			// Log access errors for visibility
 			log.Printf("[ByteScanner] Access error: %v", err)
@@ -104,20 +122,34 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 	}
 
 	// Stage 2-4: Multi-pass duplicate detection
-	return s.detectDuplicates(bySize, start, stats)
+	return s.detectDuplicates(bySize, start, stats, ctx)
 }
 
 // detectDuplicates performs the multi-stage duplicate detection algorithm
-func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats) ([]DuplicateGroup, ScanStats, error) {
+func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats, ctx context.Context) ([]DuplicateGroup, ScanStats, error) {
 	// Stage 2: Partial hash (first 8KB)
 	// Uses DefaultPartialHashSize for initial filtering - files with different
 	// partial hashes are guaranteed to be different
 	partialHashGroups := make(map[string][]string)
 	for _, paths := range bySize {
+		// Check for cancellation
+		select {
+		case <-ctx.Done():
+			return nil, stats, ctx.Err()
+		default:
+		}
+
 		if len(paths) < 2 {
 			continue
 		}
 		for _, path := range paths {
+			// Check for cancellation during hashing
+			select {
+			case <-ctx.Done():
+				return nil, stats, ctx.Err()
+			default:
+			}
+
 			partialHash, err := hashFilePartial(path, DefaultPartialHashSize)
 			if err != nil {
 				log.Printf("[ByteScanner] Partial hash error for %s: %v", path, err)

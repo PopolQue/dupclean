@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"time"
 )
 
@@ -39,6 +40,11 @@ type ScanProgress struct {
 
 // Options configures how scanning is performed
 type Options struct {
+	// Context controls cancellation of the scan operation.
+	// If nil, the scan will run to completion.
+	// Use context.WithTimeout() or context.WithCancel() to limit scan duration.
+	Context context.Context
+
 	// IncludeHidden scans hidden files and directories (default: false)
 	IncludeHidden bool
 
@@ -63,6 +69,7 @@ type Options struct {
 
 // Scanner defines the interface for duplicate detection strategies
 type Scanner interface {
-	// Scan walks the directory tree and returns groups of duplicate files
+	// Scan walks the directory tree and returns groups of duplicate files.
+	// The scan can be cancelled via opts.Context.
 	Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error)
 }

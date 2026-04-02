@@ -13,7 +13,7 @@ func TestScanError_Error(t *testing.T) {
 		Type: ErrFileRead,
 		Err:  os.ErrPermission,
 	}
-	
+
 	expected := "[FILE_READ] /test/file.txt: permission denied"
 	if err.Error() != expected {
 		t.Errorf("ScanError.Error() = %q, want %q", err.Error(), expected)
@@ -27,7 +27,7 @@ func TestScanError_Error_NoPath(t *testing.T) {
 		Type: ErrFileHash,
 		Err:  errors.New("hash failed"),
 	}
-	
+
 	expected := "[FILE_HASH] hash failed"
 	if err.Error() != expected {
 		t.Errorf("ScanError.Error() without path = %q, want %q", err.Error(), expected)
@@ -42,7 +42,7 @@ func TestScanError_Unwrap(t *testing.T) {
 		Type: ErrFileAccess,
 		Err:  originalErr,
 	}
-	
+
 	unwrapped := err.Unwrap()
 	if unwrapped != originalErr {
 		t.Error("ScanError.Unwrap() should return the original error")
@@ -52,7 +52,7 @@ func TestScanError_Unwrap(t *testing.T) {
 // TestNewScanError tests the constructor
 func TestNewScanError(t *testing.T) {
 	err := NewScanError("/test/file.txt", ErrFileRead, os.ErrNotExist)
-	
+
 	if err.Path != "/test/file.txt" {
 		t.Errorf("Path = %q, want %q", err.Path, "/test/file.txt")
 	}
@@ -70,7 +70,7 @@ func TestNewScanError(t *testing.T) {
 // TestNewSkippedError tests the skipped error constructor
 func TestNewSkippedError(t *testing.T) {
 	err := NewSkippedError("/test/file.txt", ErrFileAccess, os.ErrPermission)
-	
+
 	if !err.Skipped {
 		t.Error("Skipped should be true for NewSkippedError")
 	}
@@ -82,7 +82,7 @@ func TestScanError_IsFileReadError(t *testing.T) {
 	if !err.IsFileReadError() {
 		t.Error("IsFileReadError() should return true")
 	}
-	
+
 	err2 := NewScanError("/test/file.txt", ErrFileHash, os.ErrPermission)
 	if err2.IsFileReadError() {
 		t.Error("IsFileReadError() should return false for hash errors")
@@ -95,7 +95,7 @@ func TestScanError_IsHashError(t *testing.T) {
 	if !err.IsHashError() {
 		t.Error("IsHashError() should return true")
 	}
-	
+
 	err2 := NewScanError("/test/file.txt", ErrFileRead, os.ErrPermission)
 	if err2.IsHashError() {
 		t.Error("IsHashError() should return false for read errors")
@@ -108,7 +108,7 @@ func TestScanError_IsAccessError(t *testing.T) {
 	if !err.IsAccessError() {
 		t.Error("IsAccessError() should return true")
 	}
-	
+
 	err2 := NewScanError("/test/file.txt", ErrFileRead, os.ErrPermission)
 	if err2.IsAccessError() {
 		t.Error("IsAccessError() should return false for read errors")
@@ -121,7 +121,7 @@ func TestScanError_IsSkipped(t *testing.T) {
 	if !err.IsSkipped() {
 		t.Error("IsSkipped() should return true for skipped errors")
 	}
-	
+
 	err2 := NewScanError("/test/file.txt", ErrFileRead, os.ErrPermission)
 	if err2.IsSkipped() {
 		t.Error("IsSkipped() should return false for regular errors")
@@ -139,7 +139,7 @@ func TestScanErrorType_Values(t *testing.T) {
 		ErrIO,
 		ErrUnknown,
 	}
-	
+
 	for _, typ := range types {
 		if typ == "" {
 			t.Errorf("Error type should not be empty: %v", typ)
@@ -154,13 +154,13 @@ func TestScanResult_HasErrors(t *testing.T) {
 		Stats:  ScanStats{},
 		Errors: []*ScanError{},
 	}
-	
+
 	if result.HasErrors() {
 		t.Error("HasErrors() should return false for empty errors")
 	}
-	
+
 	result.Errors = append(result.Errors, NewScanError("/test.txt", ErrFileRead, os.ErrPermission))
-	
+
 	if !result.HasErrors() {
 		t.Error("HasErrors() should return true when errors exist")
 	}
@@ -175,7 +175,7 @@ func TestScanResult_ErrorCount(t *testing.T) {
 			NewScanError("/test3.txt", ErrFileHash, os.ErrNotExist),
 		},
 	}
-	
+
 	if result.ErrorCount() != 3 {
 		t.Errorf("ErrorCount() = %d, want 3", result.ErrorCount())
 	}
@@ -191,7 +191,7 @@ func TestScanResult_SkippedCount(t *testing.T) {
 			NewSkippedError("/test4.txt", ErrSymlink, os.ErrPermission),    // skipped
 		},
 	}
-	
+
 	if result.SkippedCount() != 2 {
 		t.Errorf("SkippedCount() = %d, want 2", result.SkippedCount())
 	}
@@ -200,7 +200,7 @@ func TestScanResult_SkippedCount(t *testing.T) {
 // TestScanResult_Empty tests empty result
 func TestScanResult_Empty(t *testing.T) {
 	result := ScanResult{}
-	
+
 	if result.HasErrors() {
 		t.Error("Empty result should not have errors")
 	}
@@ -215,14 +215,14 @@ func TestScanResult_Empty(t *testing.T) {
 // TestScanError_ErrorTypes tests all error types work correctly
 func TestScanError_ErrorTypes(t *testing.T) {
 	tests := []struct {
-		errType  ScanErrorType
+		errType   ScanErrorType
 		checkFunc func(*ScanError) bool
 	}{
 		{ErrFileRead, func(e *ScanError) bool { return e.IsFileReadError() }},
 		{ErrFileHash, func(e *ScanError) bool { return e.IsHashError() }},
 		{ErrFileAccess, func(e *ScanError) bool { return e.IsAccessError() }},
 	}
-	
+
 	for _, tt := range tests {
 		err := NewScanError("/test.txt", tt.errType, os.ErrPermission)
 		if !tt.checkFunc(err) {
@@ -234,7 +234,7 @@ func TestScanError_ErrorTypes(t *testing.T) {
 // TestScanError_IsCompatibleWithErrorsIs tests compatibility with errors.Is
 func TestScanError_IsCompatibleWithErrorsIs(t *testing.T) {
 	err := NewScanError("/test.txt", ErrFileRead, os.ErrPermission)
-	
+
 	// Test that errors.Is works with the wrapped error
 	if !errors.Is(err, os.ErrPermission) {
 		t.Error("errors.Is should work with wrapped error")

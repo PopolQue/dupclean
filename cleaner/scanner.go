@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,6 +16,11 @@ import (
 
 // ScanOptions configures how scanning is performed.
 type ScanOptions struct {
+	// Context controls cancellation of the scan operation.
+	// If nil, the scan will run to completion.
+	// Use context.WithTimeout() or context.WithCancel() to limit scan duration.
+	Context context.Context
+
 	Concurrency  int            // worker pool size; 0 = runtime.NumCPU()
 	MinAge       time.Duration  // skip files newer than this (default: 0 = all files)
 	MaxSize      int64          // cap entries reported per target (0 = unlimited)
@@ -30,7 +36,16 @@ type Progress struct {
 }
 
 // Scan scans all targets concurrently and returns results.
+//
+// Context Support: The scan can be cancelled via opts.Context. When cancelled,
+// the function returns partial results collected up to the cancellation point.
 func Scan(targets []*CleanTarget, opts ScanOptions) (*ScanResult, error) {
+	// Create default context if none provided
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = runtime.NumCPU()
 	}
@@ -71,6 +86,13 @@ func Scan(targets []*CleanTarget, opts ScanOptions) (*ScanResult, error) {
 		go func() {
 			defer wg.Done()
 			for target := range jobs {
+				// Check for cancellation
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
 				scanTarget(target, opts)
 				done.Add(1)
 

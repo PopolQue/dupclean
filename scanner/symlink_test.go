@@ -313,7 +313,7 @@ func TestGetInode(t *testing.T) {
 	}
 
 	inode, ok := getInode(info)
-	
+
 	// On Unix systems, should return valid inode
 	// On Windows, should return (0, false)
 	if runtime.GOOS != "windows" {

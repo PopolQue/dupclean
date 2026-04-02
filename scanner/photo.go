@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -49,9 +50,18 @@ type hashedPhoto struct {
 }
 
 // Scan implements the Scanner interface for photo duplicate detection
+//
+// Context Support: The scan can be cancelled via opts.Context. When cancelled,
+// the function returns partial results collected up to the cancellation point.
 func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	startTime := time.Now()
 	stats := ScanStats{}
+
+	// Create default context if none provided
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	if opts.SimilarityPct > 0 {
 		s.SimilarityPct = opts.SimilarityPct
@@ -62,6 +72,13 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	visitedInodes := make(map[uint64]bool)
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		// Check for cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		if err != nil {
 			// Log access errors for visibility
 			log.Printf("[PhotoScanner] Access error: %v", err)

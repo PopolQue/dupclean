@@ -195,9 +195,9 @@ func TestMeasureDir_WithSubdirectories(t *testing.T) {
 
 	// Create files in subdirectories
 	files := map[string]int64{
-		"file1.txt":           100,
-		"sub1/file2.txt":      200,
-		"sub2/file3.txt":      300,
+		"file1.txt":             100,
+		"sub1/file2.txt":        200,
+		"sub2/file3.txt":        300,
 		"sub1/nested/file4.txt": 400,
 	}
 
@@ -228,11 +228,11 @@ func TestMeasureDir_WithPatternMatching(t *testing.T) {
 
 	// Create files with different extensions
 	files := map[string]int64{
-		"file1.txt":  100,
-		"file2.log":  200,
-		"file3.txt":  300,
-		"file4.tmp":  400,
-		"file5.txt":  500,
+		"file1.txt": 100,
+		"file2.log": 200,
+		"file3.txt": 300,
+		"file4.tmp": 400,
+		"file5.txt": 500,
 	}
 
 	for name, size := range files {
@@ -424,7 +424,7 @@ func TestComputeDirSize_NestedDirectories(t *testing.T) {
 
 	// Create files
 	files := map[string]int64{
-		"file1.txt":       100,
+		"file1.txt":        100,
 		"subdir/file2.txt": 200,
 	}
 
@@ -519,11 +519,11 @@ func TestMeasureDir_WildcardPatterns(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	files := map[string]int64{
-		"test1.txt":   100,
-		"test2.txt":   200,
-		"temp1.log":   300,
-		"temp2.log":   400,
-		"other.dat":   500,
+		"test1.txt": 100,
+		"test2.txt": 200,
+		"temp1.log": 300,
+		"temp2.log": 400,
+		"other.dat": 500,
 	}
 
 	for name, size := range files {

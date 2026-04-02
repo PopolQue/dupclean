@@ -220,14 +220,14 @@ func TestValidatePath(t *testing.T) {
 		path      string
 		shouldErr bool
 	}{
-		{"", true},                                    // empty
-		{"/", true},                                   // root
-		{`\`, true},                                   // Windows root
-		{`C:\`, true},                                 // Windows root
-		{"../../../etc/passwd", true},                 // path traversal
-		{"/home/user/../../../etc/passwd", true},      // path traversal
-		{"/home/user/file.txt", false},                // valid
-		{"/tmp/test.txt", false},                      // valid
+		{"", true},                               // empty
+		{"/", true},                              // root
+		{`\`, true},                              // Windows root
+		{`C:\`, true},                            // Windows root
+		{"../../../etc/passwd", true},            // path traversal
+		{"/home/user/../../../etc/passwd", true}, // path traversal
+		{"/home/user/file.txt", false},           // valid
+		{"/tmp/test.txt", false},                 // valid
 	}
 
 	for _, tt := range tests {

@@ -54,10 +54,10 @@ func TestAppState_Initialization(t *testing.T) {
 // Test updateContent method
 func TestAppState_UpdateContent(t *testing.T) {
 	state := &AppState{}
-	
+
 	// Test with nil ContentContainer (should not panic)
 	state.updateContent(nil)
-	
+
 	// Test with valid ContentContainer
 	container := &struct {
 		Objects []interface{}
@@ -128,7 +128,7 @@ func TestStopPlayback_ResetsState(t *testing.T) {
 
 	// Signal done immediately to prevent timeout
 	state.playerDone <- struct{}{}
-	
+
 	stopPlayback(state)
 
 	if !called {

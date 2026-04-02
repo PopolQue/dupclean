@@ -10,22 +10,22 @@ type ScanErrorType string
 const (
 	// ErrFileRead indicates a file could not be read
 	ErrFileRead ScanErrorType = "FILE_READ"
-	
+
 	// ErrFileHash indicates a hashing error
 	ErrFileHash ScanErrorType = "FILE_HASH"
-	
+
 	// ErrFileAccess indicates a file access permission error
 	ErrFileAccess ScanErrorType = "FILE_ACCESS"
-	
+
 	// ErrInvalidPath indicates an invalid file path
 	ErrInvalidPath ScanErrorType = "INVALID_PATH"
-	
+
 	// ErrSymlink indicates a symlink-related error
 	ErrSymlink ScanErrorType = "SYMLINK"
-	
+
 	// ErrIO indicates a general I/O error
 	ErrIO ScanErrorType = "IO"
-	
+
 	// ErrUnknown indicates an unknown error type
 	ErrUnknown ScanErrorType = "UNKNOWN"
 )

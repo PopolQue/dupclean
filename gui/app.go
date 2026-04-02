@@ -58,7 +58,7 @@ func getLogFilePath() string {
 
 func init() {
 	logPath := getLogFilePath()
-	
+
 	// Ensure directory exists
 	logDir := filepath.Dir(logPath)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -66,14 +66,14 @@ func init() {
 		log.Println("DupClean starting (no file logging)...")
 		return
 	}
-	
+
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		// Can't open log file, skip logging to file
 		log.Println("DupClean starting (no file logging)...")
 		return
 	}
-	
+
 	log.SetOutput(logFile)
 	log.Println("DupClean starting...")
 	log.Printf("Log file: %s", logPath)
@@ -98,7 +98,7 @@ type AppState struct {
 	IgnoreExtensions   []string
 	PlayingPath        string
 	progressComponents *progressComponents
-	mu                 sync.RWMutex // Protects concurrent access to state
+	mu                 sync.RWMutex  // Protects concurrent access to state
 	playerDone         chan struct{} // Signal when player goroutine is done
 }
 
@@ -106,7 +106,7 @@ type AppState struct {
 func (state *AppState) updateContent(content fyne.CanvasObject) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	
+
 	if state.ContentContainer != nil {
 		state.ContentContainer.Objects = []fyne.CanvasObject{content}
 		state.ContentContainer.Refresh()
@@ -385,14 +385,14 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 				prog.status.SetText(progress.Phase)
 			})
 		}
-		
+
 		state.mu.RLock()
 		folderPath := state.FolderPath
 		scanAll := state.ScanAll
 		ignoreFolders := state.IgnoreFolders
 		ignoreExtensions := state.IgnoreExtensions
 		state.mu.RUnlock()
-		
+
 		groups, stats, err := scanner.FindDuplicates(folderPath, scanAll, progressCallback, ignoreFolders, ignoreExtensions)
 		if err != nil {
 			state.mu.Lock()
@@ -685,7 +685,7 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 
 func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	stopPlayback(state)
-	
+
 	for idx, f := range files {
 		if idx == keepIndex {
 			continue
@@ -697,7 +697,7 @@ func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 		state.mu.Unlock()
 		_ = moveToTrash(f.Path)
 	}
-	
+
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
@@ -948,7 +948,8 @@ func isValidExtension(ext string) bool {
 	// Only allow alphanumeric characters and dots
 	// This prevents regex injection patterns like .*, .+, .txt.*
 	for _, r := range pattern {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.') {
+		isValidChar := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.'
+		if !isValidChar {
 			return false
 		}
 	}
@@ -984,19 +985,19 @@ func stopPlayback(state interface{}) {
 // stopPlaybackInternal is the internal implementation for AppState
 func stopPlaybackInternal(state *AppState) {
 	state.mu.Lock()
-	
+
 	if state.StopPlayer != nil {
 		stopFunc := state.StopPlayer
 		state.StopPlayer = nil
-		
+
 		// Get the done channel before releasing lock
 		playerDone := state.playerDone
-		
+
 		state.mu.Unlock()
-		
+
 		// Call stop function (kills process)
 		stopFunc()
-		
+
 		// Wait for goroutine to finish (with timeout)
 		select {
 		case <-playerDone:
