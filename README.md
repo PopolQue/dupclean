@@ -260,7 +260,7 @@ Any file type — documents, archives, videos, executables, etc.
 ## Building from Source
 
 **Prerequisites:**
-- Go 1.22 or later
+- Go 1.25 or later
 - Git
 
 **Basic build:**
