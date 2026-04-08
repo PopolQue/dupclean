@@ -8,7 +8,20 @@ import (
 	"os"
 )
 
-const partialHashSize = 8 * 1024 // 8KB
+// MemoryWarningThreshold is the number of files at which we warn about memory usage
+const MemoryWarningThreshold = 100000
+
+// DefaultPartialHashSize is the default number of bytes to hash for partial file hashing.
+// 8KB provides a good balance between speed and collision avoidance.
+const DefaultPartialHashSize = 8 * 1024
+
+// DefaultComparisonBufferSize is the default buffer size for byte-by-byte file comparison.
+// 32KB provides good throughput for sequential I/O.
+const DefaultComparisonBufferSize = 32 * 1024
+
+// partialHashSize is the legacy constant for backwards compatibility.
+// Deprecated: Use DefaultPartialHashSize instead.
+const partialHashSize = DefaultPartialHashSize
 
 // hashFilePartial computes SHA256 of the first N bytes of a file
 func hashFilePartial(path string, size int64) (string, error) {
@@ -62,9 +75,8 @@ func filesIdentical(path1, path2 string) (bool, error) {
 	}
 	defer func() { _ = f2.Close() }()
 
-	const bufSize = 32 * 1024 // 32KB buffers
-	buf1 := make([]byte, bufSize)
-	buf2 := make([]byte, bufSize)
+	buf1 := make([]byte, DefaultComparisonBufferSize)
+	buf2 := make([]byte, DefaultComparisonBufferSize)
 
 	for {
 		n1, err1 := f1.Read(buf1)

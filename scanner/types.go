@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"time"
 )
 
@@ -26,6 +27,7 @@ type ScanStats struct {
 	TotalDupes   int
 	WastedBytes  int64
 	ScanDuration time.Duration
+	Errors       []*ScanError // Errors encountered during scanning
 }
 
 // ScanProgress holds progress information during scanning
@@ -38,6 +40,15 @@ type ScanProgress struct {
 
 // Options configures how scanning is performed
 type Options struct {
+	// Context controls cancellation of the scan operation.
+	// If nil, the scan will run to completion.
+	Context context.Context
+
+	// StreamingThreshold enables memory-efficient streaming mode when > 0.
+	// When file count exceeds this threshold, files are processed in chunks.
+	// Default: 0 (uses ByteScanner default of 50000)
+	StreamingThreshold int
+
 	// IncludeHidden scans hidden files and directories (default: false)
 	IncludeHidden bool
 

@@ -817,6 +817,11 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 	extensionsEntry.SetPlaceHolder("e.g. .txt, .pdf, .jpg")
 	extensionsEntry.Text = strings.Join(state.IgnoreExtensions, ", ")
 
+	// Validation label for extension input
+	extValidationLabel := widget.NewLabel("")
+	extValidationLabel.TextSize = 12
+	extValidationLabel.Hide()
+
 	content := container.NewVBox(
 		widget.NewLabel("Folders to ignore:"),
 		scrolledList,
@@ -824,6 +829,7 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 		widget.NewSeparator(),
 		widget.NewLabel("Extensions to ignore (comma-separated):"),
 		extensionsEntry,
+		extValidationLabel,
 		widget.NewLabel("These rules apply to this scan only."),
 	)
 
@@ -840,13 +846,25 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 				if !strings.HasPrefix(ext, ".") {
 					ext = "." + ext
 				}
-				state.IgnoreExtensions = append(state.IgnoreExtensions, strings.ToLower(ext))
+				// Validate extension - reject wildcards and dangerous patterns
+				if isValidExtension(ext) {
+					state.IgnoreExtensions = append(state.IgnoreExtensions, strings.ToLower(ext))
+				} else {
+					extValidationLabel.SetText("Invalid extension ignored: " + ext + " (wildcards not allowed)")
+					extValidationLabel.Show()
+				}
 			}
 		}
 		if onConfirm != nil {
 			onConfirm()
 		}
 	}, state.Window)
+}
+
+// isValidExtension validates file extensions to prevent dangerous patterns
+func isValidExtension(ext string) bool {
+	// Reject wildcards and dangerous patterns
+	return !strings.ContainsAny(ext, "*?")
 }
 
 func stopPlayback(state *AppState) {
