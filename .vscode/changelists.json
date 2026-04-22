@@ -3,8 +3,14 @@
     {
       "name": "Default",
       "files": [
-        ".gitignore",
-        ".vscode/changelists.json"
+        "gui/app.go",
+        "gui/sidebar.go",
+        "main.go",
+        "main_gui.go",
+        "ui/ui.go",
+        "gui/updater.go",
+        "internal/version/version.go",
+        "version.go"
       ]
     }
   ],

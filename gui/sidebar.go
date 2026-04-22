@@ -79,6 +79,10 @@ func CreateSidebar() fyne.CanvasObject {
 			Name: "Disk Analyzer",
 			Icon: theme.StorageIcon(),
 		},
+		{
+			Name: "About",
+			Icon: theme.InfoIcon(),
+		},
 	}
 
 	list := Sidebar(items)

@@ -145,7 +145,7 @@ func printHeader() {
 func printScanSummary(stats scanner.ScanStats, groupCount int) {
 	fmt.Printf("%sScan Summary%s\n", colorBold+colorCyan, colorReset)
 	fmt.Printf("%s\n", strings.Repeat("─", 40))
-	fmt.Printf("   %sDuration:%s     %s%s%s\n", colorGray, colorReset, colorWhite, stats.ScanDuration.Round(time.Second), colorReset)
+	fmt.Printf("   %sDuration:%s    %s%s%s\n", colorGray, colorReset, colorWhite, stats.ScanDuration.Round(time.Second), colorReset)
 	fmt.Printf("   %sFiles:%s       %s%d%s\n", colorGray, colorReset, colorWhite, stats.TotalScanned, colorReset)
 	fmt.Printf("   %sGroups:%s      %s%d%s\n", colorGray, colorReset, colorWhite, groupCount, colorReset)
 	fmt.Printf("   %sExtra:%s       %s%d%s copies\n", colorGray, colorReset, colorWhite, stats.TotalDupes, colorReset)

@@ -23,6 +23,8 @@ const (
 	flagGUIAlt     = "-g"
 	flagHelp       = "--help"
 	flagHelpAlt    = "-h"
+	flagVersion    = "--version"
+	flagVersionAlt = "-v"
 	flagAll        = "--all"
 	flagMode       = "--mode"
 	flagSimilarity = "--similarity"
@@ -36,6 +38,11 @@ func main() {
 
 	if os.Args[1] == flagHelp || os.Args[1] == flagHelpAlt {
 		printHelp()
+		os.Exit(0)
+	}
+
+	if os.Args[1] == flagVersion || os.Args[1] == flagVersionAlt {
+		fmt.Printf("DupClean %s\n", Version)
 		os.Exit(0)
 	}
 
@@ -224,13 +231,14 @@ func runDuplicateFinder(args []string) {
 }
 
 func printHelp() {
-	fmt.Println("DupClean — Duplicate File Cleaner (CLI)")
+	fmt.Printf("DupClean %s — Duplicate File Cleaner (CLI)\n", Version)
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  dupclean <folder> [options]     Scan folder for duplicates")
 	fmt.Println("  dupclean analyze <folder> [opts]  Analyze disk usage")
 	fmt.Println("  dupclean --gui                  Launch GUI (not available in CLI build)")
 	fmt.Println("  dupclean --help                 Show this help")
+	fmt.Println("  dupclean --version              Show version")
 	fmt.Println()
 	fmt.Println("Duplicate Finder Options:")
 	fmt.Println("  --mode=<mode>       Scanner mode: audio (default), byte, photo")

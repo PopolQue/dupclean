@@ -15,14 +15,21 @@ import (
 )
 
 const (
-	flagGUI     = "--gui"
-	flagGUIAlt  = "-g"
-	flagHelp    = "--help"
-	flagHelpAlt = "-h"
-	flagAll     = "--all"
+	flagGUI        = "--gui"
+	flagGUIAlt     = "-g"
+	flagHelp       = "--help"
+	flagHelpAlt    = "-h"
+	flagVersion    = "--version"
+	flagVersionAlt = "-v"
+	flagAll        = "--all"
 )
 
 func main() {
+	if len(os.Args) >= 2 && (os.Args[1] == flagVersion || os.Args[1] == flagVersionAlt) {
+		fmt.Printf("DupClean %s (GUI Build)\n", Version)
+		os.Exit(0)
+	}
+
 	if len(os.Args) < 2 || os.Args[1] == flagGUI || os.Args[1] == flagGUIAlt {
 		gui.RunGUI()
 		return
@@ -71,13 +78,14 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("DupClean — Duplicate File Cleaner")
+	fmt.Printf("DupClean %s — Duplicate File Cleaner\n", Version)
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  dupclean              Launch GUI")
 	fmt.Println("  dupclean --gui        Launch GUI (same as above)")
 	fmt.Println("  dupclean <folder>     Scan folder in CLI mode")
 	fmt.Println("  dupclean <folder> --all   Scan all files (not just audio)")
+	fmt.Println("  dupclean --version    Show version")
 	fmt.Println()
 	fmt.Println("Supported audio formats: .wav, .aiff, .aif, .mp3, .flac, .ogg, .m4a, .aac")
 }

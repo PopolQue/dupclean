@@ -180,6 +180,9 @@ func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerSta
 	cacheCleanerView := CacheCleanerWidget(cacheState)
 	diskAnalyzerView := createDiskAnalyzerPlaceholder()
 
+	updaterState := NewUpdaterState(dupState.Window)
+	updaterView := UpdaterWidget(updaterState)
+
 	// Store content container reference in states
 	dupState.ContentContainer = contentContainer
 	cacheState.ContentContainer = contentContainer
@@ -193,6 +196,8 @@ func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerSta
 			contentContainer.Objects = []fyne.CanvasObject{cacheCleanerView}
 		case 2:
 			contentContainer.Objects = []fyne.CanvasObject{diskAnalyzerView}
+		case 3:
+			contentContainer.Objects = []fyne.CanvasObject{updaterView}
 		}
 		contentContainer.Refresh()
 	}
