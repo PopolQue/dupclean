@@ -149,7 +149,6 @@ func RunGUI() {
 	w.SetOnClosed(func() {
 		log.Println("RunGUI: cleaning up...")
 		stopPlayback(dupState)
-		stopPlayback(cacheState)
 	})
 
 	log.Println("RunGUI: showing window...")
@@ -873,7 +872,6 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 
 	// Validation label for extension input
 	extValidationLabel := widget.NewLabel("")
-	extValidationLabel.TextSize = 12
 	extValidationLabel.Hide()
 
 	content := container.NewVBox(
@@ -937,11 +935,24 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 
 // isValidExtension validates file extensions to prevent dangerous patterns
 func isValidExtension(ext string) bool {
+	if ext == "" {
+		return false
+	}
+	if !strings.HasPrefix(ext, ".") {
+		return false
+	}
+	if len(ext) == 1 { // only dot
+		return false
+	}
+	if len(ext) > 20 {
+		return false
+	}
 	// Reject wildcards and dangerous patterns
-	return !strings.ContainsAny(ext, "*?")
+	return !strings.ContainsAny(ext, "*?+{}[]()|^$\\")
 }
 
 func stopPlayback(state *AppState) {
+	state.mu.Lock()
 	if state.StopPlayer != nil {
 		stopFunc := state.StopPlayer
 		state.StopPlayer = nil

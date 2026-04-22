@@ -289,8 +289,8 @@ func TestProcessChunk(t *testing.T) {
 func TestNewByteScanner_StreamingThreshold(t *testing.T) {
 	scanner := NewByteScanner()
 
-	if scanner.StreamingThreshold != 0 {
-		t.Errorf("Default StreamingThreshold should be 0, got %d", scanner.StreamingThreshold)
+	if scanner.StreamingThreshold != 50000 {
+		t.Errorf("Default StreamingThreshold should be 50000, got %d", scanner.StreamingThreshold)
 	}
 
 	// Can be set manually

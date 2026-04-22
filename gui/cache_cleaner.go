@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strings"
 
 	"dupclean/cleaner"
 
@@ -401,7 +403,7 @@ func isProtectedPath(path string) bool {
 	}
 
 	var protected []string
-	switch runtimeOS() {
+	switch runtime.GOOS {
 	case "darwin":
 		protected = protectedDarwin
 	case "windows":
@@ -423,8 +425,8 @@ func isProtectedPath(path string) bool {
 	}
 
 	for _, p := range protected {
-		// Check if path starts with protected path (with separator or exact match)
-		if absPath == p || strings.HasPrefix(absPath, p+string(filepath.Separator)) {
+		// Check if path matches or is within a protected path
+		if absPath == p || strings.HasPrefix(absPath, p) {
 			return true
 		}
 	}

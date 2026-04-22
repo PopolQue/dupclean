@@ -9,18 +9,14 @@ import (
 	"time"
 )
 
-// MemoryWarningThreshold is the number of files at which we warn about memory usage
-const MemoryWarningThreshold = 100000
-
 // ByteScanner implements duplicate detection for all file types using SHA-256
 //
 // Memory-Efficient Mode: Streaming is enabled by default for scans exceeding 50k files.
 // This reduces memory usage by processing files in chunks.
 type ByteScanner struct {
-	// StreamingThreshold enables streaming mode when > 0.
-	// When file count exceeds this threshold, processing happens in chunks.
-	// Default: 50000 (automatically enabled for large scans)
-	// Set to 0 to disable streaming (not recommended for large scans)
+	StreamingThreshold int
+}
+
 // Memory-Efficient Mode: Set opts.StreamingThreshold > 0 to enable streaming mode.
 // In streaming mode, files are processed in chunks to reduce memory usage.
 
@@ -277,11 +273,12 @@ func (s *ByteScanner) processChunk(bySize map[int64][]string, ctx context.Contex
 
 // detectDuplicates performs the multi-stage duplicate detection algorithm
 func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats, ctx context.Context) ([]DuplicateGroup, ScanStats, error) {
+	groups := make([]DuplicateGroup, 0)
 	// Stage 2: Partial hash (first 8KB)
 	// Uses DefaultPartialHashSize for initial filtering - files with different
 	// partial hashes are guaranteed to be different
 	partialHashGroups := make(map[string][]string)
-	for _, paths := range bySize {
+	for size, paths := range bySize {
 		// Check for cancellation
 		select {
 		case <-ctx.Done():
