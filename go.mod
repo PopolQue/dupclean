@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.7.3
 	github.com/corona10/goimagehash v1.1.0
 	golang.org/x/image v0.38.0
+	golang.org/x/term v0.30.0
 )
 
 require (

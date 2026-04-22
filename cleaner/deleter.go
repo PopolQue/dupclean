@@ -3,12 +3,10 @@ package cleaner
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
+
+	"dupclean/internal/trash"
 )
 
 // DeleteOptions configures how deletion is performed.
@@ -124,20 +122,17 @@ type deleteResult struct {
 
 // deleteEntry deletes a single entry.
 func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64, skipped bool, err error) {
-	// Safety check: never delete empty paths
+	// Path validation for all operations
 	if entry.Path == "" {
 		return 0, 0, false, fmt.Errorf("cannot delete empty path")
 	}
-
-	// Safety check: never delete root directory
 	if entry.Path == "/" || entry.Path == `\` {
 		return 0, 0, false, fmt.Errorf("cannot delete root directory")
 	}
 
-	if permanent {
-		// Permanent deletion
-		err = os.RemoveAll(entry.Path)
-		if err != nil {
+	if !permanent {
+		// For trash operations, use the unified trash package which has built-in validation
+		if err := trash.MoveToTrash(entry.Path); err != nil {
 			// Check if file is in use
 			if isFileInUse(err) {
 				return 0, 0, true, nil // skipped, not an error
@@ -147,16 +142,15 @@ func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64
 		return 1, entry.Size, false, nil
 	}
 
-	// Move to trash using existing utility
-	err = moveToTrash(entry.Path)
+	// Permanent deletion
+	err = os.RemoveAll(entry.Path)
 	if err != nil {
 		// Check if file is in use
 		if isFileInUse(err) {
-			return 0, 0, true, nil // skipped
+			return 0, 0, true, nil // skipped, not an error
 		}
 		return 0, 0, false, err
 	}
-
 	return 1, entry.Size, false, nil
 }
 
@@ -196,84 +190,4 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-// moveToTrash moves a file or directory to the trash/recycle bin.
-func moveToTrash(path string) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	switch runtime.GOOS {
-	case "darwin":
-		return moveToTrashMacOS(absPath)
-	case "linux":
-		return moveToTrashLinux(absPath)
-	case "windows":
-		return moveToTrashWindows(absPath)
-	default:
-		// Fallback to permanent delete
-		return os.RemoveAll(path)
-	}
-}
-
-func moveToTrashMacOS(path string) error {
-	// Try using the `trash` CLI tool first (brew install trash)
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
-	}
-
-	// Fall back to AppleScript
-	script := `tell application "Finder" to delete POSIX file "` + path + `"`
-	return exec.Command("osascript", "-e", script).Run()
-}
-
-func moveToTrashLinux(path string) error {
-	// Try using gio (GNOME)
-	if _, err := exec.LookPath("gio"); err == nil {
-		return exec.Command("gio", "trash", path).Run()
-	}
-
-	// Try using trash-cli
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
-	}
-
-	// Try moving to user's trash directory
-	home := os.Getenv("HOME")
-	if home != "" {
-		trashDir := filepath.Join(home, ".local", "share", "Trash", "files")
-		if err := os.MkdirAll(trashDir, 0755); err == nil {
-			trashName := filepath.Base(path)
-			dest := filepath.Join(trashDir, trashName)
-			counter := 1
-			for {
-				if _, err := os.Stat(dest); os.IsNotExist(err) {
-					return os.Rename(path, dest)
-				}
-				ext := filepath.Ext(trashName)
-				base := strings.TrimSuffix(filepath.Base(trashName), ext)
-				dest = filepath.Join(trashDir, base+" ("+string(rune(counter))+")"+ext)
-				counter++
-			}
-		}
-	}
-
-	// Fallback to permanent delete
-	return os.RemoveAll(path)
-}
-
-func moveToTrashWindows(path string) error {
-	// Windows doesn't have a simple trash command
-	// Use PowerShell to move to Recycle Bin
-	psScript := `
-	$shell = New-Object -ComObject Shell.Application
-	$folder = $shell.Namespace(0)
-	$item = $folder.ParseName("` + path + `")
-	if ($item -ne $null) {
-		$item.InvokeVerb("delete")
-	}
-	`
-	return exec.Command("powershell", "-Command", psScript).Run()
 }

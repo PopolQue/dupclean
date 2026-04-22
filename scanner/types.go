@@ -42,11 +42,13 @@ type ScanProgress struct {
 type Options struct {
 	// Context controls cancellation of the scan operation.
 	// If nil, the scan will run to completion.
+	// Use context.WithTimeout() or context.WithCancel() to limit scan duration.
 	Context context.Context
 
 	// StreamingThreshold enables memory-efficient streaming mode when > 0.
-	// When file count exceeds this threshold, files are processed in chunks.
-	// Default: 0 (uses ByteScanner default of 50000)
+	// When file count exceeds this threshold, files are processed in chunks
+	// to reduce memory pressure. Recommended: 10000-50000.
+	// Default: 0 (disabled, uses ByteScanner default)
 	StreamingThreshold int
 
 	// IncludeHidden scans hidden files and directories (default: false)
@@ -73,6 +75,7 @@ type Options struct {
 
 // Scanner defines the interface for duplicate detection strategies
 type Scanner interface {
-	// Scan walks the directory tree and returns groups of duplicate files
+	// Scan walks the directory tree and returns groups of duplicate files.
+	// The scan can be cancelled via opts.Context.
 	Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error)
 }

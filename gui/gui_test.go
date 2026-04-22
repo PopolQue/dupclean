@@ -409,6 +409,10 @@ func TestCacheCleanerState_WithTargets(t *testing.T) {
 func TestCacheCleanerState_UpdateContent_Nil(t *testing.T) {
 	state := &CacheCleanerState{
 		ContentContainer: nil,
+func TestRuntimeOS(t *testing.T) {
+	result := runtime.GOOS
+	if result == "" {
+		t.Error("runtimeOS should return a non-empty string")
 	}
 
 	// Should not panic

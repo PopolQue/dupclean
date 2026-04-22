@@ -263,7 +263,7 @@ func TestIsProtectedPath_CaseSensitivity(t *testing.T) {
 // Test cleanPath with valid path
 func TestCleanPath_ValidPath(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a test file
 	testFile := tmpDir + "/test.txt"
 	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
@@ -288,7 +288,7 @@ func TestCleanPath_ProtectedPath(t *testing.T) {
 	// cleanPath doesn't check for protected paths, that's done by the caller
 	// This test just verifies it doesn't panic
 	tmpDir := t.TempDir()
-	
+
 	count, bytes, err := cleanPath(tmpDir, []string{"*"})
 	if err != nil {
 		t.Logf("cleanPath returned error (may be expected): %v", err)
@@ -314,7 +314,7 @@ func TestCleanPath_NonExistentPath(t *testing.T) {
 // Test cleanPath with specific pattern
 func TestCleanPath_SpecificPatternMatch(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create test files
 	os.WriteFile(tmpDir+"/test.txt", []byte("test"), 0644)
 	os.WriteFile(tmpDir+"/test.log", []byte("log"), 0644)
@@ -328,7 +328,7 @@ func TestCleanPath_SpecificPatternMatch(t *testing.T) {
 	if count != 1 {
 		t.Errorf("cleanPath should delete 1 file, got %d", count)
 	}
-	
+
 	// Verify other files still exist
 	if _, err := os.Stat(tmpDir + "/test.log"); os.IsNotExist(err) {
 		t.Error("test.log should still exist")

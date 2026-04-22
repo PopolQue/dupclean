@@ -6,11 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	"dupclean/cleaner"
+	"dupclean/internal/trash"
 	"dupclean/scanner"
 
 	"fyne.io/fyne/v2"
@@ -23,12 +25,58 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func init() {
-	logFile, err := os.OpenFile("/tmp/dupclean.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err == nil {
-		log.SetOutput(logFile)
+// getLogFilePath returns a platform-appropriate path for the log file.
+// On Unix-like systems: $TMPDIR/dupclean.log or /tmp/dupclean.log
+// On Windows: %TEMP%\dupclean.log
+// Returns empty string if no suitable temp directory is available.
+func getLogFilePath() string {
+	// Try TMPDIR environment variable (Unix, macOS)
+	if tmpDir := os.Getenv("TMPDIR"); tmpDir != "" {
+		return filepath.Join(tmpDir, "dupclean.log")
 	}
+
+	// Try TEMP environment variable (Windows)
+	if tempDir := os.Getenv("TEMP"); tempDir != "" {
+		return filepath.Join(tempDir, "dupclean.log")
+	}
+
+	// Try TMP environment variable (fallback)
+	if tmpDir := os.Getenv("TMP"); tmpDir != "" {
+		return filepath.Join(tmpDir, "dupclean.log")
+	}
+
+	// Platform-specific defaults
+	switch filepath.Separator {
+	case '\\':
+		// Windows default
+		return filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local", "Temp", "dupclean.log")
+	default:
+		// Unix-like default
+		return "/tmp/dupclean.log"
+	}
+}
+
+func init() {
+	logPath := getLogFilePath()
+
+	// Ensure directory exists
+	logDir := filepath.Dir(logPath)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		// Can't create log directory, skip logging to file
+		log.Println("DupClean starting (no file logging)...")
+		return
+	}
+
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		// Can't open log file, skip logging to file
+		log.Println("DupClean starting (no file logging)...")
+		return
+	}
+
+	log.SetOutput(logFile)
 	log.Println("DupClean starting...")
+	log.Printf("Log file: %s", logPath)
 }
 
 type AppState struct {
@@ -50,10 +98,15 @@ type AppState struct {
 	IgnoreExtensions   []string
 	PlayingPath        string
 	progressComponents *progressComponents
+	mu                 sync.RWMutex  // Protects concurrent access to state
+	playerDone         chan struct{} // Signal when player goroutine is done
 }
 
 // updateContent updates the content container (preserves sidebar)
 func (state *AppState) updateContent(content fyne.CanvasObject) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
 	if state.ContentContainer != nil {
 		state.ContentContainer.Objects = []fyne.CanvasObject{content}
 		state.ContentContainer.Refresh()
@@ -84,12 +137,20 @@ func RunGUI() {
 		CurrentGroupIndex: 0,
 		DeletedCount:      0,
 		FreedBytes:        0,
+		playerDone:        make(chan struct{}, 1), // Buffered to prevent goroutine leak
 	}
 
 	cacheState := NewCacheCleanerState(w)
 
 	log.Println("RunGUI: creating main layout with sidebar...")
 	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState))
+
+	// Set up cleanup on window close
+	w.SetOnClosed(func() {
+		log.Println("RunGUI: cleaning up...")
+		stopPlayback(dupState)
+		stopPlayback(cacheState)
+	})
 
 	log.Println("RunGUI: showing window...")
 	w.ShowAndRun()
@@ -307,7 +368,9 @@ func createScanButton(state *AppState, folderCard, progressCard *widget.Card) *w
 }
 
 func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
+	state.mu.Lock()
 	state.IsScanning = true
+	state.mu.Unlock()
 
 	prog := state.progressComponents
 	prog.label.SetText("Scanning...")
@@ -322,9 +385,19 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 				prog.status.SetText(progress.Phase)
 			})
 		}
-		groups, stats, err := scanner.FindDuplicates(state.FolderPath, state.ScanAll, progressCallback, state.IgnoreFolders, state.IgnoreExtensions)
+
+		state.mu.RLock()
+		folderPath := state.FolderPath
+		scanAll := state.ScanAll
+		ignoreFolders := state.IgnoreFolders
+		ignoreExtensions := state.IgnoreExtensions
+		state.mu.RUnlock()
+
+		groups, stats, err := scanner.FindDuplicates(folderPath, scanAll, progressCallback, ignoreFolders, ignoreExtensions)
 		if err != nil {
+			state.mu.Lock()
 			state.IsScanning = false
+			state.mu.Unlock()
 			fyne.Do(func() {
 				prog.label.SetText("Error")
 				prog.status.SetText(fmt.Sprintf("Scan failed: %v", err))
@@ -338,9 +411,11 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 			prog.bar.SetValue(1)
 		})
 
+		state.mu.Lock()
 		state.Groups = groups
 		state.Stats = stats
 		state.IsScanning = false
+		state.mu.Unlock()
 
 		showResults(state, stats)
 	}()
@@ -610,15 +685,21 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 
 func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	stopPlayback(state)
+
 	for idx, f := range files {
 		if idx == keepIndex {
 			continue
 		}
 		// Always count the deletion, even if moveToTrash fails (e.g., in tests)
+		state.mu.Lock()
 		state.DeletedCount++
 		state.FreedBytes += f.Size
+		state.mu.Unlock()
 		_ = moveToTrash(f.Path)
 	}
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
 
 	i := state.CurrentGroupIndex
 	state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)
@@ -682,44 +763,7 @@ func createFinalUI(state *AppState) fyne.CanvasObject {
 }
 
 func moveToTrash(path string) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", absPath).Run()
-	}
-
-	if runtimeOS() == "darwin" {
-		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, absPath)
-		return exec.Command("osascript", "-e", script).Run()
-	}
-
-	if runtimeOS() == "linux" {
-		gvfsPath := filepath.Join(os.Getenv("HOME"), ".local/share/Trash/files")
-		if _, err := os.Stat(gvfsPath); err == nil {
-			trashName := absPath
-			counter := 1
-			for {
-				newPath := filepath.Join(gvfsPath, filepath.Base(trashName))
-				if _, err := os.Stat(newPath); os.IsNotExist(err) {
-					break
-				}
-				ext := filepath.Ext(trashName)
-				base := strings.TrimSuffix(filepath.Base(trashName), ext)
-				trashName = fmt.Sprintf("%s (%d)%s", base, counter, ext)
-				counter++
-			}
-			return os.Rename(absPath, filepath.Join(gvfsPath, trashName))
-		}
-	}
-
-	return os.Remove(absPath)
-}
-
-func runtimeOS() string {
-	return runtime.GOOS
+	return trash.MoveToTrash(path)
 }
 
 func formatBytes(b int64) string {
@@ -738,39 +782,48 @@ func formatBytes(b int64) string {
 func playFile(state *AppState, path string, onComplete func()) {
 	stopPlayback(state)
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("afplay", path)
-	case "linux":
-		cmd = exec.Command("aplay", path)
-	case "windows":
-		cmd = exec.Command("powershell", "-c",
-			fmt.Sprintf("(New-Object Media.SoundPlayer '%s').PlaySync()", path))
-	default:
+	cmd, err := cleaner.SafePlayMedia(path)
+	if err != nil {
+		log.Printf("[playFile] Error: %v", err)
 		return
 	}
 
+	// Create a new done channel for this playback session
+	state.mu.Lock()
+	state.playerDone = make(chan struct{}, 1)
 	state.CurrentPlayer = cmd
 	state.PlayingPath = path
 	state.StopPlayer = func() {
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
+		// Signal that we're done
+		select {
+		case state.playerDone <- struct{}{}:
+		default:
+		}
 		if onComplete != nil {
 			onComplete()
 		}
 	}
+	state.mu.Unlock()
 
 	go func() {
 		_ = cmd.Run()
+		state.mu.Lock()
 		if state.CurrentPlayer == cmd {
 			state.CurrentPlayer = nil
 			state.StopPlayer = nil
 			state.PlayingPath = ""
-			if onComplete != nil {
-				onComplete()
-			}
+		}
+		// Signal completion
+		select {
+		case state.playerDone <- struct{}{}:
+		default:
+		}
+		state.mu.Unlock()
+		if onComplete != nil {
+			onComplete()
 		}
 	}()
 }
@@ -816,6 +869,7 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 	extensionsEntry := widget.NewEntry()
 	extensionsEntry.SetPlaceHolder("e.g. .txt, .pdf, .jpg")
 	extensionsEntry.Text = strings.Join(state.IgnoreExtensions, ", ")
+	extensionsEntry.MultiLine = false
 
 	// Validation label for extension input
 	extValidationLabel := widget.NewLabel("")
@@ -837,10 +891,30 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 		if !ok {
 			return
 		}
-		state.IgnoreFolders = ignoredFolders
 
+		// Validate extensions before processing
+		exts := strings.Split(extensionsEntry.Text, ",")
+		for _, ext := range exts {
+			ext = strings.TrimSpace(ext)
+			if ext == "" {
+				continue
+			}
+			if !strings.HasPrefix(ext, ".") {
+				ext = "." + ext
+			}
+			// Validate extension format
+			if !isValidExtension(ext) {
+				dialog.ShowError(
+					fmt.Errorf("invalid extension: %s. Use only letters, numbers, and dots", ext),
+					state.Window,
+				)
+				return
+			}
+		}
+
+		state.IgnoreFolders = ignoredFolders
 		state.IgnoreExtensions = []string{}
-		for _, ext := range strings.Split(extensionsEntry.Text, ",") {
+		for _, ext := range exts {
 			ext = strings.TrimSpace(ext)
 			if ext != "" {
 				if !strings.HasPrefix(ext, ".") {
@@ -869,9 +943,26 @@ func isValidExtension(ext string) bool {
 
 func stopPlayback(state *AppState) {
 	if state.StopPlayer != nil {
-		state.StopPlayer()
+		stopFunc := state.StopPlayer
 		state.StopPlayer = nil
-		state.CurrentPlayer = nil
-		state.PlayingPath = ""
+
+		// Get the done channel before releasing lock
+		playerDone := state.playerDone
+
+		state.mu.Unlock()
+
+		// Call stop function (kills process)
+		stopFunc()
+
+		// Wait for goroutine to finish (with timeout)
+		select {
+		case <-playerDone:
+			// Goroutine finished
+		case <-time.After(2 * time.Second):
+			// Timeout - goroutine may be leaked
+			log.Printf("[stopPlayback] Timeout waiting for player goroutine to finish")
+		}
+	} else {
+		state.mu.Unlock()
 	}
 }

@@ -1,10 +1,12 @@
 package scanner
 
 import (
+	"context"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,9 +50,18 @@ type hashedPhoto struct {
 }
 
 // Scan implements the Scanner interface for photo duplicate detection
+//
+// Context Support: The scan can be cancelled via opts.Context. When cancelled,
+// the function returns partial results collected up to the cancellation point.
 func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	startTime := time.Now()
 	stats := ScanStats{}
+
+	// Create default context if none provided
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	if opts.SimilarityPct > 0 {
 		s.SimilarityPct = opts.SimilarityPct
@@ -58,10 +69,28 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 	// Stage 1: Collect photo files
 	photos := make([]string, 0)
+	visitedInodes := make(map[uint64]bool)
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		// Check for cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		if err != nil {
+			// Log access errors for visibility
+			log.Printf("[PhotoScanner] Access error: %v", err)
+			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
 			return nil
 		}
+
+		// Skip symlinks to prevent following malicious links
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+
 		if !opts.IncludeHidden && strings.HasPrefix(info.Name(), ".") {
 			if info.IsDir() {
 				return filepath.SkipDir
@@ -99,6 +128,14 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 			return nil
 		}
 
+		// Skip hard links using inode tracking
+		if inode, ok := getInode(info); ok {
+			if visitedInodes[inode] {
+				return nil // Already processed this inode
+			}
+			visitedInodes[inode] = true
+		}
+
 		photos = append(photos, path)
 		stats.TotalScanned++
 		return nil
@@ -112,7 +149,9 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	for _, path := range photos {
 		hash, info, err := computePerceptualHash(path)
 		if err != nil {
-			// Skip files that can't be decoded
+			// Log files that can't be decoded
+			log.Printf("[PhotoScanner] Hash error for %s: %v", path, err)
+			stats.Errors = append(stats.Errors, NewScanError(path, ErrFileHash, err))
 			continue
 		}
 		hashed = append(hashed, hashedPhoto{

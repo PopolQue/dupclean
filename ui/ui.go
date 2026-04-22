@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"dupclean/internal/trash"
 	"dupclean/scanner"
 )
 
@@ -129,24 +128,9 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 	printFinalSummary(deletedCount, freedBytes)
 }
 
-// moveToTrash uses macOS `trash` command or AppleScript to move a file to Trash
+// moveToTrash uses the unified trash package for cross-platform trash support
 func moveToTrash(path string) error {
-	if path == "" {
-		return fmt.Errorf("cannot move empty path to trash")
-	}
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-
-	// Try using the `trash` CLI tool first (brew install trash)
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", absPath).Run()
-	}
-
-	// Fall back to AppleScript (built-in on macOS)
-	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, absPath)
-	return exec.Command("osascript", "-e", script).Run()
+	return trash.MoveToTrash(path)
 }
 
 func printHeader() {

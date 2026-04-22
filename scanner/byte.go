@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// MemoryWarningThreshold is the number of files at which we warn about memory usage
+const MemoryWarningThreshold = 100000
+
 // ByteScanner implements duplicate detection for all file types using SHA-256
 //
 // Memory-Efficient Mode: Streaming is enabled by default for scans exceeding 50k files.
@@ -18,8 +21,8 @@ type ByteScanner struct {
 	// When file count exceeds this threshold, processing happens in chunks.
 	// Default: 50000 (automatically enabled for large scans)
 	// Set to 0 to disable streaming (not recommended for large scans)
-	StreamingThreshold int
-}
+// Memory-Efficient Mode: Set opts.StreamingThreshold > 0 to enable streaming mode.
+// In streaming mode, files are processed in chunks to reduce memory usage.
 
 // NewByteScanner creates a new ByteScanner instance with default settings.
 // Streaming mode is enabled by default for scans > 50k files to reduce memory usage.
@@ -31,14 +34,15 @@ func NewByteScanner() *ByteScanner {
 
 // Scan implements the Scanner interface for general file duplicate detection
 //
-// Memory Note: For large directories (100k+ files), streaming mode automatically
-// processes files in chunks to reduce memory pressure.
+// Memory Note: This function collects all file paths in memory grouped by size.
+// For large directories (100k+ files), this can consume significant memory.
+// Consider using options to limit scan scope (IgnoreFolders, IgnoreExtensions, MinSize).
+//
+// Streaming Mode: Set opts.StreamingThreshold > 0 to enable memory-efficient streaming.
+// In streaming mode, files are processed in chunks to reduce memory usage.
 //
 // Context Support: The scan can be cancelled via opts.Context. When cancelled,
 // the function returns partial results collected up to the cancellation point.
-//
-// Streaming Mode: Enabled by default when file count exceeds 50k.
-// Set opts.StreamingThreshold to 0 to disable, or to a custom value to override.
 func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
 	stats := ScanStats{}
@@ -49,7 +53,7 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 		ctx = context.Background()
 	}
 
-	// Determine streaming threshold (options override scanner default)
+	// Determine streaming threshold
 	threshold := opts.StreamingThreshold
 	if threshold <= 0 {
 		threshold = s.StreamingThreshold
@@ -59,6 +63,7 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 	visitedInodes := make(map[uint64]bool)
 
 	// Stage 1: Collect files and group by size
+	// NOTE: This map holds all file paths in memory - can be large for 100k+ files
 	bySize := make(map[int64][]string)
 	fileCount := 0
 	allGroups := make([]DuplicateGroup, 0)
@@ -67,14 +72,16 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 		// Check for cancellation before processing each file
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return ctx.Err() // Return the cancellation error
 		default:
+			// Continue processing
 		}
 
 		if err != nil {
+			// Log access errors for visibility
 			log.Printf("[ByteScanner] Access error: %v", err)
 			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
-			return nil
+			return nil // skip unreadable files
 		}
 
 		// Skip symlinks to prevent following malicious links
@@ -117,7 +124,7 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 		// Skip hard links using inode tracking
 		if inode, ok := getInode(info); ok {
 			if visitedInodes[inode] {
-				return nil
+				return nil // Already processed this inode
 			}
 			visitedInodes[inode] = true
 		}
@@ -128,6 +135,7 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 
 		// Streaming mode: process chunk when threshold reached
 		if threshold > 0 && fileCount >= threshold && fileCount%threshold == 0 {
+			// Process current chunk
 			chunkGroups, chunkStats, err := s.processChunk(bySize, ctx)
 			if err != nil {
 				return err
@@ -142,10 +150,11 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 				delete(bySize, k)
 			}
 
+			// Progress callback
 			if opts.OnProgress != nil {
 				opts.OnProgress(ScanProgress{
 					Phase:      "Streaming scan",
-					Percent:    0,
+					Percent:    0, // Will be calculated
 					FilesFound: fileCount,
 				})
 			}
@@ -159,10 +168,10 @@ func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSta
 
 	// Warn about high memory usage
 	if fileCount > MemoryWarningThreshold {
-		log.Printf("[ByteScanner] Warning: Scanned %d files. Memory usage may be high.", fileCount)
+		log.Printf("[ByteScanner] Warning: Scanned %d files. Memory usage may be high. Consider using filters to reduce scope.", fileCount)
 	}
 
-	// Process remaining files
+	// Process remaining files (final chunk or all files if streaming disabled)
 	if len(bySize) > 0 {
 		chunkGroups, chunkStats, err := s.processChunk(bySize, ctx)
 		if err != nil {
@@ -186,6 +195,7 @@ func (s *ByteScanner) processChunk(bySize map[int64][]string, ctx context.Contex
 	// Stage 2: Partial hash
 	partialHashGroups := make(map[string][]string)
 	for size, paths := range bySize {
+		// Check for cancellation
 		select {
 		case <-ctx.Done():
 			return nil, stats, ctx.Err()
@@ -197,6 +207,94 @@ func (s *ByteScanner) processChunk(bySize map[int64][]string, ctx context.Contex
 		}
 
 		for _, path := range paths {
+			// Check for cancellation during hashing
+			select {
+			case <-ctx.Done():
+				return nil, stats, ctx.Err()
+			default:
+			}
+
+			partialHash, err := hashFilePartial(path, DefaultPartialHashSize)
+			if err != nil {
+				log.Printf("[ByteScanner] Partial hash error for %s: %v", path, err)
+				stats.Errors = append(stats.Errors, NewScanError(path, ErrFileHash, err))
+				continue
+			}
+			partialHashGroups[partialHash] = append(partialHashGroups[partialHash], path)
+		}
+
+		_ = size // Used for potential future optimization
+	}
+
+	// Stage 3: Full hash
+	fullHashGroups := make(map[string][]FileInfo)
+	for _, paths := range partialHashGroups {
+		if len(paths) < 2 {
+			continue
+		}
+
+		for _, path := range paths {
+			select {
+			case <-ctx.Done():
+				return nil, stats, ctx.Err()
+			default:
+			}
+
+			fullHash, info, err := hashFileFull(path)
+			if err != nil {
+				log.Printf("[ByteScanner] Full hash error for %s: %v", path, err)
+				stats.Errors = append(stats.Errors, NewScanError(path, ErrFileHash, err))
+				continue
+			}
+			fullHashGroups[fullHash] = append(fullHashGroups[fullHash], FileInfo{
+				Path:    path,
+				Name:    filepath.Base(path),
+				Size:    info.Size(),
+				ModTime: info.ModTime(),
+				Hash:    fullHash,
+			})
+		}
+	}
+
+	// Stage 4: Collect groups
+	for hash, files := range fullHashGroups {
+		if len(files) < 2 {
+			continue
+		}
+
+		groups = append(groups, DuplicateGroup{
+			Hash:       hash,
+			Files:      files,
+			Similarity: 100,
+		})
+
+		stats.TotalDupes += len(files) - 1
+		stats.WastedBytes += files[0].Size * int64(len(files)-1)
+	}
+
+	return groups, stats, nil
+}
+
+// detectDuplicates performs the multi-stage duplicate detection algorithm
+func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Time, stats ScanStats, ctx context.Context) ([]DuplicateGroup, ScanStats, error) {
+	// Stage 2: Partial hash (first 8KB)
+	// Uses DefaultPartialHashSize for initial filtering - files with different
+	// partial hashes are guaranteed to be different
+	partialHashGroups := make(map[string][]string)
+	for _, paths := range bySize {
+		// Check for cancellation
+		select {
+		case <-ctx.Done():
+			return nil, stats, ctx.Err()
+		default:
+		}
+
+		if len(paths) < 2 {
+			continue
+		}
+
+		for _, path := range paths {
+			// Check for cancellation during hashing
 			select {
 			case <-ctx.Done():
 				return nil, stats, ctx.Err()

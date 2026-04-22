@@ -35,9 +35,9 @@ func TestFormatBytes_AdditionalEdgeCases(t *testing.T) {
 // Test input validation for file choice
 func TestInputValidation_FileChoice(t *testing.T) {
 	tests := []struct {
-		input   string
-		files   int
-		valid   bool
+		input string
+		files int
+		valid bool
 	}{
 		{"1", 3, true},
 		{"2", 3, true},
@@ -57,11 +57,11 @@ func TestInputValidation_FileChoice(t *testing.T) {
 			if tt.input == "4" && tt.files == 3 {
 				valid = false
 			}
-			
+
 			if tt.input == "1" || tt.input == "2" || tt.input == "3" {
 				valid = true
 			}
-			
+
 			if valid != tt.valid {
 				t.Errorf("Input %q with %d files: valid=%v, want %v", tt.input, tt.files, valid, tt.valid)
 			}
@@ -72,7 +72,7 @@ func TestInputValidation_FileChoice(t *testing.T) {
 // Test input handling for skip commands
 func TestInputHandling_SkipCommands(t *testing.T) {
 	skipInputs := []string{"s", "skip", ""}
-	
+
 	for _, input := range skipInputs {
 		input = strings.TrimSpace(strings.ToLower(input))
 		switch input {
@@ -87,7 +87,7 @@ func TestInputHandling_SkipCommands(t *testing.T) {
 // Test input handling for quit commands
 func TestInputHandling_QuitCommands(t *testing.T) {
 	quitInputs := []string{"q", "quit"}
-	
+
 	for _, input := range quitInputs {
 		input = strings.TrimSpace(strings.ToLower(input))
 		switch input {
@@ -158,10 +158,10 @@ func TestStatsCalculation(t *testing.T) {
 	// Total: 500 bytes
 	totalWasted := int64(0)
 	totalExtraCopies := 0
-	
+
 	for _, group := range groups {
 		if len(group.Files) > 1 {
-			totalWasted += int64(len(group.Files) - 1) * group.Files[0].Size
+			totalWasted += int64(len(group.Files)-1) * group.Files[0].Size
 			totalExtraCopies += len(group.Files) - 1
 		}
 	}
@@ -310,11 +310,11 @@ func TestPrintScanSummary_LargeStats(t *testing.T) {
 // Test color reset in output
 func TestColorReset_InOutput(t *testing.T) {
 	output := colorBold + colorRed + "Error message" + colorReset
-	
+
 	if !strings.HasSuffix(output, colorReset) {
 		t.Error("Output should end with colorReset")
 	}
-	
+
 	// Verify escape codes are present
 	if !strings.Contains(output, "\033[") {
 		t.Error("Output should contain ANSI escape codes")
@@ -324,7 +324,7 @@ func TestColorReset_InOutput(t *testing.T) {
 // Test string formatting with colors
 func TestStringFormatting_WithColors(t *testing.T) {
 	message := colorBold + colorYellow + "Important message" + colorReset
-	
+
 	if !strings.Contains(message, "Important message") {
 		t.Error("Message should contain the text")
 	}

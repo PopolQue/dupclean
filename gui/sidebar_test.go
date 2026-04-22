@@ -71,28 +71,18 @@ func TestSidebar_SingleItem(t *testing.T) {
 
 // Test Sidebar with multiple items
 func TestSidebar_MultipleItems(t *testing.T) {
-	clickedIndex := -1
 	items := []SidebarItem{
 		{
 			Name: "Item 1",
 			Icon: theme.HomeIcon(),
-			OnClick: func() {
-				clickedIndex = 0
-			},
 		},
 		{
 			Name: "Item 2",
 			Icon: theme.DeleteIcon(),
-			OnClick: func() {
-				clickedIndex = 1
-			},
 		},
 		{
 			Name: "Item 3",
 			Icon: theme.StorageIcon(),
-			OnClick: func() {
-				clickedIndex = 2
-			},
 		},
 	}
 
@@ -106,12 +96,10 @@ func TestSidebar_MultipleItems(t *testing.T) {
 		t.Errorf("List length = %d, want 3", length)
 	}
 
-	// Test OnSelected callback
+	// Test OnSelected callback - should not panic
 	list.OnSelected(1)
-	if clickedIndex != -1 {
-		// Note: OnClick is not automatically called by OnSelected
-		// This is expected behavior
-	}
+	// Note: OnClick is not automatically called by OnSelected
+	// This is expected behavior, so clickedIndex stays -1
 }
 
 // Test Sidebar selection behavior
@@ -253,7 +241,7 @@ func TestSidebar_VariousIcons(t *testing.T) {
 	// Just verify we can create the list without panic
 	list := Sidebar(items)
 	if list == nil {
-		t.Error("Sidebar should return non-nil list")
+		t.Fatal("Sidebar should return non-nil list")
 	}
 
 	length := list.Length()

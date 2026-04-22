@@ -3,6 +3,7 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"dupclean/scanner"
@@ -123,9 +124,9 @@ func TestFormatBytes_BusinessLogic(t *testing.T) {
 }
 
 func TestRuntimeOS_BusinessLogic(t *testing.T) {
-	os := runtimeOS()
+	os := runtime.GOOS
 	if os == "" {
-		t.Error("runtimeOS() should not return empty string")
+		t.Error("runtime.GOOS should not return empty string")
 	}
 }
 

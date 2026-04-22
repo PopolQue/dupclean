@@ -12,12 +12,15 @@ import (
 const MemoryWarningThreshold = 100000
 
 // DefaultPartialHashSize is the default number of bytes to hash for partial file hashing.
-// 8KB provides a good balance between speed and collision avoidance.
-const DefaultPartialHashSize = 8 * 1024
+// 8KB provides a good balance between speed and collision avoidance for initial filtering.
+// Files with different partial hashes are guaranteed different; files with matching
+// partial hashes proceed to full hash verification.
+const DefaultPartialHashSize = 8 * 1024 // 8KB
 
 // DefaultComparisonBufferSize is the default buffer size for byte-by-byte file comparison.
-// 32KB provides good throughput for sequential I/O.
-const DefaultComparisonBufferSize = 32 * 1024
+// 32KB buffers provide good throughput for sequential file I/O while keeping memory
+// usage reasonable. Used in filesIdentical() for final duplicate verification.
+const DefaultComparisonBufferSize = 32 * 1024 // 32KB
 
 // partialHashSize is the legacy constant for backwards compatibility.
 // Deprecated: Use DefaultPartialHashSize instead.
@@ -75,6 +78,7 @@ func filesIdentical(path1, path2 string) (bool, error) {
 	}
 	defer func() { _ = f2.Close() }()
 
+	// Use configurable buffer size for comparison
 	buf1 := make([]byte, DefaultComparisonBufferSize)
 	buf2 := make([]byte, DefaultComparisonBufferSize)
 

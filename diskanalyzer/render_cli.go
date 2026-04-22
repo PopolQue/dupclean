@@ -2,7 +2,10 @@ package diskanalyzer
 
 import (
 	"fmt"
+	"os"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 // CLIOptions configures the CLI renderer output.
@@ -209,8 +212,20 @@ func formatSize(n int64) string {
 	}
 }
 
-// GetTerminalWidth returns the terminal width or a default.
+// GetTerminalWidth returns the terminal width or a default value.
+// It uses golang.org/x/term to detect the actual terminal size.
+// If stdout is not a terminal (e.g., piped output), it returns the default.
 func GetTerminalWidth(defaultWidth int) int {
-	// TODO: Implement using golang.org/x/term
-	return defaultWidth
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		// Not a terminal or error getting size
+		return defaultWidth
+	}
+
+	// Sanity check: terminal width should be reasonable
+	if width < 10 || width > 10000 {
+		return defaultWidth
+	}
+
+	return width
 }

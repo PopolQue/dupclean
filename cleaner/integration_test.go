@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"dupclean/internal/trash"
 )
 
 func TestGetBrowserTargetsLinux(t *testing.T) {
@@ -209,9 +211,9 @@ func TestMoveToTrashMacOS(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashMacOS(testFile)
+	err := trash.MoveToTrash(testFile)
 	if err != nil {
-		t.Logf("moveToTrashMacOS error (may fail in CI): %v", err)
+		t.Logf("MoveToTrash error (may fail in CI): %v", err)
 	}
 }
 
@@ -227,9 +229,9 @@ func TestMoveToTrashLinux(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashLinux(testFile)
+	err := trash.MoveToTrash(testFile)
 	if err != nil {
-		t.Logf("moveToTrashLinux error (may fail in CI): %v", err)
+		t.Logf("MoveToTrash error (may fail in CI): %v", err)
 	}
 }
 
@@ -245,9 +247,9 @@ func TestMoveToTrashWindows(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	err := moveToTrashWindows(testFile)
+	err := trash.MoveToTrash(testFile)
 	if err != nil {
-		t.Logf("moveToTrashWindows error (may fail in CI): %v", err)
+		t.Logf("MoveToTrash error (may fail in CI): %v", err)
 	}
 }
 
