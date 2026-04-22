@@ -1,10 +1,12 @@
-.DS_Store
-dist/
-fyne-cross/
-dupclean.app/
+/.DS_Store
+/dist/
+/fyne-cross/
+/dupclean.app/
 dupclean.app
 dupclean
 .qwen/
 coverage.out
 coverage.txt
+gui_coverage.out
 docs/
+/.vscode/
