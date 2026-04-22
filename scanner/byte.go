@@ -14,19 +14,22 @@ const MemoryWarningThreshold = 100000
 
 // ByteScanner implements duplicate detection for all file types using SHA-256
 //
-// Memory-Efficient Mode: Set opts.StreamingThreshold > 0 to enable streaming mode.
-// In streaming mode, files are processed in chunks to reduce memory usage.
+// Memory-Efficient Mode: Streaming is enabled by default for scans exceeding 50k files.
+// This reduces memory usage by processing files in chunks.
 type ByteScanner struct {
 	// StreamingThreshold enables streaming mode when > 0.
 	// When file count exceeds this threshold, processing happens in chunks.
-	// Recommended value: 10000-50000 for memory-constrained environments.
-	// Default: 0 (disabled, all files collected in memory)
-	StreamingThreshold int
-}
+	// Default: 50000 (automatically enabled for large scans)
+	// Set to 0 to disable streaming (not recommended for large scans)
+// Memory-Efficient Mode: Set opts.StreamingThreshold > 0 to enable streaming mode.
+// In streaming mode, files are processed in chunks to reduce memory usage.
 
-// NewByteScanner creates a new ByteScanner instance
+// NewByteScanner creates a new ByteScanner instance with default settings.
+// Streaming mode is enabled by default for scans > 50k files to reduce memory usage.
 func NewByteScanner() *ByteScanner {
-	return &ByteScanner{}
+	return &ByteScanner{
+		StreamingThreshold: 50000, // Auto-enable streaming for large scans
+	}
 }
 
 // Scan implements the Scanner interface for general file duplicate detection
@@ -289,6 +292,7 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 		if len(paths) < 2 {
 			continue
 		}
+
 		for _, path := range paths {
 			// Check for cancellation during hashing
 			select {
@@ -305,6 +309,8 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 			}
 			partialHashGroups[partialHash] = append(partialHashGroups[partialHash], path)
 		}
+
+		_ = size
 	}
 
 	// Stage 3: Full hash
@@ -313,7 +319,14 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 		if len(paths) < 2 {
 			continue
 		}
+
 		for _, path := range paths {
+			select {
+			case <-ctx.Done():
+				return nil, stats, ctx.Err()
+			default:
+			}
+
 			fullHash, info, err := hashFileFull(path)
 			if err != nil {
 				log.Printf("[ByteScanner] Full hash error for %s: %v", path, err)
@@ -330,36 +343,21 @@ func (s *ByteScanner) detectDuplicates(bySize map[int64][]string, start time.Tim
 		}
 	}
 
-	// Stage 4: Byte-by-byte verification
-	var groups []DuplicateGroup
+	// Stage 4: Collect groups
 	for hash, files := range fullHashGroups {
 		if len(files) < 2 {
 			continue
 		}
 
-		// Verify with byte comparison
-		verifiedFiles := []FileInfo{files[0]}
-		for i := 1; i < len(files); i++ {
-			match, err := filesIdentical(files[0].Path, files[i].Path)
-			if err != nil {
-				continue
-			}
-			if match {
-				verifiedFiles = append(verifiedFiles, files[i])
-			}
-		}
+		groups = append(groups, DuplicateGroup{
+			Hash:       hash,
+			Files:      files,
+			Similarity: 100,
+		})
 
-		if len(verifiedFiles) >= 2 {
-			groups = append(groups, DuplicateGroup{
-				Hash:       hash,
-				Files:      verifiedFiles,
-				Similarity: 100,
-			})
-			stats.TotalDupes += len(verifiedFiles) - 1
-			stats.WastedBytes += verifiedFiles[0].Size * int64(len(verifiedFiles)-1)
-		}
+		stats.TotalDupes += len(files) - 1
+		stats.WastedBytes += files[0].Size * int64(len(files)-1)
 	}
 
-	stats.ScanDuration = time.Since(start)
 	return groups, stats, nil
 }

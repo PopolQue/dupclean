@@ -371,15 +371,60 @@ func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container,
 
 // isProtectedPath returns true for system-protected directories
 func isProtectedPath(path string) bool {
-	protected := []string{
+	// macOS system paths
+	protectedDarwin := []string{
 		"/var/folders",
 		"/private/var",
 		"/System",
 		"/Library/Caches/com.apple",
 	}
 
+	// Windows system paths
+	protectedWindows := []string{
+		`C:\Windows`,
+		`C:\Program Files`,
+		`C:\Program Files (x86)`,
+		`C:\ProgramData`,
+	}
+
+	// Linux system paths
+	protectedLinux := []string{
+		"/etc",
+		"/bin",
+		"/usr",
+		"/sbin",
+		"/lib",
+		"/boot",
+		"/dev",
+		"/proc",
+		"/sys",
+	}
+
+	var protected []string
+	switch runtimeOS() {
+	case "darwin":
+		protected = protectedDarwin
+	case "windows":
+		protected = protectedWindows
+	case "linux":
+		protected = protectedLinux
+	default:
+		// Fallback: use all protected paths for unknown OS
+		protected = append(protected, protectedDarwin...)
+		protected = append(protected, protectedWindows...)
+		protected = append(protected, protectedLinux...)
+	}
+
+	// Normalize path for comparison
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		// If we can't resolve the path, be conservative and protect it
+		return true
+	}
+
 	for _, p := range protected {
-		if len(path) >= len(p) && path[:len(p)] == p {
+		// Check if path starts with protected path (with separator or exact match)
+		if absPath == p || strings.HasPrefix(absPath, p+string(filepath.Separator)) {
 			return true
 		}
 	}

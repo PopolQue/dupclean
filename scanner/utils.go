@@ -8,6 +8,9 @@ import (
 	"os"
 )
 
+// MemoryWarningThreshold is the number of files at which we warn about memory usage
+const MemoryWarningThreshold = 100000
+
 // DefaultPartialHashSize is the default number of bytes to hash for partial file hashing.
 // 8KB provides a good balance between speed and collision avoidance for initial filtering.
 // Files with different partial hashes are guaranteed different; files with matching

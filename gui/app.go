@@ -871,6 +871,11 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 	extensionsEntry.Text = strings.Join(state.IgnoreExtensions, ", ")
 	extensionsEntry.MultiLine = false
 
+	// Validation label for extension input
+	extValidationLabel := widget.NewLabel("")
+	extValidationLabel.TextSize = 12
+	extValidationLabel.Hide()
+
 	content := container.NewVBox(
 		widget.NewLabel("Folders to ignore:"),
 		scrolledList,
@@ -878,6 +883,7 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 		widget.NewSeparator(),
 		widget.NewLabel("Extensions to ignore (comma-separated):"),
 		extensionsEntry,
+		extValidationLabel,
 		widget.NewLabel("These rules apply to this scan only."),
 	)
 
@@ -914,8 +920,12 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 				if !strings.HasPrefix(ext, ".") {
 					ext = "." + ext
 				}
+				// Validate extension - reject wildcards and dangerous patterns
 				if isValidExtension(ext) {
 					state.IgnoreExtensions = append(state.IgnoreExtensions, strings.ToLower(ext))
+				} else {
+					extValidationLabel.SetText("Invalid extension ignored: " + ext + " (wildcards not allowed)")
+					extValidationLabel.Show()
 				}
 			}
 		}
@@ -925,67 +935,13 @@ func showIgnoreDialog(state *AppState, onConfirm func()) {
 	}, state.Window)
 }
 
-// isValidExtension checks if an extension string is valid.
-// It prevents regex injection and other malicious patterns.
+// isValidExtension validates file extensions to prevent dangerous patterns
 func isValidExtension(ext string) bool {
-	if ext == "" {
-		return false
-	}
-
-	// Must start with a dot
-	if !strings.HasPrefix(ext, ".") {
-		return false
-	}
-
-	// Get the part after the dot
-	pattern := ext[1:]
-
-	// Empty extension after dot is invalid
-	if pattern == "" {
-		return false
-	}
-
-	// Only allow alphanumeric characters and dots
-	// This prevents regex injection patterns like .*, .+, .txt.*
-	for _, r := range pattern {
-		isValidChar := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.'
-		if !isValidChar {
-			return false
-		}
-	}
-
-	// Prevent patterns that could match too broadly
-	// Block: *, +, ?, {, }, [, ], (, ), |, ^, $, \
-	dangerousChars := []string{"*", "+", "?", "{", "}", "[", "]", "(", ")", "|", "^", "$", "\\"}
-	for _, char := range dangerousChars {
-		if strings.Contains(ext, char) {
-			return false
-		}
-	}
-
-	// Reasonable length limit (max 20 chars including dot)
-	if len(ext) > 20 {
-		return false
-	}
-
-	return true
+	// Reject wildcards and dangerous patterns
+	return !strings.ContainsAny(ext, "*?")
 }
 
-// stopPlayback stops any ongoing audio playback and waits for the goroutine to finish.
-// This is a no-op for states that don't support audio playback.
-func stopPlayback(state interface{}) {
-	switch s := state.(type) {
-	case *AppState:
-		stopPlaybackInternal(s)
-	case *CacheCleanerState:
-		// CacheCleanerState doesn't have audio playback, nothing to stop
-	}
-}
-
-// stopPlaybackInternal is the internal implementation for AppState
-func stopPlaybackInternal(state *AppState) {
-	state.mu.Lock()
-
+func stopPlayback(state *AppState) {
 	if state.StopPlayer != nil {
 		stopFunc := state.StopPlayer
 		state.StopPlayer = nil
