@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -402,20 +401,11 @@ func isProtectedPath(path string) bool {
 		"/sys",
 	}
 
+	// Combine all protected paths for safety (inclusive protection)
 	var protected []string
-	switch runtime.GOOS {
-	case "darwin":
-		protected = protectedDarwin
-	case "windows":
-		protected = protectedWindows
-	case "linux":
-		protected = protectedLinux
-	default:
-		// Fallback: use all protected paths for unknown OS
-		protected = append(protected, protectedDarwin...)
-		protected = append(protected, protectedWindows...)
-		protected = append(protected, protectedLinux...)
-	}
+	protected = append(protected, protectedDarwin...)
+	protected = append(protected, protectedWindows...)
+	protected = append(protected, protectedLinux...)
 
 	// Normalize path for comparison
 	absPath, err := filepath.Abs(path)
