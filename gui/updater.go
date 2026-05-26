@@ -283,10 +283,7 @@ func performUpdate(url string, setProgress func(float64)) error {
 			}
 		} else {
 			// On Unix, try to remove the old one first
-			if err := os.Remove(dst); err != nil {
-				// If remove fails, we might still be able to rename over it, but usually it means permission issues
-				// if the error is "permission denied".
-			}
+			_ = os.Remove(dst)
 		}
 
 		if err := os.Rename(src, dst); err != nil {
@@ -303,9 +300,9 @@ func performUpdate(url string, setProgress func(float64)) error {
 		// If it's a permission error on macOS/Linux, give better instructions
 		if strings.Contains(err.Error(), "permission denied") {
 			if runtime.GOOS == "darwin" && strings.HasPrefix(executable, "/Applications/") {
-				return fmt.Errorf("permission denied. Try running: sudo xattr -rd com.apple.quarantine %s && brew install PopolQue/dupclean/dupclean", executable)
+				return fmt.Errorf("permission denied (try running: sudo xattr -rd com.apple.quarantine %s && brew install PopolQue/dupclean/dupclean)", executable)
 			}
-			return fmt.Errorf("%v\n\nTip: You may need to run DupClean with administrative privileges to update it in its current location.", err)
+			return fmt.Errorf("%v (you may need administrative privileges)", err)
 		}
 		return err
 	}
