@@ -3,14 +3,8 @@
     {
       "name": "Default",
       "files": [
-        "gui/app.go",
-        "gui/sidebar.go",
-        "main.go",
-        "main_gui.go",
-        "ui/ui.go",
-        "gui/updater.go",
-        "internal/version/version.go",
-        "version.go"
+        ".vscode/changelists.json",
+        "README.md"
       ]
     }
   ],
