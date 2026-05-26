@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"dupclean/internal/fsutil"
 	"dupclean/scanner"
 )
 
@@ -180,12 +181,12 @@ func TestInputValidation_EdgeCases(t *testing.T) {
 // Test formatBytes with maximum int64
 func TestFormatBytes_MaxInt64(t *testing.T) {
 	maxInt64 := int64(^uint64(0) >> 1)
-	result := formatBytes(maxInt64)
+	result := fsutil.FormatBytes(maxInt64)
 	if result == "" {
 		t.Error("formatBytes should return non-empty string for max int64")
 	}
 	if !strings.Contains(result, "EB") {
-		t.Logf("formatBytes(maxInt64) = %q (expected EB scale)", result)
+		t.Logf("fsutil.FormatBytes(maxInt64) = %q (expected EB scale)", result)
 	}
 }
 
@@ -206,9 +207,9 @@ func TestFormatBytes_SpecificValues(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := formatBytes(tt.bytes)
+		result := fsutil.FormatBytes(tt.bytes)
 		if !strings.Contains(result, tt.scale) {
-			t.Errorf("formatBytes(%d) = %q, should contain %q", tt.bytes, result, tt.scale)
+			t.Errorf("fsutil.FormatBytes(%d) = %q, should contain %q", tt.bytes, result, tt.scale)
 		}
 	}
 }
@@ -369,9 +370,9 @@ func TestDuplicateGroup_VariousSizes(t *testing.T) {
 		}
 
 		// Verify formatBytes works for this size
-		sizeStr := formatBytes(size)
+		sizeStr := fsutil.FormatBytes(size)
 		if sizeStr == "" {
-			t.Errorf("formatBytes(%d) returned empty string", size)
+			t.Errorf("fsutil.FormatBytes(%d) returned empty string", size)
 		}
 
 		_ = group

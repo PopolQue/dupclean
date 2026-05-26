@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"dupclean/internal/fsutil"
 	"dupclean/internal/trash"
 	"dupclean/scanner"
 )
@@ -56,7 +57,7 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 		fmt.Printf("%s\n", colorReset)
 		fmt.Printf("%s Group %d of %d%s%s • identical audio content • %s%s each%s\n",
 			colorBold+colorWhite, i+1, len(groups), colorReset,
-			colorGray, colorDim, formatBytes(group.Files[0].Size), colorReset)
+			colorGray, colorDim, fsutil.FormatBytes(group.Files[0].Size), colorReset)
 		fmt.Printf("%s%s%s\n", colorCyan, strings.Repeat("─", 70), colorReset)
 
 		// Sort files: prefer files higher in the directory tree (shorter path)
@@ -75,7 +76,7 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 			fmt.Printf("\n  %s  %s%s%s\n", num, colorBold, f.Name, colorReset)
 			fmt.Printf("       %s%s%s\n", colorGray, f.Path, colorReset)
 			fmt.Printf("       %s %s  •  %s%s\n",
-				colorDim, formatBytes(f.Size), f.ModTime.Format("2006-01-02 15:04"), colorReset)
+				colorDim, fsutil.FormatBytes(f.Size), f.ModTime.Format("2006-01-02 15:04"), colorReset)
 		}
 
 		fmt.Printf("\n%s  Keep which file?%s\n", colorBold, colorReset)
@@ -149,7 +150,7 @@ func printScanSummary(stats scanner.ScanStats, groupCount int) {
 	fmt.Printf("   %sFiles:%s       %s%d%s\n", colorGray, colorReset, colorWhite, stats.TotalScanned, colorReset)
 	fmt.Printf("   %sGroups:%s      %s%d%s\n", colorGray, colorReset, colorWhite, groupCount, colorReset)
 	fmt.Printf("   %sExtra:%s       %s%d%s copies\n", colorGray, colorReset, colorWhite, stats.TotalDupes, colorReset)
-	fmt.Printf("   %sWasted:%s      %s%s%s\n", colorGray, colorReset, colorRed+colorBold, formatBytes(stats.WastedBytes), colorReset)
+	fmt.Printf("   %sWasted:%s      %s%s%s\n", colorGray, colorReset, colorRed+colorBold, fsutil.FormatBytes(stats.WastedBytes), colorReset)
 	fmt.Println()
 }
 
@@ -171,23 +172,10 @@ func printFinalSummary(deleted int, freed int64) {
 	} else {
 		fmt.Printf("\n  %s Cleanup Complete!%s\n\n", colorGreen+colorBold, colorReset)
 		fmt.Printf("      Files deleted:  %s%d%s\n", colorBold, deleted, colorReset)
-		fmt.Printf("      Space freed:    %s%s%s\n\n", colorGreen+colorBold, formatBytes(freed), colorReset)
+		fmt.Printf("      Space freed:    %s%s%s\n\n", colorGreen+colorBold, fsutil.FormatBytes(freed), colorReset)
 		fmt.Printf("  %s Tip: Empty your Trash to reclaim disk space.%s\n\n", colorDim, colorReset)
 	}
 
 	fmt.Printf("%s%s%s\n", colorCyan, strings.Repeat("─", 70), colorReset)
 	fmt.Println()
-}
-
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }

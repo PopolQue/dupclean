@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"dupclean/internal/fsutil"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -63,7 +65,7 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 		"%d duplicate groups | %d extra copies | %s wasted",
 		len(state.Groups),
 		state.Stats.TotalDupes,
-		formatBytes(state.Stats.WastedBytes),
+		fsutil.FormatBytes(state.Stats.WastedBytes),
 	)
 	statsLabel := widget.NewLabel(statsText)
 	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
@@ -171,7 +173,7 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 		subMessage = "Your files are safe."
 	} else {
 		message = fmt.Sprintf("Moved %d file(s) to Trash", state.DeletedCount)
-		subMessage = fmt.Sprintf("Freed %s of disk space", formatBytes(state.FreedBytes))
+		subMessage = fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.FreedBytes))
 	}
 
 	resultLabel := widget.NewLabel(message)

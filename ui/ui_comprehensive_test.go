@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"dupclean/internal/fsutil"
 	"dupclean/scanner"
 )
 
@@ -138,7 +139,7 @@ func TestFormatBytes_Comprehensive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			result := formatBytes(tt.bytes)
+			result := fsutil.FormatBytes(tt.bytes)
 			if result != tt.expected {
 				t.Errorf("formatBytes(%d) = %q, want %q", tt.bytes, result, tt.expected)
 			}
@@ -148,13 +149,13 @@ func TestFormatBytes_Comprehensive(t *testing.T) {
 
 func TestFormatBytes_EdgeCasesComprehensive(t *testing.T) {
 	// Test negative values (should still produce output)
-	result := formatBytes(-1024)
+	result := fsutil.FormatBytes(-1024)
 	if result == "" {
 		t.Error("formatBytes should handle negative values")
 	}
 
 	// Test very large values
-	result = formatBytes(9223372036854775807) // max int64
+	result = fsutil.FormatBytes(9223372036854775807) // max int64
 	if !strings.Contains(result, "EB") {
 		t.Errorf("Expected EB for max int64, got %q", result)
 	}
@@ -174,7 +175,7 @@ func TestFormatBytes_Boundaries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := formatBytes(tt.bytes)
+		result := fsutil.FormatBytes(tt.bytes)
 		if !strings.Contains(result, tt.unit) {
 			t.Errorf("formatBytes(%d) should contain %q, got %q", tt.bytes, tt.unit, result)
 		}
@@ -421,9 +422,9 @@ func TestScanStats_Display(t *testing.T) {
 
 func TestFormatBytes_Consistency(t *testing.T) {
 	// Test that formatBytes is consistent
-	sameValue := formatBytes(1024)
+	sameValue := fsutil.FormatBytes(1024)
 	for i := 0; i < 10; i++ {
-		result := formatBytes(1024)
+		result := fsutil.FormatBytes(1024)
 		if result != sameValue {
 			t.Errorf("formatBytes(1024) inconsistent: got %q, expected %q", result, sameValue)
 		}

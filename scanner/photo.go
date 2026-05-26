@@ -3,17 +3,21 @@ package scanner
 import (
 	"context"
 	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
-	"log"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/corona10/goimagehash"
-	"golang.org/x/image/webp"
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
 )
 
 // Supported photo extensions
@@ -50,14 +54,10 @@ type hashedPhoto struct {
 }
 
 // Scan implements the Scanner interface for photo duplicate detection
-//
-// Context Support: The scan can be cancelled via opts.Context. When cancelled,
-// the function returns partial results collected up to the cancellation point.
 func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	startTime := time.Now()
 	stats := ScanStats{}
 
-	// Create default context if none provided
 	ctx := opts.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -67,12 +67,16 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 		s.SimilarityPct = opts.SimilarityPct
 	}
 
+	concurrency := opts.Concurrency
+	if concurrency <= 0 {
+		concurrency = runtime.NumCPU()
+	}
+
 	// Stage 1: Collect photo files
 	photos := make([]string, 0)
 	visitedInodes := make(map[uint64]bool)
 
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		// Check for cancellation
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -80,85 +84,136 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 		}
 
 		if err != nil {
-			// Log access errors for visibility
-			log.Printf("[PhotoScanner] Access error: %v", err)
 			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
 			return nil
 		}
 
-		// Skip symlinks to prevent following malicious links
-		if info.Mode()&os.ModeSymlink != 0 {
+		if d.Type()&os.ModeSymlink != 0 {
 			return nil
 		}
 
-		if !opts.IncludeHidden && strings.HasPrefix(info.Name(), ".") {
-			if info.IsDir() {
+		if !opts.IncludeHidden && strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 
-		// Check ignored folders
 		for _, ignored := range opts.IgnoreFolders {
 			if path == ignored || strings.HasPrefix(path, ignored+string(filepath.Separator)) {
 				return filepath.SkipDir
 			}
 		}
 
-		// Check ignored extensions
-		ext := strings.ToLower(filepath.Ext(info.Name()))
+		if d.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(d.Name()))
 		for _, ignoredExt := range opts.IgnoreExtensions {
 			if ext == ignoredExt {
 				return nil
 			}
 		}
 
-		// Skip directories
-		if info.IsDir() {
-			return nil
-		}
-
-		// Check if it's a supported photo format
 		if !photoExtensions[ext] {
 			return nil
 		}
 
-		// Apply minimum size filter
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
 		if info.Size() < opts.MinSize {
 			return nil
 		}
 
-		// Skip hard links using inode tracking
 		if inode, ok := getInode(info); ok {
 			if visitedInodes[inode] {
-				return nil // Already processed this inode
+				return nil
 			}
 			visitedInodes[inode] = true
 		}
 
 		photos = append(photos, path)
 		stats.TotalScanned++
+
+		if opts.OnProgress != nil && (len(photos)%10 == 0 || len(photos) == 1) {
+			opts.OnProgress(ScanProgress{
+				Phase:      "Collecting photos",
+				Percent:    0.1,
+				FilesFound: len(photos),
+			})
+		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && err != ctx.Err() {
 		return nil, stats, err
 	}
 
-	// Stage 2: Compute perceptual hashes
+	// Stage 2: Compute perceptual hashes (concurrent)
+	type photoHashJob struct {
+		path string
+	}
+	type photoHashResult struct {
+		path string
+		hash *goimagehash.ImageHash
+		info os.FileInfo
+		err  error
+	}
+
+	jobs := make(chan photoHashJob, len(photos))
+	results := make(chan photoHashResult, len(photos))
+
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				hash, info, err := computePerceptualHash(job.path)
+				results <- photoHashResult{path: job.path, hash: hash, info: info, err: err}
+			}
+		}()
+	}
+
+	for _, p := range photos {
+		jobs <- photoHashJob{path: p}
+	}
+	close(jobs)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
 	hashed := make([]hashedPhoto, 0, len(photos))
-	for _, path := range photos {
-		hash, info, err := computePerceptualHash(path)
-		if err != nil {
-			// Log files that can't be decoded
-			log.Printf("[PhotoScanner] Hash error for %s: %v", path, err)
-			stats.Errors = append(stats.Errors, NewScanError(path, ErrFileHash, err))
+	count := 0
+	for res := range results {
+		if res.err != nil {
+			stats.Errors = append(stats.Errors, NewScanError(res.path, ErrFileHash, res.err))
 			continue
 		}
 		hashed = append(hashed, hashedPhoto{
-			path: path,
-			hash: hash,
-			info: info,
+			path: res.path,
+			hash: res.hash,
+			info: res.info,
 		})
+		count++
+
+		if opts.OnProgress != nil && (count%10 == 0 || count == 1) {
+			opts.OnProgress(ScanProgress{
+				Phase:       "Computing photo hashes",
+				Percent:     0.1 + (float64(count)/float64(len(photos)))*0.7,
+				FilesHashed: count,
+			})
+		}
 	}
 
 	// Stage 3: Group by similarity
@@ -189,22 +244,8 @@ func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, er
 		return nil, nil, err
 	}
 
-	// Decode image based on format
-	ext := strings.ToLower(filepath.Ext(path))
-	var img image.Image
-	switch ext {
-	case ".jpg", ".jpeg":
-		img, err = jpeg.Decode(f)
-	case ".png":
-		img, err = png.Decode(f)
-	case ".gif":
-		img, err = gif.Decode(f)
-	case ".webp":
-		img, err = webp.Decode(f)
-	default:
-		// Try generic decoder
-		img, _, err = image.Decode(f)
-	}
+	// Decode image (supports all formats registered via side-effect imports)
+	img, _, err := image.Decode(f)
 	if err != nil {
 		return nil, nil, err
 	}

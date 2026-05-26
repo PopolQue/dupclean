@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	"dupclean/internal/fsutil"
 	"dupclean/scanner"
 )
 
@@ -83,9 +84,9 @@ func TestFormatBytes_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatBytes(tt.input)
+			result := fsutil.FormatBytes(tt.input)
 			if result != tt.expected {
-				t.Errorf("formatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
+				t.Errorf("fsutil.FormatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
 			}
 		})
 	}
@@ -259,17 +260,17 @@ func TestKeepAndDelete_RemovesGroup(t *testing.T) {
 // Test formatBytes consistency
 func TestFormatBytes_Consistency(t *testing.T) {
 	// Test that 1024 bytes always equals 1.0 KB
-	result1 := formatBytes(1024)
-	result2 := formatBytes(1024)
+	result1 := fsutil.FormatBytes(1024)
+	result2 := fsutil.FormatBytes(1024)
 	if result1 != result2 {
-		t.Errorf("formatBytes is not consistent: %q vs %q", result1, result2)
+		t.Errorf("fsutil.FormatBytes is not consistent: %q vs %q", result1, result2)
 	}
 
 	// Test monotonicity: larger values should produce larger or equal strings
-	small := formatBytes(100)
-	large := formatBytes(1000)
+	small := fsutil.FormatBytes(100)
+	large := fsutil.FormatBytes(1000)
 	if small == large {
-		t.Errorf("formatBytes(100) and formatBytes(1000) should differ")
+		t.Errorf("fsutil.FormatBytes(100) and fsutil.FormatBytes(1000) should differ")
 	}
 }
 

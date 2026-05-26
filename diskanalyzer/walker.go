@@ -106,7 +106,6 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 	var entries []FileEntry
 	var errors []error
-	var mu sync.Mutex
 	entryCount := 0
 
 	// Track visited inodes to avoid counting hard links multiple times
@@ -230,15 +229,12 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 		if r.err != nil {
 			errors = append(errors, r.err)
 		} else {
-			mu.Lock()
 			// Check MaxEntries limit
 			if opts.MaxEntries > 0 && entryCount >= opts.MaxEntries {
-				mu.Unlock()
 				continue // Skip additional entries
 			}
 			entries = append(entries, r.entry)
 			entryCount++
-			mu.Unlock()
 		}
 	}
 

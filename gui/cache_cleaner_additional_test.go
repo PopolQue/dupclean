@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"dupclean/cleaner"
+	"dupclean/internal/fsutil"
 )
 
 // Test CacheCleanerState initialization
@@ -374,9 +375,9 @@ func TestCacheCleanerFormatBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := formatBytes(tt.input)
+		result := fsutil.FormatBytes(tt.input)
 		if result != tt.expected {
-			t.Errorf("formatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
+			t.Errorf("fsutil.FormatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
 		}
 	}
 }

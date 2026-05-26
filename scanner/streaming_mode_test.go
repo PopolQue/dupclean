@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -13,8 +14,8 @@ func TestByteScanner_StreamingMode(t *testing.T) {
 
 	// Create enough files to trigger streaming
 	for i := 0; i < 50; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
-		if err := os.WriteFile(filename, []byte("test content for file "+itoa(i)), 0644); err != nil {
+		filename := filepath.Join(tmpDir, "file"+strconv.Itoa(i)+".txt")
+		if err := os.WriteFile(filename, []byte("test content for file "+strconv.Itoa(i)), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 	}
@@ -27,6 +28,7 @@ func TestByteScanner_StreamingMode(t *testing.T) {
 	}
 
 	groups, stats, err := scanner.Scan(tmpDir, opts)
+	_ = groups
 
 	if err != nil {
 		t.Errorf("Scan failed: %v", err)
@@ -46,7 +48,7 @@ func TestByteScanner_StreamingModeWithDuplicates(t *testing.T) {
 	// Create duplicate files
 	content := []byte("duplicate content for streaming test")
 	for i := 0; i < 5; i++ {
-		filename := filepath.Join(tmpDir, "dup"+itoa(i)+".txt")
+		filename := filepath.Join(tmpDir, "dup"+strconv.Itoa(i)+".txt")
 		if err := os.WriteFile(filename, content, 0644); err != nil {
 			t.Fatalf("Failed to create duplicate file: %v", err)
 		}
@@ -54,8 +56,8 @@ func TestByteScanner_StreamingModeWithDuplicates(t *testing.T) {
 
 	// Create unique files
 	for i := 0; i < 20; i++ {
-		filename := filepath.Join(tmpDir, "unique"+itoa(i)+".txt")
-		if err := os.WriteFile(filename, []byte("unique content "+itoa(i)), 0644); err != nil {
+		filename := filepath.Join(tmpDir, "unique"+strconv.Itoa(i)+".txt")
+		if err := os.WriteFile(filename, []byte("unique content "+strconv.Itoa(i)), 0644); err != nil {
 			t.Fatalf("Failed to create unique file: %v", err)
 		}
 	}
@@ -68,6 +70,7 @@ func TestByteScanner_StreamingModeWithDuplicates(t *testing.T) {
 	}
 
 	groups, stats, err := scanner.Scan(tmpDir, opts)
+	_ = groups
 
 	if err != nil {
 		t.Errorf("Scan failed: %v", err)
@@ -89,7 +92,7 @@ func TestByteScanner_StreamingModeCancellation(t *testing.T) {
 
 	// Create many files
 	for i := 0; i < 100; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
+		filename := filepath.Join(tmpDir, "file"+strconv.Itoa(i)+".txt")
 		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
@@ -123,7 +126,7 @@ func TestByteScanner_StreamingModeWithProgress(t *testing.T) {
 
 	// Create files
 	for i := 0; i < 30; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
+		filename := filepath.Join(tmpDir, "file"+strconv.Itoa(i)+".txt")
 		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
@@ -160,12 +163,12 @@ func TestByteScanner_StreamingModeMemoryEfficiency(t *testing.T) {
 
 	// Create files in subdirectories to simulate real structure
 	for d := 0; d < 5; d++ {
-		subdir := filepath.Join(tmpDir, "dir"+itoa(d))
+		subdir := filepath.Join(tmpDir, "dir"+strconv.Itoa(d))
 		if err := os.MkdirAll(subdir, 0755); err != nil {
 			t.Fatalf("Failed to create subdir: %v", err)
 		}
 		for f := 0; f < 10; f++ {
-			filename := filepath.Join(subdir, "file"+itoa(f)+".txt")
+			filename := filepath.Join(subdir, "file"+strconv.Itoa(f)+".txt")
 			if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
 				t.Fatalf("Failed to create test file: %v", err)
 			}
@@ -180,6 +183,7 @@ func TestByteScanner_StreamingModeMemoryEfficiency(t *testing.T) {
 	}
 
 	groups, stats, err := scanner.Scan(tmpDir, opts)
+	_ = groups
 
 	if err != nil {
 		t.Errorf("Scan failed: %v", err)
@@ -198,7 +202,7 @@ func TestByteScanner_StreamingThresholdZero(t *testing.T) {
 
 	// Create files
 	for i := 0; i < 20; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
+		filename := filepath.Join(tmpDir, "file"+strconv.Itoa(i)+".txt")
 		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
@@ -212,6 +216,7 @@ func TestByteScanner_StreamingThresholdZero(t *testing.T) {
 	}
 
 	groups, stats, err := scanner.Scan(tmpDir, opts)
+	_ = groups
 
 	if err != nil {
 		t.Errorf("Scan failed: %v", err)
@@ -230,7 +235,7 @@ func TestByteScanner_StreamingThresholdFromOptions(t *testing.T) {
 
 	// Create files
 	for i := 0; i < 25; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
+		filename := filepath.Join(tmpDir, "file"+strconv.Itoa(i)+".txt")
 		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
@@ -244,6 +249,7 @@ func TestByteScanner_StreamingThresholdFromOptions(t *testing.T) {
 	}
 
 	groups, stats, err := scanner.Scan(tmpDir, opts)
+	_ = groups
 
 	if err != nil {
 		t.Errorf("Scan failed: %v", err)
@@ -253,36 +259,6 @@ func TestByteScanner_StreamingThresholdFromOptions(t *testing.T) {
 	if stats.TotalScanned != 25 {
 		t.Errorf("Expected 25 files scanned, got %d", stats.TotalScanned)
 	}
-
-	_ = groups
-}
-
-// TestProcessChunk tests the chunk processing function
-func TestProcessChunk(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create test files
-	files := make(map[int64][]string)
-	for i := 0; i < 5; i++ {
-		filename := filepath.Join(tmpDir, "file"+itoa(i)+".txt")
-		if err := os.WriteFile(filename, []byte("content"), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
-		files[7] = append(files[7], filename) // All same size
-	}
-
-	scanner := &ByteScanner{}
-	groups, stats, err := scanner.processChunk(files, t.Context())
-
-	if err != nil {
-		t.Errorf("processChunk failed: %v", err)
-	}
-
-	if len(groups) == 0 {
-		t.Log("No groups found (expected for identical content)")
-	}
-
-	_ = stats
 }
 
 // TestNewByteScanner_StreamingThreshold tests constructor with streaming

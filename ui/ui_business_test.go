@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"dupclean/internal/fsutil"
 	"dupclean/scanner"
 )
 
@@ -33,9 +34,9 @@ func TestFormatBytes_UI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			result := formatBytes(tt.bytes)
+			result := fsutil.FormatBytes(tt.bytes)
 			if result != tt.expected {
-				t.Errorf("formatBytes(%d) = %q, want %q", tt.bytes, result, tt.expected)
+				t.Errorf("fsutil.FormatBytes(%d) = %q, want %q", tt.bytes, result, tt.expected)
 			}
 		})
 	}
@@ -183,33 +184,33 @@ func TestPrintControlsHelp_Business(t *testing.T) {
 
 func TestFormatBytes_EdgeCases(t *testing.T) {
 	// Test zero
-	if formatBytes(0) != "0 B" {
-		t.Errorf("formatBytes(0) = %q, want '0 B'", formatBytes(0))
+	if fsutil.FormatBytes(0) != "0 B" {
+		t.Errorf("fsutil.FormatBytes(0) = %q, want '0 B'", fsutil.FormatBytes(0))
 	}
 
 	// Test 1 byte
-	if formatBytes(1) != "1 B" {
-		t.Errorf("formatBytes(1) = %q, want '1 B'", formatBytes(1))
+	if fsutil.FormatBytes(1) != "1 B" {
+		t.Errorf("fsutil.FormatBytes(1) = %q, want '1 B'", fsutil.FormatBytes(1))
 	}
 
 	// Test exact KB
-	if formatBytes(1024) != "1.0 KB" {
-		t.Errorf("formatBytes(1024) = %q, want '1.0 KB'", formatBytes(1024))
+	if fsutil.FormatBytes(1024) != "1.0 KB" {
+		t.Errorf("fsutil.FormatBytes(1024) = %q, want '1.0 KB'", fsutil.FormatBytes(1024))
 	}
 
 	// Test exact MB
-	if formatBytes(1048576) != "1.0 MB" {
-		t.Errorf("formatBytes(1048576) = %q, want '1.0 MB'", formatBytes(1048576))
+	if fsutil.FormatBytes(1048576) != "1.0 MB" {
+		t.Errorf("fsutil.FormatBytes(1048576) = %q, want '1.0 MB'", fsutil.FormatBytes(1048576))
 	}
 
 	// Test exact GB
-	if formatBytes(1073741824) != "1.0 GB" {
-		t.Errorf("formatBytes(1073741824) = %q, want '1.0 GB'", formatBytes(1073741824))
+	if fsutil.FormatBytes(1073741824) != "1.0 GB" {
+		t.Errorf("fsutil.FormatBytes(1073741824) = %q, want '1.0 GB'", fsutil.FormatBytes(1073741824))
 	}
 
 	// Test exact TB
-	if formatBytes(1099511627776) != "1.0 TB" {
-		t.Errorf("formatBytes(1099511627776) = %q, want '1.0 TB'", formatBytes(1099511627776))
+	if fsutil.FormatBytes(1099511627776) != "1.0 TB" {
+		t.Errorf("fsutil.FormatBytes(1099511627776) = %q, want '1.0 TB'", fsutil.FormatBytes(1099511627776))
 	}
 }
 

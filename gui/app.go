@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"dupclean/cleaner"
+	"dupclean/internal/fsutil"
 	"dupclean/internal/trash"
 	"dupclean/scanner"
 
@@ -503,7 +504,7 @@ func createGroupDisplay(state *AppState) fyne.CanvasObject {
 	state.mu.RUnlock()
 
 	for i, group := range groups {
-		fileSize := formatBytes(group.Files[0].Size)
+		fileSize := fsutil.FormatBytes(group.Files[0].Size)
 		title := fmt.Sprintf("%s (%d files, %s each)", group.Files[0].Name, len(group.Files), fileSize)
 
 		// Create group content
@@ -552,7 +553,7 @@ func createFileCard(groupIndex, fileIndex int, f scanner.FileInfo, state *AppSta
 	pathEntry.MultiLine = true
 
 	// Metadata
-	metaText := fmt.Sprintf("Size: %s  •  Modified: %s", formatBytes(f.Size), f.ModTime.Format("2006-01-02 15:04"))
+	metaText := fmt.Sprintf("Size: %s  •  Modified: %s", fsutil.FormatBytes(f.Size), f.ModTime.Format("2006-01-02 15:04"))
 	metaLabel := widget.NewLabel(metaText)
 
 	// Play button with state tracking
@@ -652,19 +653,6 @@ func SmartCleanAll(state *AppState) {
 
 func moveToTrash(path string) error {
 	return trash.MoveToTrash(path)
-}
-
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 func playFile(state *AppState, path string, onComplete func()) {

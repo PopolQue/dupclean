@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"dupclean/internal/fsutil"
 	"dupclean/scanner"
 )
 
@@ -25,9 +26,9 @@ func TestFormatBytes_AdditionalEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatBytes(tt.input)
+			result := fsutil.FormatBytes(tt.input)
 			if result != tt.expected {
-				t.Errorf("formatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
+				t.Errorf("fsutil.FormatBytes(%d) = %q; want %q", tt.input, result, tt.expected)
 			}
 		})
 	}

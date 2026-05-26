@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"dupclean/cleaner"
+	"dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -195,9 +197,9 @@ func startCacheScan(state *CacheCleanerState) {
 		}
 
 		fyne.Do(func() {
-			comp.progressLabel.SetText(fmt.Sprintf("Found %s of cleanable caches", formatBytes(state.TotalSize)))
+			comp.progressLabel.SetText(fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize)))
 			comp.progressBar.SetValue(1.0)
-			log.Printf("[CacheCleaner] Total cleanable: %s across %d targets", formatBytes(state.TotalSize), len(state.Targets))
+			log.Printf("[CacheCleaner] Total cleanable: %s across %d targets", fsutil.FormatBytes(state.TotalSize), len(state.Targets))
 			displayCacheResults(state, comp.results, comp.scroll, comp.cleanBtn)
 		})
 	}()
@@ -264,7 +266,7 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 	}
 
 	// Target checkbox
-	targetCheck := widget.NewCheck(fmt.Sprintf("%s (%s)", target.Label, formatBytes(target.TotalSize)), func(checked bool) {
+	targetCheck := widget.NewCheck(fmt.Sprintf("%s (%s)", target.Label, fsutil.FormatBytes(target.TotalSize)), func(checked bool) {
 		state.SelectedTargets[target.ID] = checked
 		updateCacheTotal(state, totalLabel, cleanBtn)
 	})
@@ -297,7 +299,7 @@ func updateCacheTotal(state *CacheCleanerState, totalLabel *canvas.Text, cleanBt
 			selectedSize += t.TotalSize
 		}
 	}
-	totalLabel.Text = fmt.Sprintf("Selected: %s", formatBytes(selectedSize))
+	totalLabel.Text = fmt.Sprintf("Selected: %s", fsutil.FormatBytes(selectedSize))
 	totalLabel.Refresh()
 
 	if selectedSize > 0 {
@@ -326,7 +328,7 @@ func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container,
 	// Confirm
 	dialog.ShowConfirm(
 		"Confirm Cleaning",
-		fmt.Sprintf("Delete %s of cache files?", formatBytes(selectedSize)),
+		fmt.Sprintf("Delete %s of cache files?", fsutil.FormatBytes(selectedSize)),
 		func(ok bool) {
 			if !ok {
 				return
@@ -358,8 +360,8 @@ func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container,
 				state.CleanedBytes = cleanedBytes
 				state.IsCleaning = false
 
-				log.Printf("[CacheCleaner] Total deleted: %d items, %s", cleaned, formatBytes(cleanedBytes))
-				log.Printf("[CacheCleaner] Expected to delete: %s", formatBytes(selectedSize))
+				log.Printf("[CacheCleaner] Total deleted: %d items, %s", cleaned, fsutil.FormatBytes(cleanedBytes))
+				log.Printf("[CacheCleaner] Expected to delete: %s", fsutil.FormatBytes(selectedSize))
 
 				fyne.Do(func() {
 					showCacheCleanComplete(state, progressLabel, progressBar, resultsContainer, scroll)
@@ -439,7 +441,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 		// First, measure what we're deleting
 		var measuredBytes int64
 		var measuredCount int
-		err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(basePath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil // Skip errors, continue deleting
 			}
@@ -447,7 +449,11 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 				return nil // Don't count the base directory itself
 			}
 			// Track what we're deleting
-			if !info.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			if !d.IsDir() {
 				measuredBytes += info.Size()
 			}
 			measuredCount++
@@ -457,7 +463,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 			log.Printf("[CacheCleaner] Error measuring %s: %v", basePath, err)
 		}
 
-		log.Printf("[CacheCleaner] Measured %s (%d files) in %s", formatBytes(measuredBytes), measuredCount, basePath)
+		log.Printf("[CacheCleaner] Measured %s (%d files) in %s", fsutil.FormatBytes(measuredBytes), measuredCount, basePath)
 
 		// Now actually delete everything
 		if err := os.RemoveAll(basePath); err != nil {
@@ -470,7 +476,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 			return measuredCount, measuredBytes, err
 		}
 
-		log.Printf("[CacheCleaner] Deleted %s from %s", formatBytes(measuredBytes), basePath)
+		log.Printf("[CacheCleaner] Deleted %s from %s", fsutil.FormatBytes(measuredBytes), basePath)
 		return measuredCount, measuredBytes, nil
 	}
 
@@ -514,7 +520,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 		freedBytes += info.Size()
 	}
 
-	log.Printf("[CacheCleaner] Deleted %s from %s (pattern match)", formatBytes(freedBytes), basePath)
+	log.Printf("[CacheCleaner] Deleted %s from %s (pattern match)", fsutil.FormatBytes(freedBytes), basePath)
 	return deleted, freedBytes, nil
 }
 
@@ -531,7 +537,7 @@ func showCacheCleanComplete(state *CacheCleanerState, progressLabel *widget.Labe
 	icon.SetMinSize(fyne.NewSize(80, 80))
 
 	message := fmt.Sprintf("Cleaned %d cache locations", state.CleanedCount)
-	subMessage := fmt.Sprintf("Freed %s of disk space", formatBytes(state.CleanedBytes))
+	subMessage := fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.CleanedBytes))
 
 	resultLabel := widget.NewLabel(message)
 	resultLabel.TextStyle = fyne.TextStyle{Bold: true}
