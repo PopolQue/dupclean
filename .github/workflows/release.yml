@@ -35,7 +35,7 @@ jobs:
             goarch: arm64
             artifact: dupclean-darwin-arm64
             cgo: 1
-          - os: macos-13
+          - os: macos-15-intel
             goos: darwin
             goarch: amd64
             artifact: dupclean-darwin-amd64
