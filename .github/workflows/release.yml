@@ -88,16 +88,30 @@ jobs:
         # Use fyne package to create a proper .app bundle
         fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
         
-        # Prepare DMG contents (app + Applications shortcut)
-        mkdir dmg_staging
-        mv DupClean.app dmg_staging/
-        ln -s /Applications dmg_staging/Applications
+        # Prepare PKG structure
+        mkdir -p pkg_root/Applications
+        mv DupClean.app pkg_root/Applications/
         
-        # Create DMG
-        hdiutil create -volname "DupClean" -srcfolder dmg_staging -ov -format UDZO ${{ matrix.artifact }}.dmg
+        # Create post-install script to remove quarantine
+        mkdir scripts
+        cat <<EOF > scripts/postinstall
+        #!/bin/bash
+        # Remove quarantine attribute from the installed app
+        xattr -rd com.apple.quarantine "/Applications/DupClean.app" 2>/dev/null || true
+        exit 0
+        EOF
+        chmod +x scripts/postinstall
+        
+        # Build PKG
+        pkgbuild --root pkg_root \
+                 --identifier com.dupclean.app \
+                 --version "${{ github.ref_name }}" \
+                 --install-location / \
+                 --scripts scripts \
+                 ${{ matrix.artifact }}.pkg
         
         # Also keep the raw binary as an artifact
-        cp dmg_staging/DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
+        cp pkg_root/Applications/DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
 
     - name: Create tarball (Linux)
       if: matrix.goos == 'linux'
@@ -114,7 +128,7 @@ jobs:
         files: |
           *.tar.gz
           *.zip
-          *.dmg
+          *.pkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -156,8 +170,9 @@ jobs:
           ## Installation
           
           ### macOS
-          Download `dupclean-darwin-arm64.dmg` (for M1/M2/M3) or `dupclean-darwin-amd64.dmg` (for Intel).
-          Open the DMG and drag DupClean to your Applications folder.
+          Download `dupclean-darwin-arm64.pkg` (for Apple Silicon) or `dupclean-darwin-amd64.pkg` (for Intel).
+          Double-click the PKG to install DupClean to your Applications folder. 
+          *Note: The installer automatically fixes permission issues so you can run the app immediately.*
           
           ### Linux
           Download the appropriate tarball, extract it, and run the `dupclean` binary.
