@@ -127,11 +127,26 @@ func checkForUpdates() (*GitHubRelease, error) {
 }
 
 func isNewerVersion(current, latest string) bool {
-	// Simple string comparison for v-prefixed versions (e.g., v0.2.4 vs v0.2.5)
-	// In a real app, use a semver library if versions get complex
 	current = strings.TrimPrefix(current, "v")
 	latest = strings.TrimPrefix(latest, "v")
-	return latest > current
+
+	currParts := strings.Split(current, ".")
+	lateParts := strings.Split(latest, ".")
+
+	for i := 0; i < len(currParts) && i < len(lateParts); i++ {
+		var c, l int
+		fmt.Sscanf(currParts[i], "%d", &c)
+		fmt.Sscanf(lateParts[i], "%d", &l)
+
+		if l > c {
+			return true
+		}
+		if c > l {
+			return false
+		}
+	}
+
+	return len(lateParts) > len(currParts)
 }
 
 func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
@@ -162,7 +177,8 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 	}
 
 	if downloadURL == "" {
-		dialog.ShowError(fmt.Errorf("could not find update asset for %s-%s", runtime.GOOS, runtime.GOARCH), state.Window)
+		dialog.ShowError(fmt.Errorf("could not find update asset for %s-%s\nExpected: %s\nAvailable assets: %d", 
+			runtime.GOOS, runtime.GOARCH, pattern, len(release.Assets)), state.Window)
 		return
 	}
 

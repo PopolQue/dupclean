@@ -116,8 +116,8 @@ jobs:
         # Also keep the raw binary as an artifact
         cp pkg_root/Applications/DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
 
-    - name: Create tarball (Linux)
-      if: matrix.goos == 'linux'
+    - name: Create tarball (Linux & macOS)
+      if: matrix.goos == 'linux' || matrix.goos == 'darwin'
       run: tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
 
     - name: Create zip (Windows)
