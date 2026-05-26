@@ -10,3 +10,7 @@ coverage.txt
 gui_coverage.out
 docs/
 /.vscode/
+internal/.DS_Store
+.vscode
+.vscode/changelists.json
+
