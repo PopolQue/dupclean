@@ -172,7 +172,7 @@ func TestKeepAndDelete_SingleFile(t *testing.T) {
 			{
 				Hash: "hash1",
 				Files: []scanner.FileInfo{
-					{Path: "/test/file1.wav", Name: "file1.wav", Size: 1024},
+					{Path: "/test/file1.wav", Name: "file1.wav", Size: 1024, Hash: "hash1"},
 				},
 			},
 		},
@@ -202,9 +202,9 @@ func TestKeepAndDelete_KeepLastFile(t *testing.T) {
 			{
 				Hash: "hash1",
 				Files: []scanner.FileInfo{
-					{Path: "/test/file1.wav", Name: "file1.wav", Size: 100},
-					{Path: "/test/file2.wav", Name: "file2.wav", Size: 200},
-					{Path: "/test/file3.wav", Name: "file3.wav", Size: 300},
+					{Path: "/test/file1.wav", Name: "file1.wav", Size: 100, Hash: "hash1"},
+					{Path: "/test/file2.wav", Name: "file2.wav", Size: 200, Hash: "hash1"},
+					{Path: "/test/file3.wav", Name: "file3.wav", Size: 300, Hash: "hash1"},
 				},
 			},
 		},
@@ -231,15 +231,15 @@ func TestKeepAndDelete_RemovesGroup(t *testing.T) {
 			{
 				Hash: "hash1",
 				Files: []scanner.FileInfo{
-					{Path: "/test/file1.wav", Name: "file1.wav", Size: 100},
-					{Path: "/test/file2.wav", Name: "file2.wav", Size: 100},
+					{Path: "/test/file1.wav", Name: "file1.wav", Size: 1024, Hash: "hash1"},
+					{Path: "/test/file2.wav", Name: "file2.wav", Size: 1024, Hash: "hash1"},
 				},
-			},
-			{
+				},
+				{
 				Hash: "hash2",
 				Files: []scanner.FileInfo{
-					{Path: "/test/file3.wav", Name: "file3.wav", Size: 200},
-					{Path: "/test/file4.wav", Name: "file4.wav", Size: 200},
+					{Path: "/test/file3.wav", Name: "file3.wav", Size: 2048, Hash: "hash2"},
+					{Path: "/test/file4.wav", Name: "file4.wav", Size: 2048, Hash: "hash2"},
 				},
 			},
 		},

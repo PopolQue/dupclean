@@ -100,6 +100,8 @@ type AppState struct {
 	progressComponents *progressComponents
 	mu                 sync.RWMutex  // Protects concurrent access to state
 	playerDone         chan struct{} // Signal when player goroutine is done
+	RefreshResults     func()        // Callback to refresh the results UI
+	Selections         [][]bool      // Tracks which files to keep in each group (matches Groups)
 }
 
 // updateContent updates the content container (preserves sidebar)
@@ -415,10 +417,34 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 			prog.bar.SetValue(1)
 		})
 
+		// Sort groups by size (largest first)
+		sort.Slice(groups, func(i, j int) bool {
+			return groups[i].Files[0].Size > groups[j].Files[0].Size
+		})
+
+		// Initialize selections: keep first file by default after sorting
 		state.mu.Lock()
 		state.Groups = groups
 		state.Stats = stats
 		state.IsScanning = false
+
+		state.Selections = make([][]bool, len(groups))
+		for i := range groups {
+			// Sort files within group: prefer shallowest path
+			sort.Slice(groups[i].Files, func(a, b int) bool {
+				da := strings.Count(groups[i].Files[a].Path, string(filepath.Separator))
+				db := strings.Count(groups[i].Files[b].Path, string(filepath.Separator))
+				if da != db {
+					return da < db
+				}
+				return groups[i].Files[a].ModTime.Before(groups[i].Files[b].ModTime)
+			})
+
+			state.Selections[i] = make([]bool, len(groups[i].Files))
+			if len(groups[i].Files) > 0 {
+				state.Selections[i][0] = true
+			}
+		}
 		state.mu.Unlock()
 
 		showResults(state, stats)
@@ -427,10 +453,46 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 
 func showResults(state *AppState, stats scanner.ScanStats) {
 	if len(state.Groups) == 0 {
-		state.updateContent(createNoDuplicatesUI(state, state.Stats))
+		state.updateContent(DuplicateNoResultsWidget(state))
 		return
 	}
-	state.updateContent(createResultsUI(state, state.Stats))
+	state.updateContent(DuplicateResultsWidget(state))
+}
+
+func cleanSelected(state *AppState) {
+	stopPlayback(state)
+
+	state.mu.Lock()
+	groups := make([]scanner.DuplicateGroup, len(state.Groups))
+	copy(groups, state.Groups)
+	selections := make([][]bool, len(state.Selections))
+	for i := range state.Selections {
+		selections[i] = make([]bool, len(state.Selections[i]))
+		copy(selections[i], state.Selections[i])
+	}
+	state.mu.Unlock()
+
+	var deletedCount int
+	var freedBytes int64
+
+	for i, group := range groups {
+		for j, f := range group.Files {
+			if !selections[i][j] {
+				if err := moveToTrash(f.Path); err == nil {
+					deletedCount++
+					freedBytes += f.Size
+				}
+			}
+		}
+	}
+
+	state.mu.Lock()
+	state.DeletedCount += deletedCount
+	state.FreedBytes += freedBytes
+	state.Groups = nil
+	state.mu.Unlock()
+
+	state.updateContent(DuplicateFinalWidget(state))
 }
 
 func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
@@ -469,141 +531,54 @@ func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasO
 	return container.NewCenter(content)
 }
 
-func createResultsUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
-	// Header
-	title := canvas.NewText("Scan Results", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
-	statsText := fmt.Sprintf(
-		"%d duplicate groups | %d extra copies | %s wasted",
-		len(state.Groups),
-		stats.TotalDupes,
-		formatBytes(stats.WastedBytes),
-	)
-	statsLabel := widget.NewLabel(statsText)
-	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
-
-	// Navigation buttons
-	prevBtn := widget.NewButtonWithIcon("Previous", theme.NavigateBackIcon(), func() {
-		if state.CurrentGroupIndex > 0 {
-			state.CurrentGroupIndex--
-			state.updateContent(createResultsUI(state, state.Stats))
-		}
-	})
-	prevBtn.Importance = widget.LowImportance
-
-	nextBtn := widget.NewButtonWithIcon("Next", theme.NavigateNextIcon(), func() {
-		if state.CurrentGroupIndex < len(state.Groups)-1 {
-			state.CurrentGroupIndex++
-			state.updateContent(createResultsUI(state, state.Stats))
-		}
-	})
-	nextBtn.Importance = widget.LowImportance
-
-	navButtons := container.NewHBox(prevBtn, nextBtn)
-
-	// Group display
-	groupDisplay := createGroupDisplay(state)
-
-	// Action buttons
-	skipGroupBtn := widget.NewButton("Skip Group", func() {
-		state.CurrentGroupIndex++
-		if state.CurrentGroupIndex >= len(state.Groups) {
-			state.updateContent(createFinalUI(state))
-		} else {
-			state.updateContent(createResultsUI(state, state.Stats))
-		}
-	})
-	skipGroupBtn.Importance = widget.LowImportance
-
-	skipAllBtn := widget.NewButton("Skip All", func() {
-		state.updateContent(createFinalUI(state))
-	})
-	skipAllBtn.Importance = widget.LowImportance
-
-	keepBtn := widget.NewButtonWithIcon("Keep #1 & Delete Others", theme.ConfirmIcon(), func() {
-		if state.CurrentGroupIndex < len(state.Groups) {
-			group := state.Groups[state.CurrentGroupIndex]
-			keepAndDelete(state, 0, group.Files)
-			if len(state.Groups) == 0 {
-				state.updateContent(createFinalUI(state))
-			} else {
-				state.updateContent(createResultsUI(state, state.Stats))
-			}
-		}
-	})
-	keepBtn.Importance = widget.HighImportance
-
-	actionButtons := container.NewHBox(skipGroupBtn, skipAllBtn, layout.NewSpacer(), keepBtn)
-
-	content := container.NewVBox(
-		title,
-		statsLabel,
-		widget.NewSeparator(),
-		groupDisplay,
-		widget.NewSeparator(),
-		actionButtons,
-		widget.NewSeparator(),
-		container.NewHBox(layout.NewSpacer(), navButtons, layout.NewSpacer()),
-	)
-
-	return container.NewBorder(nil, nil, nil, nil, content)
-}
-
 func createGroupDisplay(state *AppState) fyne.CanvasObject {
-	scroll := container.NewScroll(container.NewVBox())
-	scroll.SetMinSize(fyne.NewSize(1000, 450))
+	accordion := widget.NewAccordion()
 
-	updateDisplay := func() {
-		content := container.NewVBox()
+	state.mu.RLock()
+	groups := state.Groups
+	state.mu.RUnlock()
 
-		if state.CurrentGroupIndex >= len(state.Groups) || len(state.Groups) == 0 {
-			scroll.Content = content
-			return
-		}
-
-		group := state.Groups[state.CurrentGroupIndex]
+	for i, group := range groups {
 		fileSize := formatBytes(group.Files[0].Size)
+		title := fmt.Sprintf("%s (%d files, %s each)", group.Files[0].Name, len(group.Files), fileSize)
 
-		// Group header
-		headerText := fmt.Sprintf("Identical files (%s each)", fileSize)
-		header := canvas.NewText(headerText, theme.Color(theme.ColorNamePrimary))
-		header.TextSize = 18
-		header.TextStyle = fyne.TextStyle{Bold: true}
-		content.Add(header)
-		content.Add(widget.NewSeparator())
+		// Create group content
+		groupContent := container.NewVBox()
 
-		// Sort files
-		files := group.Files
-		sort.Slice(files, func(i, j int) bool {
-			di := strings.Count(files[i].Path, string(filepath.Separator))
-			dj := strings.Count(files[j].Path, string(filepath.Separator))
-			if di != dj {
-				return di < dj
-			}
-			return files[i].ModTime.Before(files[j].ModTime)
-		})
-
-		// File cards
-		for idx, f := range files {
-			fileCard := createFileCard(idx+1, f, state)
-			content.Add(fileCard)
+		for j, f := range group.Files {
+			groupContent.Add(createFileCard(i, j, f, state))
 		}
 
-		scroll.Content = content
-		scroll.Refresh()
+		item := widget.NewAccordionItem(title, groupContent)
+		accordion.Append(item)
 	}
 
-	updateDisplay()
+	// Wrap accordion in a scroll container
+	scroll := container.NewVScroll(accordion)
+	scroll.SetMinSize(fyne.NewSize(1000, 500))
+
 	return scroll
 }
 
-func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
+func createFileCard(groupIndex, fileIndex int, f scanner.FileInfo, state *AppState) *widget.Card {
 	// File number and name
-	nameText := fmt.Sprintf("[%d] %s", num, f.Name)
+	nameText := fmt.Sprintf("[%d] %s", fileIndex+1, f.Name)
 	nameLabel := widget.NewLabel(nameText)
 	nameLabel.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Keep checkbox
+	keepCheck := widget.NewCheck("Keep", func(checked bool) {
+		state.mu.Lock()
+		if groupIndex < len(state.Selections) && fileIndex < len(state.Selections[groupIndex]) {
+			state.Selections[groupIndex][fileIndex] = checked
+		}
+		state.mu.Unlock()
+	})
+	state.mu.RLock()
+	if groupIndex < len(state.Selections) && fileIndex < len(state.Selections[groupIndex]) {
+		keepCheck.Checked = state.Selections[groupIndex][fileIndex]
+	}
+	state.mu.RUnlock()
 
 	// Path with selectable entry for better display
 	pathEntry := widget.NewEntry()
@@ -631,47 +606,7 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 		}
 	})
 
-	// Delete button
-	deleteBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
-		dialog.ShowConfirm(
-			"Delete File?",
-			fmt.Sprintf("Move '%s' to Trash?", f.Name),
-			func(ok bool) {
-				if ok {
-					stopPlayback(state)
-					if err := moveToTrash(f.Path); err == nil {
-						state.DeletedCount++
-						state.FreedBytes += f.Size
-
-						// Remove from groups
-						for i, g := range state.Groups {
-							if g.Hash == f.Hash {
-								for j, file := range g.Files {
-									if file.Path == f.Path {
-										state.Groups[i].Files = append(g.Files[:j], g.Files[j+1:]...)
-										break
-									}
-								}
-								if len(state.Groups[i].Files) < 2 {
-									state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)
-								}
-								break
-							}
-						}
-
-						// Refresh UI
-						state.updateContent(createResultsUI(state, state.Stats))
-					} else {
-						dialog.ShowError(fmt.Errorf("failed to delete: %w", err), state.Window)
-					}
-				}
-			},
-			state.Window,
-		)
-	})
-	deleteBtn.Importance = widget.DangerImportance
-
-	buttons := container.NewVBox(playBtn, deleteBtn)
+	buttons := container.NewVBox(playBtn)
 
 	// Card content with better layout for path display
 	content := container.NewVBox(
@@ -680,7 +615,7 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 		metaLabel,
 	)
 
-	cardContent := container.NewBorder(nil, nil, content, buttons)
+	cardContent := container.NewBorder(nil, nil, content, container.NewHBox(keepCheck, buttons))
 
 	card := widget.NewCard("", "", cardContent)
 
@@ -689,6 +624,11 @@ func createFileCard(num int, f scanner.FileInfo, state *AppState) *widget.Card {
 
 func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	stopPlayback(state)
+
+	if len(files) == 0 {
+		return
+	}
+	groupHash := files[0].Hash
 
 	for idx, f := range files {
 		if idx == keepIndex {
@@ -705,8 +645,45 @@ func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	i := state.CurrentGroupIndex
-	state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)
+	// Remove the resolved group from the list
+	for i, g := range state.Groups {
+		if g.Hash == groupHash {
+			state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)
+			break
+		}
+	}
+}
+
+// SmartCleanAll automatically resolves all duplicate groups by keeping the "best" file
+func SmartCleanAll(state *AppState) {
+	state.mu.RLock()
+	groups := make([]scanner.DuplicateGroup, len(state.Groups))
+	copy(groups, state.Groups)
+	state.mu.RUnlock()
+
+	for _, g := range groups {
+		files := g.Files
+		if len(files) < 2 {
+			continue
+		}
+
+		// Selection logic: prefer shallowest path, then oldest modification time
+		sort.Slice(files, func(i, j int) bool {
+			di := strings.Count(files[i].Path, string(filepath.Separator))
+			dj := strings.Count(files[j].Path, string(filepath.Separator))
+			if di != dj {
+				return di < dj
+			}
+			return files[i].ModTime.Before(files[j].ModTime)
+		})
+
+		// Keep index 0 (the best match based on sort above)
+		keepAndDelete(state, 0, files)
+	}
+
+	if state.RefreshResults != nil {
+		state.RefreshResults()
+	}
 }
 
 func createFinalUI(state *AppState) fyne.CanvasObject {

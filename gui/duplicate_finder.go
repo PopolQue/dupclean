@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -67,58 +68,41 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 	statsLabel := widget.NewLabel(statsText)
 	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
 
-	// Navigation buttons
-	prevBtn := widget.NewButtonWithIcon("Previous", theme.NavigateBackIcon(), func() {
-		if state.CurrentGroupIndex > 0 {
-			state.CurrentGroupIndex--
-			state.updateContent(DuplicateResultsWidget(state))
-		}
-	})
-	prevBtn.Importance = widget.LowImportance
-
-	nextBtn := widget.NewButtonWithIcon("Next", theme.NavigateNextIcon(), func() {
-		if state.CurrentGroupIndex < len(state.Groups)-1 {
-			state.CurrentGroupIndex++
-			state.updateContent(DuplicateResultsWidget(state))
-		}
-	})
-	nextBtn.Importance = widget.LowImportance
-
-	navButtons := container.NewHBox(prevBtn, nextBtn)
-
 	// Group display
 	groupDisplay := createGroupDisplay(state)
 
 	// Action buttons
-	skipGroupBtn := widget.NewButton("Skip Group", func() {
-		state.CurrentGroupIndex++
-		if state.CurrentGroupIndex >= len(state.Groups) {
-			state.updateContent(createFinalUI(state))
-		} else {
-			state.updateContent(DuplicateResultsWidget(state))
-		}
+	cancelBtn := widget.NewButton("Cancel", func() {
+		state.updateContent(DuplicateFinderWidget(state))
 	})
-	skipGroupBtn.Importance = widget.LowImportance
+	cancelBtn.Importance = widget.LowImportance
 
-	skipAllBtn := widget.NewButton("Skip All", func() {
-		state.updateContent(createFinalUI(state))
-	})
-	skipAllBtn.Importance = widget.LowImportance
-
-	keepBtn := widget.NewButtonWithIcon("Keep #1 & Delete Others", theme.ConfirmIcon(), func() {
-		if state.CurrentGroupIndex < len(state.Groups) {
-			group := state.Groups[state.CurrentGroupIndex]
-			keepAndDelete(state, 0, group.Files)
-			if len(state.Groups) == 0 {
-				state.updateContent(createFinalUI(state))
-			} else {
-				state.updateContent(DuplicateResultsWidget(state))
+	smartBtn := widget.NewButton("Smart Select", func() {
+		state.mu.Lock()
+		for i := range state.Selections {
+			for j := range state.Selections[i] {
+				state.Selections[i][j] = (j == 0) // Keep first one
 			}
 		}
+		state.mu.Unlock()
+		state.updateContent(DuplicateResultsWidget(state))
 	})
-	keepBtn.Importance = widget.HighImportance
 
-	actionButtons := container.NewHBox(skipGroupBtn, skipAllBtn, layout.NewSpacer(), keepBtn)
+	cleanBtn := widget.NewButtonWithIcon("Clean Selected", theme.DeleteIcon(), func() {
+		dialog.ShowConfirm(
+			"Clean Selected Files?",
+			"This will move all unselected files to the Trash. Are you sure?",
+			func(ok bool) {
+				if ok {
+					cleanSelected(state)
+				}
+			},
+			state.Window,
+		)
+	})
+	cleanBtn.Importance = widget.HighImportance
+
+	actionButtons := container.NewHBox(cancelBtn, layout.NewSpacer(), smartBtn, cleanBtn)
 
 	content := container.NewVBox(
 		title,
@@ -127,8 +111,6 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 		groupDisplay,
 		widget.NewSeparator(),
 		actionButtons,
-		widget.NewSeparator(),
-		container.NewHBox(layout.NewSpacer(), navButtons, layout.NewSpacer()),
 	)
 
 	return container.NewBorder(nil, nil, nil, nil, content)
