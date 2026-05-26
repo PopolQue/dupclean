@@ -198,10 +198,33 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 			if err != nil {
 				dialog.ShowError(fmt.Errorf("update failed: %v", err), state.Window)
 			} else {
-				dialog.ShowInformation("Update Complete", "DupClean has been updated. Please restart the application.", state.Window)
+				d := dialog.NewInformation("Update Complete", "DupClean has been updated and will now restart.", state.Window)
+				d.SetOnClosed(func() {
+					restartApp()
+				})
+				d.Show()
 			}
 		})
 	}()
+}
+
+func restartApp() {
+	executable, err := os.Executable()
+	if err != nil {
+		os.Exit(0) // Can't find ourselves, just exit
+	}
+
+	var cmd *exec.Cmd
+	// On macOS, if we're in an .app bundle, use 'open' to restart properly
+	if runtime.GOOS == "darwin" && strings.Contains(executable, ".app/Contents/MacOS/") {
+		appPath := strings.Split(executable, ".app/")[0] + ".app"
+		cmd = exec.Command("open", appPath)
+	} else {
+		cmd = exec.Command(executable)
+	}
+
+	_ = cmd.Start()
+	os.Exit(0)
 }
 
 func performUpdate(url string, setProgress func(float64)) error {
