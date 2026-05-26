@@ -224,7 +224,7 @@ func performUpdate(url string, setProgress func(float64)) error {
 			return err
 		}
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// 2. Extract binary
 	setProgress(0.6)
@@ -303,10 +303,10 @@ func extractFromTarGz(tarGzPath, destPath string) error {
 				return err
 			}
 			if _, err := io.Copy(out, tr); err != nil {
-				out.Close()
+				_ = out.Close()
 				return err
 			}
-			out.Close()
+			_ = out.Close()
 			return nil
 		}
 	}
