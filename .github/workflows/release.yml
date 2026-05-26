@@ -85,8 +85,11 @@ jobs:
       env:
         CGO_ENABLED: 1
       run: |
-        # Use fyne package to create a proper .app bundle
-        fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
+        # Use fyne package to create a proper .app bundle with GUI tags
+        fyne package --target darwin --tags gui --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
+        
+        # Apply ad-hoc signature (required for Apple Silicon)
+        codesign --force --deep --sign - DupClean.app
         
         # Prepare PKG structure
         mkdir -p pkg_root/Applications
