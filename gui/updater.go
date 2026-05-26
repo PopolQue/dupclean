@@ -242,14 +242,23 @@ func performUpdate(url string, setProgress func(float64)) error {
 	}
 	_ = tmpFile.Close()
 
-	// 2. Extract binary
+	// 2. Extract binary to a temporary location first
 	setProgress(0.6)
 	executable, err := os.Executable()
 	if err != nil {
 		return err
 	}
 
-	newBinaryPath := executable + ".new"
+	// On macOS, if we are inside an .app bundle, executable is something like
+	// /Applications/DupClean.app/Contents/MacOS/dupclean
+	// We extract to a truly temporary file to avoid "permission denied" during extraction.
+	tmpNewBin, err := os.CreateTemp("", "dupclean-new-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file for extraction: %v", err)
+	}
+	newBinaryPath := tmpNewBin.Name()
+	_ = tmpNewBin.Close()
+	defer func() { _ = os.Remove(newBinaryPath) }()
 
 	if strings.HasSuffix(url, ".zip") {
 		err = extractFromZip(tmpFile.Name(), newBinaryPath)
@@ -263,21 +272,42 @@ func performUpdate(url string, setProgress func(float64)) error {
 	// 3. Replace current binary
 	setProgress(0.9)
 
-	// On Unix, we can rename over the running binary
-	// On Windows, we rename the current binary to .old and move the new one in
-	if runtime.GOOS == "windows" {
-		oldPath := executable + ".old"
-		_ = os.Remove(oldPath) // Remove previous old if exists
-		if err := os.Rename(executable, oldPath); err != nil {
-			return fmt.Errorf("failed to rename current binary: %v", err)
+	// Attempt the move. If it fails with permission denied on macOS, we might need elevation.
+	installNewBinary := func(src, dst string) error {
+		// On Windows, we rename the current binary to .old and move the new one in
+		if runtime.GOOS == "windows" {
+			oldPath := dst + ".old"
+			_ = os.Remove(oldPath) // Remove previous old if exists
+			if err := os.Rename(dst, oldPath); err != nil {
+				return fmt.Errorf("failed to rename current binary: %v", err)
+			}
+		} else {
+			// On Unix, try to remove the old one first
+			if err := os.Remove(dst); err != nil {
+				// If remove fails, we might still be able to rename over it, but usually it means permission issues
+				// if the error is "permission denied".
+			}
 		}
-	} else {
-		// On Unix, remove the old one first if it exists (might be busy)
-		_ = os.Remove(executable)
+
+		if err := os.Rename(src, dst); err != nil {
+			// If rename fails (e.g. cross-device or permission), try to copy
+			if copyErr := copyFile(src, dst); copyErr != nil {
+				return fmt.Errorf("failed to install new binary: %v (rename error: %v)", copyErr, err)
+			}
+		}
+		return nil
 	}
 
-	if err := os.Rename(newBinaryPath, executable); err != nil {
-		return fmt.Errorf("failed to install new binary: %v", err)
+	err = installNewBinary(newBinaryPath, executable)
+	if err != nil {
+		// If it's a permission error on macOS/Linux, give better instructions
+		if strings.Contains(err.Error(), "permission denied") {
+			if runtime.GOOS == "darwin" && strings.HasPrefix(executable, "/Applications/") {
+				return fmt.Errorf("permission denied. Try running: sudo xattr -rd com.apple.quarantine %s && brew install PopolQue/dupclean/dupclean", executable)
+			}
+			return fmt.Errorf("%v\n\nTip: You may need to run DupClean with administrative privileges to update it in its current location.", err)
+		}
+		return err
 	}
 
 	// Set permissions on Unix
@@ -287,6 +317,25 @@ func performUpdate(url string, setProgress func(float64)) error {
 
 	setProgress(1.0)
 	return nil
+}
+
+// copyFile is a fallback for os.Rename when moving across filesystems or when rename fails
+func copyFile(src, dst string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = source.Close() }()
+
+	// Try to open destination for writing. This will still fail if permission denied.
+	destination, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = destination.Close() }()
+
+	_, err = io.Copy(destination, source)
+	return err
 }
 
 func extractFromTarGz(tarGzPath, destPath string) error {
