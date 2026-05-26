@@ -71,7 +71,11 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: ${{ matrix.cgo }}
       run: |
-        go build -tags gui -o ${{ matrix.artifact }} -ldflags="-s -w" .
+        BUILD_TAGS=""
+        if [ "${{ matrix.cgo }}" = "1" ]; then
+          BUILD_TAGS="-tags gui"
+        fi
+        go build $BUILD_TAGS -o ${{ matrix.artifact }} -ldflags="-s -w" .
 
     - name: Build and Package (macOS)
       if: matrix.goos == 'darwin'
