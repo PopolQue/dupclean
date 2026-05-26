@@ -330,9 +330,9 @@ func macOSInstallWithElevation(src, dst string) error {
 	// do shell script in AppleScript uses /bin/sh. We use AppleScript's 'quoted form of' to handle spaces safely.
 	// The AppleScript command looks like:
 	// do shell script "cp -f " & quoted form of "/src" & " " & quoted form of "/dst" & " && chmod 755 " & quoted form of "/dst" with administrator privileges
-	asCommand := fmt.Sprintf("do shell script \"cp -f \" & quoted form of %q & \" \" & quoted form of %q & \" && chmod 755 \" & quoted form of %q with administrator privileges", 
+	asCommand := fmt.Sprintf("do shell script \"cp -f \" & quoted form of %q & \" \" & quoted form of %q & \" && chmod 755 \" & quoted form of %q with administrator privileges",
 		src, dst, dst)
-	
+
 	cmd := exec.Command("osascript", "-e", asCommand)
 	return cmd.Run()
 }
