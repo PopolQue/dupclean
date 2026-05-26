@@ -1,7 +1,7 @@
 class Dupclean < Formula
   desc "Content-aware duplicate file scanner for music producers and DJs"
   homepage "https://github.com/PopolQue/dupclean"
-  url "https://github.com/PopolQue/dupclean/archive/refs/tags/v0.2.4.tar.gz"
+  url "https://github.com/PopolQue/dupclean/archive/refs/tags/v0.3.10.tar.gz"
   sha256 "df582c29d8b4709a137b4cf058ebaa37725dbdae043b0abb385195a6295f65d1"
   license "MIT"
 

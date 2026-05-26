@@ -88,11 +88,16 @@ jobs:
         # Use fyne package to create a proper .app bundle
         fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
         
+        # Prepare DMG contents (app + Applications shortcut)
+        mkdir dmg_staging
+        mv DupClean.app dmg_staging/
+        ln -s /Applications dmg_staging/Applications
+        
         # Create DMG
-        hdiutil create -volname "DupClean" -srcfolder DupClean.app -ov -format UDZO ${{ matrix.artifact }}.dmg
+        hdiutil create -volname "DupClean" -srcfolder dmg_staging -ov -format UDZO ${{ matrix.artifact }}.dmg
         
         # Also keep the raw binary as an artifact
-        cp DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
+        cp dmg_staging/DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
 
     - name: Create tarball (Linux)
       if: matrix.goos == 'linux'
