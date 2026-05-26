@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '[0-9]*'
 
 permissions:
   contents: write
@@ -12,7 +13,7 @@ jobs:
   release:
     name: Release
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 3
+    timeout-minutes: 10
     strategy:
       matrix:
         include:
@@ -20,22 +21,27 @@ jobs:
             goos: linux
             goarch: amd64
             artifact: dupclean-linux-amd64
+            cgo: 1
           - os: ubuntu-latest
             goos: linux
             goarch: arm64
             artifact: dupclean-linux-arm64
+            cgo: 0
           - os: macos-latest
             goos: darwin
             goarch: arm64
             artifact: dupclean-darwin-arm64
-          - os: macos-latest
+            cgo: 1
+          - os: macos-13
             goos: darwin
             goarch: amd64
             artifact: dupclean-darwin-amd64
+            cgo: 1
           - os: windows-latest
             goos: windows
             goarch: amd64
             artifact: dupclean-windows-amd64.exe
+            cgo: 1
 
     steps:
     - name: Checkout code
@@ -50,42 +56,52 @@ jobs:
       if: matrix.goos == 'linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev xorg-dev
+        sudo apt-get install -y libgl1-mesa-dev xorg-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev
 
     - name: Install dependencies (macOS)
       if: matrix.goos == 'darwin'
       run: |
-        brew install glfw
+        brew install pkg-config
+        go install fyne.io/tools/cmd/fyne@latest
 
-    - name: Build
+    - name: Build (non-macOS)
+      if: matrix.goos != 'darwin'
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 0
+        CGO_ENABLED: ${{ matrix.cgo }}
       run: |
-        go build -o ${{ matrix.artifact }} -ldflags="-s -w" .
+        go build -tags gui -o ${{ matrix.artifact }} -ldflags="-s -w" .
 
-    - name: Create tarball (Unix)
-      if: matrix.goos != 'windows'
+    - name: Build and Package (macOS)
+      if: matrix.goos == 'darwin'
+      env:
+        CGO_ENABLED: 1
+      run: |
+        # Use fyne package to create a proper .app bundle
+        fyne package --target darwin --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
+        
+        # Create DMG
+        hdiutil create -volname "DupClean" -srcfolder DupClean.app -ov -format UDZO ${{ matrix.artifact }}.dmg
+        
+        # Also keep the raw binary as an artifact
+        cp DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
+
+    - name: Create tarball (Linux)
+      if: matrix.goos == 'linux'
       run: tar -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
 
     - name: Create zip (Windows)
       if: matrix.goos == 'windows'
       run: Compress-Archive -Path ${{ matrix.artifact }} -DestinationPath ${{ matrix.artifact }}.zip
 
-    - name: Upload release asset (Unix)
-      if: matrix.goos != 'windows'
+    - name: Upload release asset
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{ matrix.artifact }}.tar.gz
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload release asset (Windows)
-      if: matrix.goos == 'windows'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: ${{ matrix.artifact }}.zip
+        files: |
+          *.tar.gz
+          *.zip
+          *.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -112,7 +128,7 @@ jobs:
         echo "$CHANGELOG" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
-    - name: Create Release
+    - name: Update Release Body
       uses: softprops/action-gh-release@v2
       with:
         name: DupClean ${{ github.ref_name }}
@@ -123,13 +139,16 @@ jobs:
           
           ## Installation
           
-          ### Homebrew (macOS)
-          ```bash
-          brew install dupclean
-          ```
+          ### macOS
+          Download `dupclean-darwin-arm64.dmg` (for M1/M2/M3) or `dupclean-darwin-amd64.dmg` (for Intel).
+          Open the DMG and drag DupClean to your Applications folder.
           
-          ### Manual Installation
-          Download the appropriate binary for your system from the assets below.
+          ### Linux
+          Download the appropriate tarball, extract it, and run the `dupclean` binary.
+          Ensure you have OpenGL dependencies installed.
+          
+          ### Windows
+          Download the zip file, extract it, and run `dupclean-windows-amd64.exe`.
         draft: false
         prerelease: false
       env:
