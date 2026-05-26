@@ -234,8 +234,8 @@ func TestKeepAndDelete_RemovesGroup(t *testing.T) {
 					{Path: "/test/file1.wav", Name: "file1.wav", Size: 1024, Hash: "hash1"},
 					{Path: "/test/file2.wav", Name: "file2.wav", Size: 1024, Hash: "hash1"},
 				},
-				},
-				{
+			},
+			{
 				Hash: "hash2",
 				Files: []scanner.FileInfo{
 					{Path: "/test/file3.wav", Name: "file3.wav", Size: 2048, Hash: "hash2"},

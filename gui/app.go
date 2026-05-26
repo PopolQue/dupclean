@@ -495,42 +495,6 @@ func cleanSelected(state *AppState) {
 	state.updateContent(DuplicateFinalWidget(state))
 }
 
-func createNoDuplicatesUI(state *AppState, stats scanner.ScanStats) fyne.CanvasObject {
-	title := canvas.NewText("No Duplicates Found!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 32
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
-
-	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
-	statsText := fmt.Sprintf(
-		"Scanned %d files in %s\nYour files are clean!",
-		stats.TotalScanned,
-		stats.ScanDuration.Round(time.Second),
-	)
-	statsLabel := widget.NewLabel(statsText)
-	statsLabel.Alignment = fyne.TextAlignCenter
-	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
-
-	backBtn := widget.NewButtonWithIcon("Back to Home", theme.HomeIcon(), func() {
-		state.updateContent(DuplicateFinderWidget(state))
-	})
-	backBtn.Importance = widget.HighImportance
-
-	content := container.NewVBox(
-		icon,
-		title,
-		statsLabel,
-		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
-		layout.NewSpacer(),
-	)
-
-	return container.NewCenter(content)
-}
-
 func createGroupDisplay(state *AppState) fyne.CanvasObject {
 	accordion := widget.NewAccordion()
 
@@ -684,63 +648,6 @@ func SmartCleanAll(state *AppState) {
 	if state.RefreshResults != nil {
 		state.RefreshResults()
 	}
-}
-
-func createFinalUI(state *AppState) fyne.CanvasObject {
-	title := canvas.NewText("Complete!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 32
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
-
-	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
-	var message string
-	var subMessage string
-	if state.DeletedCount == 0 {
-		message = "No files were deleted"
-		subMessage = "Your files are safe."
-	} else {
-		message = fmt.Sprintf("Moved %d file(s) to Trash", state.DeletedCount)
-		subMessage = fmt.Sprintf("Freed %s of disk space", formatBytes(state.FreedBytes))
-	}
-
-	resultLabel := widget.NewLabel(message)
-	resultLabel.TextStyle = fyne.TextStyle{Bold: true}
-	resultLabel.Alignment = fyne.TextAlignCenter
-
-	subLabel := widget.NewLabel(subMessage)
-	subLabel.TextStyle = fyne.TextStyle{Italic: true}
-	subLabel.Alignment = fyne.TextAlignCenter
-
-	backBtn := widget.NewButtonWithIcon("Start New Scan", theme.ViewRefreshIcon(), func() {
-		state.Groups = nil
-		state.CurrentGroupIndex = 0
-		state.DeletedCount = 0
-		state.FreedBytes = 0
-		state.FolderPath = ""
-		state.updateContent(DuplicateFinderWidget(state))
-	})
-	backBtn.Importance = widget.HighImportance
-
-	quitBtn := widget.NewButtonWithIcon("Quit", theme.CancelIcon(), func() {
-		state.Window.Close()
-	})
-
-	btnRow := container.NewHBox(backBtn, quitBtn)
-
-	content := container.NewVBox(
-		icon,
-		title,
-		resultLabel,
-		subLabel,
-		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), btnRow, layout.NewSpacer()),
-		layout.NewSpacer(),
-	)
-
-	return container.NewCenter(content)
 }
 
 func moveToTrash(path string) error {

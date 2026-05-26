@@ -135,8 +135,8 @@ func isNewerVersion(current, latest string) bool {
 
 	for i := 0; i < len(currParts) && i < len(lateParts); i++ {
 		var c, l int
-		fmt.Sscanf(currParts[i], "%d", &c)
-		fmt.Sscanf(lateParts[i], "%d", &l)
+		_, _ = fmt.Sscanf(currParts[i], "%d", &c)
+		_, _ = fmt.Sscanf(lateParts[i], "%d", &l)
 
 		if l > c {
 			return true
@@ -177,7 +177,7 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 	}
 
 	if downloadURL == "" {
-		dialog.ShowError(fmt.Errorf("could not find update asset for %s-%s\nExpected: %s\nAvailable assets: %d", 
+		dialog.ShowError(fmt.Errorf("could not find update asset for %s-%s\nExpected: %s\nAvailable assets: %d",
 			runtime.GOOS, runtime.GOARCH, pattern, len(release.Assets)), state.Window)
 		return
 	}
