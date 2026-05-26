@@ -169,10 +169,20 @@ jobs:
           
           ## Installation
           
-          ### macOS
-          Download `dupclean-darwin-arm64.pkg` (for Apple Silicon) or `dupclean-darwin-amd64.pkg` (for Intel).
-          Double-click the PKG to install DupClean to your Applications folder. 
-          *Note: The installer automatically fixes permission issues so you can run the app immediately.*
+          ### macOS (Recommended: Homebrew)
+          To avoid security warnings, the easiest way to install is via Homebrew:
+          ```bash
+          brew install PopolQue/dupclean/dupclean
+          ```
+          *(Note: This requires you to have the PopolQue tap added or run `brew install --formula https://raw.githubusercontent.com/PopolQue/dupclean/main/dupclean.rb`)*
+          
+          ### macOS (Installer)
+          1. Download `dupclean-darwin-arm64.pkg` (Apple Silicon) or `dupclean-darwin-amd64.pkg` (Intel).
+          2. Double-click the file. If it shows a security warning:
+             - Go to **System Settings > Privacy & Security**.
+             - Scroll down to **Security**.
+             - Click **Open Anyway** (Dennoch öffnen) for DupClean.
+          3. Follow the wizard. Once installed, the app in your Applications folder will work without further warnings.
           
           ### Linux
           Download the appropriate tarball, extract it, and run the `dupclean` binary.
