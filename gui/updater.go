@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -297,6 +298,14 @@ func performUpdate(url string, setProgress func(float64)) error {
 
 	err = installNewBinary(newBinaryPath, executable)
 	if err != nil {
+		// If it's a permission error on macOS, try elevation via osascript
+		if strings.Contains(err.Error(), "permission denied") && runtime.GOOS == "darwin" {
+			if elevErr := macOSInstallWithElevation(newBinaryPath, executable); elevErr == nil {
+				setProgress(1.0)
+				return nil
+			}
+		}
+
 		// If it's a permission error on macOS/Linux, give better instructions
 		if strings.Contains(err.Error(), "permission denied") {
 			if runtime.GOOS == "darwin" && strings.HasPrefix(executable, "/Applications/") {
@@ -314,6 +323,18 @@ func performUpdate(url string, setProgress func(float64)) error {
 
 	setProgress(1.0)
 	return nil
+}
+
+// macOSInstallWithElevation uses osascript to request administrator privileges for the file move
+func macOSInstallWithElevation(src, dst string) error {
+	// do shell script in AppleScript uses /bin/sh. We use AppleScript's 'quoted form of' to handle spaces safely.
+	// The AppleScript command looks like:
+	// do shell script "cp -f " & quoted form of "/src" & " " & quoted form of "/dst" & " && chmod 755 " & quoted form of "/dst" with administrator privileges
+	asCommand := fmt.Sprintf("do shell script \"cp -f \" & quoted form of %q & \" \" & quoted form of %q & \" && chmod 755 \" & quoted form of %q with administrator privileges", 
+		src, dst, dst)
+	
+	cmd := exec.Command("osascript", "-e", asCommand)
+	return cmd.Run()
 }
 
 // copyFile is a fallback for os.Rename when moving across filesystems or when rename fails
