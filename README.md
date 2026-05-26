@@ -11,6 +11,7 @@ A fast, content-aware duplicate file scanner for music producers, DJs, photograp
 ## Features
 
 ### Core Features
+
 - **Multi-mode scanning** — Audio, general files, or photos with similarity detection
 - **Content-aware detection** — Finds duplicates by hash, not filename
 - **Audio preview** — Listen to files before deciding which to keep
@@ -23,7 +24,7 @@ A fast, content-aware duplicate file scanner for music producers, DJs, photograp
 ### Scanner Modes
 
 | Mode | Description | Best For |
-|------|-------------|----------|
+| ---- | ----------- | -------- |
 | **audio** | SHA-256 hashing for audio files | Music producers, DJs |
 | **byte** | SHA-256 hashing for all file types | Documents, archives, any files |
 | **photo** | Perceptual hashing (pHash) | Photographers, image collections |
@@ -34,27 +35,35 @@ A fast, content-aware duplicate file scanner for music producers, DJs, photograp
 
 ### Full Version (with GUI)
 
-**macOS**
-1. Download `dupclean-darwin-arm64.tar.gz` from [Releases](https://github.com/PopolQue/dupclean/releases)
-2. Extract the archive
-3. Run `./dupclean-darwin-arm64` or move to Applications
+#### macOS
+
+1. Download `dupclean-darwin-arm64.pkg` from [Releases](https://github.com/PopolQue/dupclean/releases)
+2. Run `./dupclean-darwin-arm64.pkg` (your mac will tell you the file is broken)
+3. Go to System Settings > Privacy & Security.
+4. Scroll down to Security.
+5. Click Open Anyway for DupClean.
+6. Follow the wizard. Once installed you can launch DupClean
 
 If your Mac warns you that the file is damaged, try removing the quarantine:
+
 ```bash
 sudo xattr -d com.apple.quarantine dupclean-darwin-arm64
 ```
 
-**Windows**
+#### Windows
+
 1. Download `dupclean-windows-amd64.zip` from [Releases](https://github.com/PopolQue/dupclean/releases)
 2. Extract and run `dupclean-windows-amd64.exe`
 
-**Linux**
+#### Linux
+
 ```bash
 tar -xzf dupclean-linux-amd64.tar.gz
 ./dupclean-linux-amd64
 ```
 
-**Required dependencies:**
+##### Required dependencies
+
 - GTK (usually pre-installed on most distros)
 - `aplay` for audio preview (part of `alsa-utils`)
 - On headless servers: X11 forwarding or a desktop environment
@@ -71,14 +80,16 @@ Download the appropriate binary for your platform from [Releases](https://github
 
 ### GUI Mode
 
-**Launch GUI:**
+#### Launch GUI
+
 ```bash
 dupclean
 # or explicitly
 dupclean --gui
 ```
 
-**Workflow:**
+#### Workflow
+
 1. Select a folder to scan
 2. Choose scan mode: Audio, All Files, or Photos
 3. Click **Start Scan** — an ignore rules dialog appears before scanning begins
@@ -89,25 +100,29 @@ dupclean --gui
 
 ### CLI Mode
 
-**Basic scan (audio mode):**
+#### Basic scan (audio mode)
+
 ```bash
 dupclean ~/Music
 ```
 
-**Scan all file types:**
+#### Scan all file types
+
 ```bash
 dupclean ~/Documents --mode=byte
 # or legacy alias:
 dupclean ~/Documents --all
 ```
 
-**Find similar photos:**
+#### Find similar photos
+
 ```bash
 dupclean ~/Photos --mode=photo
 dupclean ~/Photos --mode=photo --similarity=85  # Less strict (finds more matches)
 ```
 
-**Show help:**
+#### Show help
+
 ```bash
 dupclean --help
 ```
@@ -115,7 +130,7 @@ dupclean --help
 ### CLI Options
 
 | Option | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `--mode=<mode>` | Scanner mode: `audio` (default), `byte`, `photo` |
 | `--all` | Scan all file types (same as `--mode=byte`) |
 | `--similarity=<pct>` | Minimum similarity for photo mode (0-100, default: 90) |
@@ -124,17 +139,20 @@ dupclean --help
 
 ### Scan Modes Explained
 
-**Audio Mode (`--mode=audio`)**
+#### Audio Mode (`--mode=audio`)
+
 - Scans only audio files (.wav, .mp3, .flac, .aac, .ogg, etc.)
 - Uses 4-stage detection: size → partial hash → full hash → byte comparison
 - Fastest mode for music libraries
 
-**Byte Mode (`--mode=byte`)**
+#### Byte Mode (`--mode=byte`)
+
 - Scans ALL file types
 - Finds exact byte-for-byte duplicates
 - Perfect for documents, archives, mixed file collections
 
-**Photo Mode (`--mode=photo`)**
+#### Photo Mode (`--mode=photo`)
+
 - Scans image files (.jpg, .png, .gif, .webp, .bmp, .tiff)
 - Uses perceptual hashing to find SIMILAR (not just identical) photos
 - Catches: resized images, re-encoded JPEGs, lightly edited photos
@@ -151,7 +169,10 @@ dupclean --help
 3. **Full SHA-256 Hash** — Hashes entire file content for exact matches
 4. **Byte Comparison** — Final verification to guarantee 100% accuracy
 
-**Performance:** Up to **100x faster** than naive hashing because:
+#### Performance
+
+Up to **100x faster** than naive hashing because
+
 - Files with unique sizes are never hashed
 - Files with different content at the start are rejected after 8KB
 - Only likely duplicates undergo full hashing and verification
@@ -163,18 +184,22 @@ dupclean --help
 3. **Hamming Distance** — Compare hashes to find similar images
 4. **Group by Similarity** — Cluster images above similarity threshold
 
-**What it catches:**
-- ✅ Resized images
-- ✅ Re-encoded at different quality
-- ✅ Slight color adjustments
-- ✅ Cropped versions
-- ❌ Heavily edited or composite images
+#### What it catches
+
+| | Yes | No |
+| - | - | -- |
+| Resized images | x | |
+| Re-encoded at different quality | x | |
+| Slight color adjustments | x | |
+| Cropped versions | x | |
+| Heavily edited or composite images | | x |
 
 ---
 
 ## Interactive UI (CLI)
 
 For each duplicate group you'll see all copies with their:
+
 - Filename
 - Full path
 - Size
@@ -182,7 +207,7 @@ For each duplicate group you'll see all copies with their:
 
 Then choose which copy to **keep** (others go to Trash), or **skip** the group.
 
-```
+``` CLI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Group 1 of 4  (identical audio content)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -204,11 +229,11 @@ Then choose which copy to **keep** (others go to Trash), or **skip** the group.
 **Controls:**
 
 | Input | Action |
-|-------|--------|
+| ----- | ------ |
 | `1`, `2`, ... | Keep that file, trash the rest |
-| `s` or Enter  | Skip this group |
-| `a`           | Skip all remaining groups |
-| `q`           | Quit |
+| `s` or Enter | Skip this group |
+| `a` | Skip all remaining groups |
+| `q` | Quit |
 
 ---
 
@@ -227,7 +252,8 @@ Ignore rules reset after each scan and are not saved between sessions.
 
 Click the ▶ button on any file in a duplicate group to preview it. Starting a new preview automatically stops the previous one. Trashing a file also stops playback if that file is currently playing.
 
-**Preview uses native OS audio playback:**
+### Preview uses native OS audio playback
+
 - macOS: `afplay` (built-in)
 - Linux: `aplay` (install via `sudo apt install alsa-utils`)
 - Windows: PowerShell `Media.SoundPlayer`
@@ -237,12 +263,15 @@ Click the ▶ button on any file in a duplicate group to preview it. Starting a 
 ## Supported Formats
 
 ### Audio Formats
+
 `.wav` `.aiff` `.aif` `.mp3` `.flac` `.ogg` `.m4a` `.aac` `.opus` `.wma`
 
 ### Photo Formats
+
 `.jpg` `.jpeg` `.png` `.gif` `.webp` `.bmp` `.tiff` `.tif`
 
 ### All File Types (Byte Mode)
+
 Any file type — documents, archives, videos, executables, etc.
 
 ---
@@ -258,11 +287,13 @@ Any file type — documents, archives, videos, executables, etc.
 
 ## Building from Source
 
-**Prerequisites:**
+### Prerequisites
+
 - Go 1.25 or later
 - Git
 
-**Basic build:**
+### Basic build
+
 ```bash
 git clone https://github.com/PopolQue/dupclean.git
 cd dupclean
@@ -270,7 +301,8 @@ go build -o dupclean .
 ./dupclean
 ```
 
-**Build with GUI:**
+### Build with GUI
+
 ```bash
 go build -tags gui -o dupclean .
 ./dupclean
@@ -289,7 +321,7 @@ make release              # All platforms
 
 ## Project Structure
 
-```
+``` filetree
 dupclean/
 ├── main.go              # CLI entry point and argument parsing
 ├── gui/
