@@ -2,6 +2,7 @@ package ui
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -177,9 +178,9 @@ func TestStatsCalculation(t *testing.T) {
 // Test file sorting within groups by depth
 func TestFileSorting_ByDepth(t *testing.T) {
 	files := []scanner.FileInfo{
-		{Path: "/deep/nested/path/file.wav", Name: "file.wav", Size: 100, ModTime: time.Now()},
-		{Path: "/shallow/file.wav", Name: "file.wav", Size: 100, ModTime: time.Now()},
-		{Path: "/medium/path/file.wav", Name: "file.wav", Size: 100, ModTime: time.Now()},
+		{Path: filepath.FromSlash("/deep/nested/path/file.wav"), Name: "file.wav", Size: 100, ModTime: time.Now()},
+		{Path: filepath.FromSlash("/shallow/file.wav"), Name: "file.wav", Size: 100, ModTime: time.Now()},
+		{Path: filepath.FromSlash("/medium/path/file.wav"), Name: "file.wav", Size: 100, ModTime: time.Now()},
 	}
 
 	// Sort: prefer files higher in directory tree (shorter path)
@@ -194,7 +195,7 @@ func TestFileSorting_ByDepth(t *testing.T) {
 	}
 
 	// First file should be the shallowest
-	if !strings.HasPrefix(files[0].Path, "/shallow/") {
+	if !strings.Contains(files[0].Path, "shallow") {
 		t.Errorf("Shallowest file should be first, got %q", files[0].Path)
 	}
 }
@@ -206,8 +207,8 @@ func TestFileSorting_SameDepthDifferentTime(t *testing.T) {
 	newer := now.Add(time.Hour)
 
 	files := []scanner.FileInfo{
-		{Path: "/test/file_newer.wav", Name: "file_newer.wav", Size: 100, ModTime: newer},
-		{Path: "/test/file_older.wav", Name: "file_older.wav", Size: 100, ModTime: older},
+		{Path: filepath.FromSlash("/test/file_newer.wav"), Name: "file_newer.wav", Size: 100, ModTime: newer},
+		{Path: filepath.FromSlash("/test/file_older.wav"), Name: "file_older.wav", Size: 100, ModTime: older},
 	}
 
 	// Sort by mod time when depth is equal

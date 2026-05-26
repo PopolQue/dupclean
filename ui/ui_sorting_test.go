@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,15 +16,15 @@ import (
 func TestFileSorting_MultipleDepths(t *testing.T) {
 	now := time.Now()
 	files := []scanner.FileInfo{
-		{Path: "/a/b/c/d/e/file.txt", Name: "file.txt", Size: 100, ModTime: now},
-		{Path: "/a/file.txt", Name: "file.txt", Size: 100, ModTime: now},
-		{Path: "/a/b/c/file.txt", Name: "file.txt", Size: 100, ModTime: now},
-		{Path: "/a/b/file.txt", Name: "file.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/a/b/c/d/e/file.txt"), Name: "file.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/a/file.txt"), Name: "file.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/a/b/c/file.txt"), Name: "file.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/a/b/file.txt"), Name: "file.txt", Size: 100, ModTime: now},
 	}
 
 	sort.Slice(files, func(i, j int) bool {
-		di := strings.Count(files[i].Path, string('/'))
-		dj := strings.Count(files[j].Path, string('/'))
+		di := strings.Count(files[i].Path, string(os.PathSeparator))
+		dj := strings.Count(files[j].Path, string(os.PathSeparator))
 		if di != dj {
 			return di < dj
 		}
@@ -30,12 +32,11 @@ func TestFileSorting_MultipleDepths(t *testing.T) {
 	})
 
 	// Verify sorted by depth (shallowest first)
-	// After sorting: /a/file.txt(2), /a/b/file.txt(3), /a/b/c/file.txt(4), /a/b/c/d/e/file.txt(6)
 	expectedPaths := []string{
-		"/a/file.txt",
-		"/a/b/file.txt",
-		"/a/b/c/file.txt",
-		"/a/b/c/d/e/file.txt",
+		filepath.FromSlash("/a/file.txt"),
+		filepath.FromSlash("/a/b/file.txt"),
+		filepath.FromSlash("/a/b/c/file.txt"),
+		filepath.FromSlash("/a/b/c/d/e/file.txt"),
 	}
 
 	for i, expected := range expectedPaths {
@@ -49,15 +50,15 @@ func TestFileSorting_MultipleDepths(t *testing.T) {
 func TestFileSorting_IdicalDepthAndTime(t *testing.T) {
 	now := time.Now()
 	files := []scanner.FileInfo{
-		{Path: "/test/file1.txt", Name: "file1.txt", Size: 100, ModTime: now},
-		{Path: "/test/file2.txt", Name: "file2.txt", Size: 100, ModTime: now},
-		{Path: "/test/file3.txt", Name: "file3.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/test/file1.txt"), Name: "file1.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/test/file2.txt"), Name: "file2.txt", Size: 100, ModTime: now},
+		{Path: filepath.FromSlash("/test/file3.txt"), Name: "file3.txt", Size: 100, ModTime: now},
 	}
 
 	// Should not panic when all values are equal
 	sort.Slice(files, func(i, j int) bool {
-		di := strings.Count(files[i].Path, string('/'))
-		dj := strings.Count(files[j].Path, string('/'))
+		di := strings.Count(files[i].Path, string(os.PathSeparator))
+		dj := strings.Count(files[j].Path, string(os.PathSeparator))
 		if di != dj {
 			return di < dj
 		}
@@ -325,9 +326,10 @@ func TestMoveToTrash_ErrorMessages(t *testing.T) {
 func TestDuplicateGroup_ManyFiles(t *testing.T) {
 	files := make([]scanner.FileInfo, 100)
 	for i := 0; i < 100; i++ {
+		fileName := "file" + string(rune('0'+i/10)) + string(rune('0'+i%10)) + ".txt"
 		files[i] = scanner.FileInfo{
-			Path:    "/test/file" + string(rune('0'+i/10)) + string(rune('0'+i%10)) + ".txt",
-			Name:    "file" + string(rune('0'+i/10)) + string(rune('0'+i%10)) + ".txt",
+			Path:    filepath.Join(filepath.FromSlash("/test"), fileName),
+			Name:    fileName,
 			Size:    1024,
 			ModTime: time.Now(),
 		}
@@ -344,8 +346,8 @@ func TestDuplicateGroup_ManyFiles(t *testing.T) {
 
 	// Test sorting with many files
 	sort.Slice(files, func(i, j int) bool {
-		di := strings.Count(files[i].Path, string('/'))
-		dj := strings.Count(files[j].Path, string('/'))
+		di := strings.Count(files[i].Path, string(os.PathSeparator))
+		dj := strings.Count(files[j].Path, string(os.PathSeparator))
 		if di != dj {
 			return di < dj
 		}
@@ -361,8 +363,8 @@ func TestDuplicateGroup_VariousSizes(t *testing.T) {
 		group := scanner.DuplicateGroup{
 			Hash: "hash-" + string(rune(size)),
 			Files: []scanner.FileInfo{
-				{Path: "/test/file1.txt", Size: size},
-				{Path: "/test/file2.txt", Size: size},
+				{Path: filepath.FromSlash("/test/file1.txt"), Size: size},
+				{Path: filepath.FromSlash("/test/file2.txt"), Size: size},
 			},
 		}
 
