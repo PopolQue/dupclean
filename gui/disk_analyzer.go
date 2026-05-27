@@ -118,7 +118,7 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 		opts.MaxEntries = 500000 // Safety limit
 
 		result, errors, err := diskanalyzer.Walk(state.FolderPath, opts)
-		
+
 		fyne.Do(func() {
 			state.IsAnalyzing = false
 			comp.analyzeBtn.Enable()
@@ -167,7 +167,7 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 		func(id widget.TableCellID, obj fyne.CanvasObject) {
 			hbox := obj.(*fyne.Container)
 			node := largestDirs[id.Row]
-			
+
 			label := hbox.Objects[1].(*widget.Label)
 			sizeLabel := hbox.Objects[3].(*widget.Label)
 
@@ -179,13 +179,15 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	)
 	list.SetColumnWidth(0, 500)
 	list.SetColumnWidth(1, 150)
-	
+
 	// Better yet, just use a VBox with cards for the top offenders
 	offenders := container.NewVBox()
 	for i, node := range largestDirs {
-		if i >= 10 { break }
-		
-		card := widget.NewCard(node.Name, fsutil.FormatBytes(node.TotalSize), 
+		if i >= 10 {
+			break
+		}
+
+		card := widget.NewCard(node.Name, fsutil.FormatBytes(node.TotalSize),
 			widget.NewLabel(fmt.Sprintf("%d files in %s", len(node.Files), node.Path)))
 		offenders.Add(card)
 	}
@@ -194,7 +196,9 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	typeBreakdown := diskanalyzer.TypeBreakdown(result)
 	typeList := container.NewVBox()
 	for i, stat := range typeBreakdown {
-		if i >= 10 { break }
+		if i >= 10 {
+			break
+		}
 		row := container.NewHBox(
 			widget.NewLabel(stat.Ext),
 			layout.NewSpacer(),

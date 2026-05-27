@@ -83,7 +83,7 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 					IsDir:   false,
 				})
 			}
-			
+
 			// Always add file size to its parent directories for rollup
 			parent := filepath.Dir(path)
 			for {
@@ -107,7 +107,7 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 			if err != nil || path == root || !d.IsDir() {
 				return nil
 			}
-			
+
 			matched := false
 			for _, pattern := range patterns {
 				if m, _ := filepath.Match(pattern, d.Name()); m {
@@ -115,14 +115,14 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 					break
 				}
 			}
-			
+
 			if matched {
 				size := dirSizes[path]
-				// We don't add directory size to result.TotalSize here because its files 
-				// might have already been added if they matched. 
-				// Actually, the cleaner's logic usually treats a directory as a single unit 
+				// We don't add directory size to result.TotalSize here because its files
+				// might have already been added if they matched.
+				// Actually, the cleaner's logic usually treats a directory as a single unit
 				// if it matches a pattern (like a cache folder).
-				
+
 				result.Entries = append(result.Entries, EntryInfo{
 					Path:    path,
 					Size:    size,

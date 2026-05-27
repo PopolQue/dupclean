@@ -115,7 +115,7 @@ func moveToTrashWindows(path string) error {
 		return err
 	}
 
-	// Use the Shell.Application COM object which is the most reliable way 
+	// Use the Shell.Application COM object which is the most reliable way
 	// to move to the Recycle Bin via script without third-party tools.
 	// We use -EncodedCommand to avoid all quoting issues.
 	script := fmt.Sprintf(`
@@ -129,7 +129,7 @@ if (Test-Path $path) {
     }
 }
 `, strings.ReplaceAll(absPath, `"`, "`\""))
-	
+
 	// Actually, the safest way is to use the Recycler API directly if possible,
 	// but via CLI, passing it as a variable is better.
 	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", "-")

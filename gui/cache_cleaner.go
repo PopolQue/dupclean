@@ -208,7 +208,7 @@ func startCacheScan(state *CacheCleanerState) {
 		// Scan each target
 		opts := cleaner.ScanOptions{
 			Concurrency: state.Concurrency,
-			MinAge:       minAge,
+			MinAge:      minAge,
 			OnProgress: func(progress cleaner.Progress) {
 				fyne.Do(func() {
 					if progress.Total > 0 {
