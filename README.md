@@ -37,17 +37,27 @@ A fast, content-aware duplicate file scanner for music producers, DJs, photograp
 
 #### macOS
 
-1. Download `dupclean-darwin-arm64.pkg` from [Releases](https://github.com/PopolQue/dupclean/releases)
-2. Run `./dupclean-darwin-arm64.pkg` (your mac will tell you the file is broken)
-3. Go to System Settings > Privacy & Security.
-4. Scroll down to Security.
-5. Click Open Anyway for DupClean.
-6. Follow the wizard. Once installed you can launch DupClean
+##### Homebrew (Recommended)
 
-If your Mac warns you that the file is damaged, try removing the quarantine:
+Install both the GUI and CLI versions effortlessly:
 
 ```bash
-sudo xattr -d com.apple.quarantine dupclean-darwin-arm64
+brew install --cask PopolQue/dupclean/dupclean
+```
+
+##### Manual Installation
+
+1. Download `dupclean-darwin-arm64.pkg` (Apple Silicon) or `dupclean-darwin-amd64.pkg` (Intel) from [Releases](https://github.com/PopolQue/dupclean/releases)
+2. Double-click the file. If it shows a security warning:
+   - Go to **System Settings > Privacy & Security**.
+   - Scroll down to **Security**.
+   - Click **Open Anyway** for DupClean.
+3. Follow the wizard. Once installed, the app will be in your **Applications** folder.
+
+If you encounter issues with the PKG, you can remove the quarantine attribute manually:
+
+```bash
+sudo xattr -d com.apple.quarantine /path/to/downloaded/pkg
 ```
 
 #### Windows

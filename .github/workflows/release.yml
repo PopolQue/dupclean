@@ -113,6 +113,9 @@ jobs:
                  --scripts scripts \
                  ${{ matrix.artifact }}.pkg
         
+        # Create ZIP of the .app bundle for Cask
+        zip -r ${{ matrix.artifact }}.app.zip pkg_root/Applications/DupClean.app
+
         # Also keep the raw binary as an artifact
         cp pkg_root/Applications/DupClean.app/Contents/MacOS/dupclean ${{ matrix.artifact }}
 
@@ -173,11 +176,16 @@ jobs:
           ## Installation
           
           ### macOS (Recommended: Homebrew)
-          To avoid security warnings, the easiest way to install is via Homebrew:
+          To avoid security warnings and get both GUI and CLI:
+          ```bash
+          brew install --cask PopolQue/dupclean/dupclean
+          ```
+          *(Note: This requires you to have the PopolQue tap added or run `brew install --cask --formula https://raw.githubusercontent.com/PopolQue/dupclean/main/Casks/dupclean.rb`)*
+
+          For CLI-only (built from source):
           ```bash
           brew install PopolQue/dupclean/dupclean
           ```
-          *(Note: This requires you to have the PopolQue tap added or run `brew install --formula https://raw.githubusercontent.com/PopolQue/dupclean/main/dupclean.rb`)*
           
           ### macOS (Installer)
           1. Download `dupclean-darwin-arm64.pkg` (Apple Silicon) or `dupclean-darwin-amd64.pkg` (Intel).
