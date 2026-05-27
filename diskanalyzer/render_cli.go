@@ -196,9 +196,15 @@ func formatSize(n int64) string {
 		MB = KB * 1024
 		GB = MB * 1024
 		TB = GB * 1024
+		PB = TB * 1024
+		EB = PB * 1024
 	)
 
 	switch {
+	case n >= EB:
+		return fmt.Sprintf("%7.2f EB", float64(n)/float64(EB))
+	case n >= PB:
+		return fmt.Sprintf("%7.2f PB", float64(n)/float64(PB))
 	case n >= TB:
 		return fmt.Sprintf("%7.2f TB", float64(n)/float64(TB))
 	case n >= GB:

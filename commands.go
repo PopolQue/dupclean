@@ -31,13 +31,32 @@ func runAnalyze(args []string) {
 			case arg == "--by-type":
 				cliOpts.ByType = true
 			case strings.HasPrefix(arg, "--top="):
-				cliOpts.TopN, _ = strconv.Atoi(strings.TrimPrefix(arg, "--top="))
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, "--top="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --top: %v\n", err)
+					os.Exit(1)
+				}
+				cliOpts.TopN = val
 			case strings.HasPrefix(arg, "--depth="):
-				cliOpts.Depth, _ = strconv.Atoi(strings.TrimPrefix(arg, "--depth="))
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, "--depth="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --depth: %v\n", err)
+					os.Exit(1)
+				}
+				cliOpts.Depth = val
 			case strings.HasPrefix(arg, "--older-than="):
-				cliOpts.OlderThan, _ = strconv.Atoi(strings.TrimPrefix(arg, "--older-than="))
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, "--older-than="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --older-than: %v\n", err)
+					os.Exit(1)
+				}
+				cliOpts.OlderThan = val
 			case strings.HasPrefix(arg, "--min-size="):
-				sizeMB, _ := strconv.Atoi(strings.TrimPrefix(arg, "--min-size="))
+				sizeMB, err := strconv.Atoi(strings.TrimPrefix(arg, "--min-size="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --min-size: %v\n", err)
+					os.Exit(1)
+				}
 				cliOpts.MinSize = int64(sizeMB) * 1024 * 1024
 			case arg == "--no-hidden":
 				opts.IncludeHidden = false
@@ -46,10 +65,19 @@ func runAnalyze(args []string) {
 			case strings.HasPrefix(arg, "--exclude="):
 				opts.ExcludePaths = append(opts.ExcludePaths, strings.TrimPrefix(arg, "--exclude="))
 			case strings.HasPrefix(arg, "--workers="):
-				opts.Concurrency, _ = strconv.Atoi(strings.TrimPrefix(arg, "--workers="))
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, "--workers="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --workers: %v\n", err)
+					os.Exit(1)
+				}
+				opts.Concurrency = val
 			case arg == "--help":
 				printAnalyzeHelp()
 				os.Exit(0)
+			default:
+				fmt.Printf("Error: unknown flag '%s'\n", arg)
+				printAnalyzeHelp()
+				os.Exit(1)
 			}
 		} else if root == "" {
 			root = arg
@@ -110,7 +138,16 @@ func runDuplicateFinder(args []string) {
 			case strings.HasPrefix(arg, flagMode+"="):
 				mode = strings.TrimPrefix(arg, flagMode+"=")
 			case strings.HasPrefix(arg, flagSimilarity+"="):
-				_, _ = fmt.Sscanf(strings.TrimPrefix(arg, flagSimilarity+"="), "%d", &similarity)
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, flagSimilarity+"="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --similarity: %v\n", err)
+					os.Exit(1)
+				}
+				similarity = val
+			default:
+				fmt.Printf("Error: unknown flag '%s'\n", arg)
+				printHelp()
+				os.Exit(1)
 			}
 		} else if folder == "" {
 			folder = arg
@@ -189,13 +226,26 @@ func runClean(args []string) {
 			case strings.HasPrefix(arg, "--target="):
 				targetIDs = append(targetIDs, strings.TrimPrefix(arg, "--target="))
 			case strings.HasPrefix(arg, "--min-age="):
-				duration, _ := time.ParseDuration(strings.TrimPrefix(arg, "--min-age="))
+				duration, err := parseDuration(strings.TrimPrefix(arg, "--min-age="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --min-age: %v\n", err)
+					os.Exit(1)
+				}
 				opts.MinAge = duration
 			case strings.HasPrefix(arg, "--workers="):
-				opts.Concurrency, _ = strconv.Atoi(strings.TrimPrefix(arg, "--workers="))
+				val, err := strconv.Atoi(strings.TrimPrefix(arg, "--workers="))
+				if err != nil {
+					fmt.Printf("Error: invalid value for --workers: %v\n", err)
+					os.Exit(1)
+				}
+				opts.Concurrency = val
 			case arg == "--help":
 				printCleanHelp()
 				os.Exit(0)
+			default:
+				fmt.Printf("Error: unknown flag '%s'\n", arg)
+				printCleanHelp()
+				os.Exit(1)
 			}
 		}
 	}
@@ -216,4 +266,17 @@ func runClean(args []string) {
 	}
 
 	cleaner.RenderCLI(result, cliOpts)
+}
+
+// parseDuration wraps time.ParseDuration to support days ('d')
+func parseDuration(s string) (time.Duration, error) {
+	if strings.HasSuffix(s, "d") {
+		daysStr := strings.TrimSuffix(s, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return 0, err
+		}
+		return time.Duration(days) * 24 * time.Hour, nil
+	}
+	return time.ParseDuration(s)
 }

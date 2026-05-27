@@ -3,6 +3,7 @@ package cleaner
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -160,32 +161,16 @@ func isFileInUse(err error) bool {
 		return false
 	}
 	// Check for common "file in use" errors
-	errStr := err.Error()
-	return containsAny(errStr, []string{
+	errStr := strings.ToLower(err.Error())
+	substrs := []string{
 		"busy",
 		"in use",
 		"sharing violation",
 		"permission denied",
 		"access is denied",
-	})
-}
-
-func containsAny(s string, substrs []string) bool {
-	for _, sub := range substrs {
-		if contains(s, sub) {
-			return true
-		}
 	}
-	return false
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
+	for _, sub := range substrs {
+		if strings.Contains(errStr, sub) {
 			return true
 		}
 	}

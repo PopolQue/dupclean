@@ -144,9 +144,10 @@ func RunGUI() {
 	}
 
 	cacheState := NewCacheCleanerState(w)
+	diskState := NewDiskAnalyzerState(w)
 
 	log.Println("RunGUI: creating main layout with sidebar...")
-	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState))
+	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState, diskState))
 
 	// Set up cleanup on window close
 	w.SetOnClosed(func() {
@@ -160,7 +161,7 @@ func RunGUI() {
 }
 
 // createMainLayoutWithSidebar creates the main application layout with sidebar navigation
-func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerState) fyne.CanvasObject {
+func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerState, diskState *DiskAnalyzerState) fyne.CanvasObject {
 	// App header
 	appName := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
 	appName.TextSize = 24
@@ -181,7 +182,7 @@ func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerSta
 	// Create view widgets
 	duplicateFinderView := DuplicateFinderWidget(dupState)
 	cacheCleanerView := CacheCleanerWidget(cacheState)
-	diskAnalyzerView := createDiskAnalyzerPlaceholder()
+	diskAnalyzerView := DiskAnalyzerWidget(diskState)
 
 	updaterState := NewUpdaterState(dupState.Window)
 	updaterView := UpdaterWidget(updaterState)
@@ -189,6 +190,7 @@ func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerSta
 	// Store content container reference in states
 	dupState.ContentContainer = contentContainer
 	cacheState.ContentContainer = contentContainer
+	diskState.ContentContainer = contentContainer
 
 	// Navigation callback - updates content container
 	onNavigate := func(viewIndex int) {
@@ -231,35 +233,6 @@ func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerSta
 	)
 
 	return mainContent
-}
-
-func createDiskAnalyzerPlaceholder() fyne.CanvasObject {
-	title := canvas.NewText("Disk Analyzer", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
-
-	infoLabel := widget.NewLabel("Disk Analyzer is available in CLI mode only.\n\nUse: dupclean analyze <folder>")
-	infoLabel.Alignment = fyne.TextAlignCenter
-
-	icon := canvas.NewImageFromResource(theme.StorageIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
-	cliCmd := canvas.NewText("dupclean analyze ~/Music", theme.Color(theme.ColorNameForeground))
-	cliCmd.TextStyle = fyne.TextStyle{Monospace: true}
-	cliCmd.Alignment = fyne.TextAlignCenter
-
-	content := container.NewVBox(
-		icon,
-		title,
-		infoLabel,
-		layout.NewSpacer(),
-		cliCmd,
-		layout.NewSpacer(),
-	)
-
-	return container.NewCenter(content)
 }
 
 func createSelectionCard(state *AppState) *widget.Card {

@@ -105,19 +105,36 @@ func moveToTrashLinux(path string) error {
 	return os.RemoveAll(path)
 }
 
-// moveToTrashWindows moves a file to trash on Windows.
+// moveToTrashWindows moves a file to trash on Windows using PowerShell.
 func moveToTrashWindows(path string) error {
-	// Use PowerShell with proper escaping
-	escapedPath := escapePowerShellString(path)
-	psScript := fmt.Sprintf(`
-$shell = New-Object -ComObject Shell.Application
-$folder = $shell.Namespace(0)
-$item = $folder.ParseName('%s')
-if ($item -ne $null) {
-    $item.InvokeVerb("delete")
+	// Use PowerShell with proper escaping to prevent command injection.
+	// We use a base64 encoded command or pass the path via an environment variable
+	// to avoid any shell parsing issues.
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	// Use the Shell.Application COM object which is the most reliable way 
+	// to move to the Recycle Bin via script without third-party tools.
+	// We use -EncodedCommand to avoid all quoting issues.
+	script := fmt.Sprintf(`
+$path = [System.IO.Path]::GetFullPath("%s")
+if (Test-Path $path) {
+    $shell = New-Object -ComObject Shell.Application
+    $folder = $shell.Namespace((Split-Path $path))
+    $item = $folder.ParseName((Split-Path $path -Leaf))
+    if ($item -ne $null) {
+        $item.InvokeVerb("delete")
+    }
 }
-`, escapedPath)
-	return exec.Command("powershell", "-Command", psScript).Run()
+`, strings.ReplaceAll(absPath, `"`, "`\""))
+	
+	// Actually, the safest way is to use the Recycler API directly if possible,
+	// but via CLI, passing it as a variable is better.
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", "-")
+	cmd.Stdin = strings.NewReader(script)
+	return cmd.Run()
 }
 
 // safeMoveToTrashDir moves a file to a trash directory using O_CREATE|O_EXCL

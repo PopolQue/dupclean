@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"dupclean/cleaner"
 	"dupclean/internal/fsutil"
@@ -32,6 +34,8 @@ type CacheCleanerState struct {
 	IsCleaning             bool
 	CleanedCount           int
 	CleanedBytes           int64
+	MinAgeStr              string
+	Concurrency            int
 	cacheCleanerComponents *cacheCleanerComponents
 }
 
@@ -42,6 +46,8 @@ type cacheCleanerComponents struct {
 	cleanBtn      *widget.Button
 	progressLabel *widget.Label
 	progressBar   *widget.ProgressBar
+	minAgeEntry   *widget.Entry
+	workersSelect *widget.Select
 }
 
 // updateContent updates the content container (preserves sidebar)
@@ -69,6 +75,25 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	disclaimer.Alignment = fyne.TextAlignCenter
 
 	header := container.NewVBox(title, subtitle, disclaimer)
+
+	// Options
+	minAgeEntry := widget.NewEntry()
+	minAgeEntry.SetPlaceHolder("e.g. 24h, 7d")
+	minAgeEntry.SetText(state.MinAgeStr)
+	minAgeEntry.OnChanged = func(s string) {
+		state.MinAgeStr = s
+	}
+
+	workersSelect := widget.NewSelect([]string{"1", "2", "4", "8", "16"}, func(s string) {
+		val, _ := strconv.Atoi(s)
+		state.Concurrency = val
+	})
+	workersSelect.SetSelected(fmt.Sprintf("%d", state.Concurrency))
+
+	optionsForm := widget.NewForm(
+		widget.NewFormItem("Min Age", minAgeEntry),
+		widget.NewFormItem("Workers", workersSelect),
+	)
 
 	// Scan button
 	scanBtn := widget.NewButtonWithIcon("Scan for Caches", theme.SearchIcon(), func() {
@@ -109,6 +134,7 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	content := container.NewVBox(
 		header,
 		layout.NewSpacer(),
+		widget.NewCard("Options", "Filter and performance settings", optionsForm),
 		widget.NewCard("", "", container.NewVBox(scanBtn)),
 		progressCard,
 		scroll,
@@ -125,6 +151,8 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 		cleanBtn:      cleanBtn,
 		progressLabel: progressLabel,
 		progressBar:   progressBar,
+		minAgeEntry:   minAgeEntry,
+		workersSelect: workersSelect,
 	}
 
 	return container.NewCenter(content)
@@ -135,11 +163,26 @@ func startCacheScan(state *CacheCleanerState) {
 
 	comp := state.cacheCleanerComponents
 	comp.scanBtn.Disable()
+	comp.minAgeEntry.Disable()
+	comp.workersSelect.Disable()
+
 	comp.progressLabel.SetText("Scanning for caches...")
 	comp.progressBar.Show()
 	comp.progressBar.SetValue(0)
 
 	go func() {
+		// Parse min age
+		minAge, err := parseDuration(state.MinAgeStr)
+		if err != nil {
+			fyne.Do(func() {
+				comp.progressLabel.SetText(fmt.Sprintf("Invalid Min Age: %v", err))
+				comp.scanBtn.Enable()
+				comp.minAgeEntry.Enable()
+				comp.workersSelect.Enable()
+			})
+			return
+		}
+
 		// Get all cache targets
 		targets := cleaner.Registry()
 
@@ -164,7 +207,8 @@ func startCacheScan(state *CacheCleanerState) {
 
 		// Scan each target
 		opts := cleaner.ScanOptions{
-			Concurrency: 4,
+			Concurrency: state.Concurrency,
+			MinAge:       minAge,
 			OnProgress: func(progress cleaner.Progress) {
 				fyne.Do(func() {
 					if progress.Total > 0 {
@@ -180,6 +224,8 @@ func startCacheScan(state *CacheCleanerState) {
 			fyne.Do(func() {
 				comp.progressLabel.SetText(fmt.Sprintf("Error: %v", err))
 				comp.scanBtn.Enable()
+				comp.minAgeEntry.Enable()
+				comp.workersSelect.Enable()
 			})
 			return
 		}
@@ -572,5 +618,22 @@ func NewCacheCleanerState(window fyne.Window) *CacheCleanerState {
 	return &CacheCleanerState{
 		Window:          window,
 		SelectedTargets: make(map[string]bool),
+		Concurrency:     4, // default
 	}
+}
+
+// parseDuration wraps time.ParseDuration to support days ('d')
+func parseDuration(s string) (time.Duration, error) {
+	if s == "" {
+		return 0, nil
+	}
+	if strings.HasSuffix(s, "d") {
+		daysStr := strings.TrimSuffix(s, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return 0, err
+		}
+		return time.Duration(days) * 24 * time.Hour, nil
+	}
+	return time.ParseDuration(s)
 }

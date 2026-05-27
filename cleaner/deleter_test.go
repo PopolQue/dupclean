@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -86,11 +87,6 @@ func TestIsFileInUse(t *testing.T) {
 		t.Error("nil error should not be considered as file in use")
 	}
 
-	// Test with actual error strings
-	if !isFileInUse(&os.PathError{Op: "remove", Path: "test", Err: os.ErrPermission}) {
-		t.Log("Permission errors may be considered as file in use")
-	}
-
 	// Test specific strings
 	testCases := []struct {
 		errStr   string
@@ -101,69 +97,16 @@ func TestIsFileInUse(t *testing.T) {
 		{"sharing violation", true},
 		{"permission denied", true},
 		{"access is denied", true},
+		{"FILE BUSY", true}, // should be case-insensitive
 		{"file not found", false},
 		{"", false},
 	}
 
 	for _, tc := range testCases {
-		result := containsAny(tc.errStr, []string{"busy", "in use", "sharing violation", "permission denied", "access is denied"})
+		err := fmt.Errorf("%s", tc.errStr)
+		result := isFileInUse(err)
 		if result != tc.expected {
-			t.Errorf("containsAny(%q) = %v, want %v", tc.errStr, result, tc.expected)
+			t.Errorf("isFileInUse(error(%q)) = %v, want %v", tc.errStr, result, tc.expected)
 		}
-	}
-}
-
-func TestContainsAny(t *testing.T) {
-	tests := []struct {
-		s        string
-		substrs  []string
-		expected bool
-	}{
-		{"file is busy", []string{"busy", "in use"}, true},
-		{"file is in use", []string{"busy", "in use"}, true},
-		{"file not found", []string{"busy", "in use"}, false},
-		{"", []string{"busy"}, false},
-		{"busy", []string{}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.s, func(t *testing.T) {
-			result := containsAny(tt.s, tt.substrs)
-			if result != tt.expected {
-				t.Errorf("containsAny(%q, %v) = %v, want %v", tt.s, tt.substrs, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestContains(t *testing.T) {
-	if !contains("hello world", "world") {
-		t.Error("contains should find substring")
-	}
-	if contains("hello world", "foo") {
-		t.Error("contains should not find non-existent substring")
-	}
-}
-
-func TestFindSubstring(t *testing.T) {
-	tests := []struct {
-		s        string
-		substr   string
-		expected bool
-	}{
-		{"hello world", "world", true},
-		{"hello world", "foo", false},
-		{"", "foo", false},
-		{"foo", "", true},
-		{"FOO", "foo", false}, // case sensitive
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.s+"-"+tt.substr, func(t *testing.T) {
-			result := findSubstring(tt.s, tt.substr)
-			if result != tt.expected {
-				t.Errorf("findSubstring(%q, %q) = %v, want %v", tt.s, tt.substr, result, tt.expected)
-			}
-		})
 	}
 }
