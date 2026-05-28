@@ -2,7 +2,6 @@ package cleaner
 
 import (
 	"os"
-	"runtime"
 	"testing"
 )
 
@@ -31,10 +30,7 @@ func TestGetLogsTargetsCrossPlatform(t *testing.T) {
 }
 
 func TestGetLogsTargetsMac_Platform(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("Skipping macOS test on " + runtime.GOOS)
-	}
-	originalHome, _ := os.UserHomeDir()
+	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
@@ -62,9 +58,6 @@ func TestGetLogsTargetsMac_Platform(t *testing.T) {
 }
 
 func TestGetLogsTargetsLinux_Platform(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping Linux test on " + runtime.GOOS)
-	}
 	targets := getLogsTargetsLinux()
 
 	if len(targets) == 0 {
@@ -83,9 +76,6 @@ func TestGetLogsTargetsLinux_Platform(t *testing.T) {
 }
 
 func TestGetLogsTargetsWindows_Platform(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping Windows test on " + runtime.GOOS)
-	}
 	targets := getLogsTargetsWindows()
 
 	if len(targets) == 0 {

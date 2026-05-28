@@ -3,7 +3,6 @@ package cleaner
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -16,7 +15,7 @@ func TestGetBrowserTargetsCrossPlatform(t *testing.T) {
 
 	// Should return targets for current OS
 	if len(targets) == 0 {
-		t.Skip("No browser targets for this OS (expected in some environments)")
+		t.Log("No browser targets for this OS (expected in some environments)")
 	}
 
 	// Verify all targets have required fields
@@ -37,10 +36,7 @@ func TestGetBrowserTargetsCrossPlatform(t *testing.T) {
 }
 
 func TestGetBrowserTargetsMac_Platform(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("Skipping macOS test on " + runtime.GOOS)
-	}
-	originalHome, _ := os.UserHomeDir()
+	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
@@ -72,10 +68,7 @@ func TestGetBrowserTargetsMac_Platform(t *testing.T) {
 }
 
 func TestGetBrowserTargetsLinux_Platform(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping Linux test on " + runtime.GOOS)
-	}
-	originalHome, _ := os.UserHomeDir()
+	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
@@ -107,9 +100,6 @@ func TestGetBrowserTargetsLinux_Platform(t *testing.T) {
 }
 
 func TestGetBrowserTargetsWindows_Platform(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping Windows test on " + runtime.GOOS)
-	}
 	originalAppData := os.Getenv("LOCALAPPDATA")
 	defer func() {
 		if originalAppData != "" {

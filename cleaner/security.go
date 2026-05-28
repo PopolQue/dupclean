@@ -11,6 +11,9 @@ import (
 	"dupclean/internal/trash"
 )
 
+// execCommand is used for mocking in tests
+var execCommand = exec.Command
+
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
 func SafePlayMedia(path string) (*exec.Cmd, error) {
 	if err := validateMediaPath(path); err != nil {
@@ -21,16 +24,16 @@ func SafePlayMedia(path string) (*exec.Cmd, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("afplay", absPath), nil
+		return execCommand("afplay", absPath), nil
 	case "linux":
-		return exec.Command("aplay", absPath), nil
+		return execCommand("aplay", absPath), nil
 	case "windows":
 		escapedPath := escapePowerShellString(absPath)
 		psScript := `
 $player = New-Object Media.SoundPlayer '` + escapedPath + `'
 $player.PlaySync()
 `
-		return exec.Command("powershell", "-Command", psScript), nil
+		return execCommand("powershell", "-Command", psScript), nil
 	default:
 		return nil, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}

@@ -2,7 +2,6 @@ package cleaner
 
 import (
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -32,10 +31,7 @@ func TestGetSystemTargetsCrossPlatform(t *testing.T) {
 }
 
 func TestGetMacOSTargets_Platform(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("Skipping macOS test on " + runtime.GOOS)
-	}
-	originalHome, _ := os.UserHomeDir()
+	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
@@ -59,9 +55,6 @@ func TestGetMacOSTargets_Platform(t *testing.T) {
 }
 
 func TestGetLinuxTargets_Platform(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping Linux test on " + runtime.GOOS)
-	}
 	targets := getLinuxTargets()
 
 	if len(targets) == 0 {
@@ -93,9 +86,6 @@ func TestGetLinuxTargets_Platform(t *testing.T) {
 }
 
 func TestGetWindowsTargets_Platform(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Skipping Windows test on " + runtime.GOOS)
-	}
 	originalAppData := os.Getenv("LOCALAPPDATA")
 	originalTemp := os.Getenv("TEMP")
 	defer func() {
