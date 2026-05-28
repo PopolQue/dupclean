@@ -57,10 +57,6 @@ func NewUpdaterState(w fyne.Window) *UpdaterState {
 }
 
 func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
-	title := canvas.NewText("Check for Updates", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
 	versionLabel := widget.NewLabel(fmt.Sprintf("Current Version: %s", state.CurrentVersion))
 	statusLabel := widget.NewLabel("Click the button below to check for updates.")
 
@@ -99,17 +95,19 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		showChangelog(state.Window)
 	})
 
-	content := container.NewVBox(
-		title,
+	body := container.NewVBox(
 		versionLabel,
 		layout.NewSpacer(),
-		statusLabel,
-		progressBar,
-		checkBtn,
+		widget.NewCard("Update Status", "", container.NewVBox(
+			statusLabel,
+			progressBar,
+		)),
+		layout.NewSpacer(),
+		container.NewHBox(layout.NewSpacer(), checkBtn, layout.NewSpacer()),
 		viewChangelogBtn,
 	)
 
-	return container.NewCenter(content)
+	return createToolPage("Check for Updates", "Keep DupClean up to date with the latest features", body)
 }
 
 func checkForUpdates() (*GitHubRelease, error) {

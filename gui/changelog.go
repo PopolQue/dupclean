@@ -45,10 +45,10 @@ func showChangelog(w fyne.Window) {
 
 	// Most Recent Update Component
 	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(`• **Complete UI Rebranding**: Modern dark theme inspired by our new app icon.
-• **New Color Palette**: Vibrant purple and deep dark indigo tones for a premium feel.
-• **Enhanced Visuals**: Added logo to the main header and branded accent bars to all sections.
-• **Custom Theme**: Fully implemented custom Fyne theme for consistent branding.`)
+	recentContent := widget.NewRichTextFromMarkdown(`• **Windows Compatibility**: Improved test reliability and filesystem handling for Windows.
+• **Code Quality**: Resolved several linting warnings and formatting issues.
+• **CI Pipeline**: Added automated Windows testing to our GitHub Actions workflow.
+• **UI Polish**: Fixed minor layout issues in the Disk Analyzer.`)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	recentComponent := container.NewVBox(
@@ -58,14 +58,14 @@ func showChangelog(w fyne.Window) {
 
 	// Changelog History Component
 	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.4 Recap**
-• Unified UI headers across all sections.
-• Refined sidebar styling with better padding.
-• Modernized theme API usage and resolved linting warnings.
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.4.0 Recap**
+• Complete UI Rebranding: Modern dark theme inspired by our new app icon.
+• New Color Palette: Vibrant purple and deep dark indigo tones for a premium feel.
+• Custom Theme: Fully implemented custom Fyne theme for consistent branding.
 
-**v0.4.3.3 Recap**
-• Improved update popup with a proper header and version info.
-• Added a dedicated component for recent highlights.`)
+**v0.4.3.4 Recap**
+• Unified UI headers across all sections.
+• Modernized theme API usage and resolved linting warnings.`)
 	historyContent.Wrapping = fyne.TextWrapWord
 
 	historyComponent := container.NewVBox(

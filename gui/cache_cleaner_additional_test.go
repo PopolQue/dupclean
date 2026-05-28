@@ -90,24 +90,12 @@ func TestCacheCleanerState_UpdateContent_Nil(t *testing.T) {
 func TestCacheCleanerComponents_Init(t *testing.T) {
 	components := &cacheCleanerComponents{
 		scanBtn:       nil,
-		results:       nil,
-		scroll:        nil,
-		cleanBtn:      nil,
 		progressLabel: nil,
 		progressBar:   nil,
 	}
 
 	if components.scanBtn != nil {
 		t.Error("scanBtn should be nil initially")
-	}
-	if components.results != nil {
-		t.Error("results should be nil initially")
-	}
-	if components.scroll != nil {
-		t.Error("scroll should be nil initially")
-	}
-	if components.cleanBtn != nil {
-		t.Error("cleanBtn should be nil initially")
 	}
 	if components.progressLabel != nil {
 		t.Error("progressLabel should be nil initially")

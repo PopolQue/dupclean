@@ -17,9 +17,6 @@ import (
 
 // DuplicateFinderWidget creates the duplicate finder UI component
 func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
-	// Header
-	header := createSectionHeader("Duplicate Finder", "Find and remove duplicate files by content hash")
-
 	// Folder selection card
 	folderCard := createSelectionCard(state)
 
@@ -32,29 +29,25 @@ func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
 	// Action buttons
 	scanBtn := createScanButton(state, folderCard, progressCard)
 
-	content := container.NewVBox(
-		header,
+	body := container.NewVBox(
 		folderCard,
 		optionsCard,
 		progressCard,
 		layout.NewSpacer(),
 		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
-		layout.NewSpacer(),
 	)
 
-	return container.NewCenter(content)
+	return createToolPage("Duplicate Finder", "Find and remove duplicate files by content hash", body)
 }
 
 // DuplicateResultsWidget creates the duplicate results UI component
 func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
-	// Header
 	statsText := fmt.Sprintf(
 		"%d groups | %d extra copies | %s wasted",
 		len(state.Groups),
 		state.Stats.TotalDupes,
 		fsutil.FormatBytes(state.Stats.WastedBytes),
 	)
-	header := createSectionHeader("Scan Results", statsText)
 
 	// Group display
 	groupDisplay := createGroupDisplay(state)
@@ -92,14 +85,13 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 
 	actionButtons := container.NewHBox(cancelBtn, layout.NewSpacer(), smartBtn, cleanBtn)
 
-	content := container.NewVBox(
-		header,
+	body := container.NewVBox(
 		groupDisplay,
 		widget.NewSeparator(),
 		actionButtons,
 	)
 
-	return container.NewBorder(nil, nil, nil, nil, content)
+	return createToolPage("Scan Results", statsText, body)
 }
 
 // DuplicateNoResultsWidget creates the "no duplicates found" UI
@@ -127,16 +119,19 @@ func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
 	})
 	backBtn.Importance = widget.HighImportance
 
-	content := container.NewVBox(
-		icon,
-		title,
-		statsLabel,
+	body := container.NewVBox(
 		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
+		container.NewCenter(container.NewVBox(
+			icon,
+			title,
+			statsLabel,
+			layout.NewSpacer(),
+			container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
+		)),
 		layout.NewSpacer(),
 	)
 
-	return container.NewCenter(content)
+	return createToolPage("Scan Complete", "No duplicates were found", body)
 }
 
 // DuplicateFinalWidget creates the completion screen
@@ -184,17 +179,20 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 
 	btnRow := container.NewHBox(backBtn, quitBtn)
 
-	content := container.NewVBox(
-		icon,
-		title,
-		resultLabel,
-		subLabel,
+	body := container.NewVBox(
 		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), btnRow, layout.NewSpacer()),
+		container.NewCenter(container.NewVBox(
+			icon,
+			title,
+			resultLabel,
+			subLabel,
+			layout.NewSpacer(),
+			container.NewHBox(layout.NewSpacer(), btnRow, layout.NewSpacer()),
+		)),
 		layout.NewSpacer(),
 	)
 
-	return container.NewCenter(content)
+	return createToolPage("Cleaning Finished", "Summary of the cleaning operation", body)
 }
 
 // ShowDuplicateResults shows the appropriate results screen based on scan results

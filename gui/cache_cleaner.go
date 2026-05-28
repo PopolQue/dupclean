@@ -41,9 +41,6 @@ type CacheCleanerState struct {
 
 type cacheCleanerComponents struct {
 	scanBtn       *widget.Button
-	results       *fyne.Container
-	scroll        *container.Scroll
-	cleanBtn      *widget.Button
 	progressLabel *widget.Label
 	progressBar   *widget.ProgressBar
 	minAgeEntry   *widget.Entry
@@ -60,15 +57,6 @@ func (state *CacheCleanerState) updateContent(content fyne.CanvasObject) {
 
 // CacheCleanerWidget creates the cache cleaner UI component
 func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
-	// Header
-	header := createSectionHeader("Cache Cleaner", "Clean system, browser, and application caches")
-
-	// Disclaimer
-	disclaimer := canvas.NewText("⚠️ Actual freed space may vary - cache files change constantly", theme.Color(theme.ColorNameWarning))
-	disclaimer.TextSize = 12
-	disclaimer.TextStyle = fyne.TextStyle{Italic: true}
-	disclaimer.Alignment = fyne.TextAlignCenter
-
 	// Options
 	minAgeEntry := widget.NewEntry()
 	minAgeEntry.SetPlaceHolder("e.g. 24h, 7d")
@@ -104,51 +92,31 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 		progressBar,
 	))
 
-	// Results container
-	resultsContainer := container.NewVBox()
-	scroll := container.NewScroll(resultsContainer)
-	scroll.SetMinSize(fyne.NewSize(700, 400))
-	scroll.Hide()
+	// Disclaimer
+	disclaimer := canvas.NewText("⚠️ Actual freed space may vary - cache files change constantly", theme.Color(theme.ColorNameWarning))
+	disclaimer.TextSize = 12
+	disclaimer.TextStyle = fyne.TextStyle{Italic: true}
+	disclaimer.Alignment = fyne.TextAlignCenter
 
-	// Action buttons
-	cleanBtn := widget.NewButtonWithIcon("Clean Selected", theme.ConfirmIcon(), func() {
-		startCacheClean(state, resultsContainer, scroll, progressLabel, progressBar)
-	})
-	cleanBtn.Importance = widget.HighImportance
-	cleanBtn.Disable()
-
-	cancelBtn := widget.NewButton("Cancel", func() {
-		state.Window.SetContent(CacheCleanerWidget(state))
-	})
-	cancelBtn.Importance = widget.LowImportance
-
-	buttonRow := container.NewHBox(layout.NewSpacer(), cancelBtn, cleanBtn, layout.NewSpacer())
-
-	content := container.NewVBox(
-		header,
-		layout.NewSpacer(),
+	body := container.NewVBox(
 		widget.NewCard("Options", "Filter and performance settings", optionsForm),
-		widget.NewCard("", "", container.NewVBox(scanBtn)),
+		layout.NewSpacer(),
+		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
 		progressCard,
-		scroll,
 		layout.NewSpacer(),
-		buttonRow,
-		layout.NewSpacer(),
+		disclaimer,
 	)
 
 	// Store references for updates
 	state.cacheCleanerComponents = &cacheCleanerComponents{
 		scanBtn:       scanBtn,
-		results:       resultsContainer,
-		scroll:        scroll,
-		cleanBtn:      cleanBtn,
 		progressLabel: progressLabel,
 		progressBar:   progressBar,
 		minAgeEntry:   minAgeEntry,
 		workersSelect: workersSelect,
 	}
 
-	return container.NewCenter(content)
+	return createToolPage("Cache Cleaner", "Clean system, browser, and application caches", body)
 }
 
 func startCacheScan(state *CacheCleanerState) {
@@ -236,16 +204,13 @@ func startCacheScan(state *CacheCleanerState) {
 		}
 
 		fyne.Do(func() {
-			comp.progressLabel.SetText(fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize)))
-			comp.progressBar.SetValue(1.0)
-			log.Printf("[CacheCleaner] Total cleanable: %s across %d targets", fsutil.FormatBytes(state.TotalSize), len(state.Targets))
-			displayCacheResults(state, comp.results, comp.scroll, comp.cleanBtn)
+			displayCacheResults(state)
 		})
 	}()
 }
 
-func displayCacheResults(state *CacheCleanerState, resultsContainer *fyne.Container, scroll *container.Scroll, cleanBtn *widget.Button) {
-	resultsContainer.Objects = nil
+func displayCacheResults(state *CacheCleanerState) {
+	resultsContainer := container.NewVBox()
 
 	// Group by category
 	categories := make(map[string][]*cleaner.CleanTarget)
@@ -262,8 +227,16 @@ func displayCacheResults(state *CacheCleanerState, resultsContainer *fyne.Contai
 	}
 	sort.Strings(catNames)
 
+	// Action buttons
+	cleanBtn := widget.NewButtonWithIcon("Clean Selected", theme.ConfirmIcon(), func() {
+		startCacheClean(state)
+	})
+	cleanBtn.Importance = widget.HighImportance
+
 	// Create total label - will be updated on selection
 	totalLabel := canvas.NewText("Selected: 0 B", theme.Color(theme.ColorNamePrimary))
+	totalLabel.TextSize = 18
+	totalLabel.TextStyle = fyne.TextStyle{Bold: true}
 
 	// Create category sections
 	for _, cat := range catNames {
@@ -283,14 +256,23 @@ func displayCacheResults(state *CacheCleanerState, resultsContainer *fyne.Contai
 		resultsContainer.Add(layout.NewSpacer())
 	}
 
-	// Add total label
-	totalLabel.TextSize = 18
-	totalLabel.TextStyle = fyne.TextStyle{Bold: true}
-	resultsContainer.Add(totalLabel)
+	updateCacheTotal(state, totalLabel, cleanBtn)
 
-	scroll.Show()
-	scroll.Refresh()
-	cleanBtn.Disable() // Disable until something is selected
+	cancelBtn := widget.NewButton("Cancel", func() {
+		state.updateContent(CacheCleanerWidget(state))
+	})
+	cancelBtn.Importance = widget.LowImportance
+
+	buttonRow := container.NewHBox(cancelBtn, layout.NewSpacer(), totalLabel, layout.NewSpacer(), cleanBtn)
+
+	body := container.NewVBox(
+		resultsContainer,
+		widget.NewSeparator(),
+		buttonRow,
+	)
+
+	subtitle := fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize))
+	state.updateContent(createToolPage("Scan Results", subtitle, body))
 }
 
 // createCacheTargetCard creates a card for a cache target
@@ -348,7 +330,7 @@ func updateCacheTotal(state *CacheCleanerState, totalLabel *canvas.Text, cleanBt
 	}
 }
 
-func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container, scroll *container.Scroll, progressLabel *widget.Label, progressBar *widget.ProgressBar) {
+func startCacheClean(state *CacheCleanerState) {
 	// Calculate selected size
 	var selectedSize int64
 	var selectedTargets []*cleaner.CleanTarget
@@ -374,8 +356,21 @@ func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container,
 			}
 
 			state.IsCleaning = true
-			progressLabel.SetText("Cleaning...")
+
+			// Show progress view
+			progressLabel := widget.NewLabel("Cleaning...")
+			progressBar := widget.NewProgressBar()
 			progressBar.SetValue(0)
+
+			progressBody := container.NewVBox(
+				layout.NewSpacer(),
+				widget.NewCard("Progress", "Cleaning selected caches", container.NewVBox(
+					progressLabel,
+					progressBar,
+				)),
+				layout.NewSpacer(),
+			)
+			state.updateContent(createToolPage("Cleaning", "Please wait while we clean your system", progressBody))
 
 			go func() {
 				cleaned := 0
@@ -400,10 +395,9 @@ func startCacheClean(state *CacheCleanerState, resultsContainer *fyne.Container,
 				state.IsCleaning = false
 
 				log.Printf("[CacheCleaner] Total deleted: %d items, %s", cleaned, fsutil.FormatBytes(cleanedBytes))
-				log.Printf("[CacheCleaner] Expected to delete: %s", fsutil.FormatBytes(selectedSize))
 
 				fyne.Do(func() {
-					showCacheCleanComplete(state, progressLabel, progressBar, resultsContainer, scroll)
+					showCacheCleanComplete(state)
 				})
 			}()
 		},
@@ -563,9 +557,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 	return deleted, freedBytes, nil
 }
 
-func showCacheCleanComplete(state *CacheCleanerState, progressLabel *widget.Label, progressBar *widget.ProgressBar, resultsContainer *fyne.Container, scroll *container.Scroll) {
-	resultsContainer.Objects = nil
-
+func showCacheCleanComplete(state *CacheCleanerState) {
 	title := canvas.NewText("Cleaning Complete!", theme.Color(theme.ColorNameSuccess))
 	title.TextSize = 32
 	title.TextStyle = fyne.TextStyle{Bold: true}
@@ -587,23 +579,24 @@ func showCacheCleanComplete(state *CacheCleanerState, progressLabel *widget.Labe
 	subLabel.Alignment = fyne.TextAlignCenter
 
 	backBtn := widget.NewButtonWithIcon("Scan Again", theme.ViewRefreshIcon(), func() {
-		// Refresh the cache cleaner widget
 		state.updateContent(CacheCleanerWidget(state))
 	})
 	backBtn.Importance = widget.HighImportance
 
-	content := container.NewVBox(
-		icon,
-		title,
-		resultLabel,
-		subLabel,
+	body := container.NewVBox(
 		layout.NewSpacer(),
-		container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
+		container.NewCenter(container.NewVBox(
+			icon,
+			title,
+			resultLabel,
+			subLabel,
+			layout.NewSpacer(),
+			container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
+		)),
 		layout.NewSpacer(),
 	)
 
-	scroll.Content = container.NewCenter(content)
-	scroll.Refresh()
+	state.updateContent(createToolPage("Cleaning Finished", "Summary of the cleaning operation", body))
 }
 
 // NewCacheCleanerState creates a new cache cleaner state

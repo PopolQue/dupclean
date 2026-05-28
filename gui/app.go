@@ -130,6 +130,22 @@ func createSectionHeader(title, subtitle string) fyne.CanvasObject {
 	)
 }
 
+// createToolPage wraps a content in a standard tool layout with header and padding
+func createToolPage(title, subtitle string, content fyne.CanvasObject) fyne.CanvasObject {
+	header := createSectionHeader(title, subtitle)
+
+	// Main layout: Header at top, content in center
+	// Use Border to keep header fixed if we decide to scroll only the content,
+	// but for now, we'll follow a simpler VBox inside Scroll approach for consistent look
+
+	mainContent := container.NewVBox(
+		header,
+		content,
+	)
+
+	return container.NewPadded(container.NewScroll(mainContent))
+}
+
 // updateContent updates the content container (preserves sidebar)
 func (state *AppState) updateContent(content fyne.CanvasObject) {
 	state.mu.Lock()
@@ -531,11 +547,7 @@ func createGroupDisplay(state *AppState) fyne.CanvasObject {
 		accordion.Append(item)
 	}
 
-	// Wrap accordion in a scroll container
-	scroll := container.NewVScroll(accordion)
-	scroll.SetMinSize(fyne.NewSize(1000, 500))
-
-	return scroll
+	return accordion
 }
 
 func createFileCard(groupIndex, fileIndex int, f scanner.FileInfo, state *AppState) *widget.Card {

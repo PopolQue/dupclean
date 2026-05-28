@@ -30,14 +30,18 @@ type diskAnalyzerComponents struct {
 	folderEntry   *widget.Entry
 	progressLabel *widget.Label
 	progressBar   *widget.ProgressBar
-	resultsArea   *fyne.Container
+}
+
+// updateContent updates the content container (preserves sidebar)
+func (state *DiskAnalyzerState) updateContent(content fyne.CanvasObject) {
+	if state.ContentContainer != nil {
+		state.ContentContainer.Objects = []fyne.CanvasObject{content}
+		state.ContentContainer.Refresh()
+	}
 }
 
 // DiskAnalyzerWidget creates the disk analyzer UI component
 func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
-	// Header
-	header := createSectionHeader("Disk Analyzer", "Identify large files and folders taking up space")
-
 	// Folder selection
 	folderEntry := widget.NewEntry()
 	folderEntry.SetPlaceHolder("Select a folder to analyze...")
@@ -66,17 +70,16 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 	progressBar := widget.NewProgressBar()
 	progressBar.Hide()
 
-	// Results area
-	resultsArea := container.NewStack()
+	progressCard := widget.NewCard("", "", container.NewVBox(
+		progressLabel,
+		progressBar,
+	))
 
-	content := container.NewVBox(
-		header,
-		layout.NewSpacer(),
+	body := container.NewVBox(
 		widget.NewCard("Target Folder", "Select the directory you want to analyze", folderRow),
-		container.NewHBox(layout.NewSpacer(), analyzeBtn, layout.NewSpacer()),
-		container.NewVBox(progressLabel, progressBar),
 		layout.NewSpacer(),
-		resultsArea,
+		container.NewHBox(layout.NewSpacer(), analyzeBtn, layout.NewSpacer()),
+		progressCard,
 	)
 
 	state.components = &diskAnalyzerComponents{
@@ -84,10 +87,9 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 		folderEntry:   folderEntry,
 		progressLabel: progressLabel,
 		progressBar:   progressBar,
-		resultsArea:   resultsArea,
 	}
 
-	return container.NewScroll(content)
+	return createToolPage("Disk Analyzer", "Identify large files and folders taking up space", body)
 }
 
 func startDiskAnalysis(state *DiskAnalyzerState) {
@@ -127,7 +129,6 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 			}
 
 			state.Result = result
-			comp.progressLabel.SetText(fmt.Sprintf("Analysis complete: %d files found", result.FileCount))
 			displayAnalysisResults(state)
 		})
 	}()
@@ -142,36 +143,7 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	// Get largest directories
 	largestDirs := diskanalyzer.LargestDirs(result, 20)
 
-	// Create a list of largest directories
-	list := widget.NewTable(
-		func() (int, int) {
-			return len(largestDirs), 2
-		},
-		func() fyne.CanvasObject {
-			return container.NewHBox(
-				widget.NewIcon(theme.FolderIcon()),
-				widget.NewLabel("Directory Name"),
-				layout.NewSpacer(),
-				widget.NewLabel("Size"),
-			)
-		},
-		func(id widget.TableCellID, obj fyne.CanvasObject) {
-			hbox := obj.(*fyne.Container)
-			node := largestDirs[id.Row]
-
-			label := hbox.Objects[1].(*widget.Label)
-			sizeLabel := hbox.Objects[3].(*widget.Label)
-
-			if id.Col == 0 {
-				label.SetText(node.Name)
-				sizeLabel.SetText(fsutil.FormatBytes(node.TotalSize))
-			}
-		},
-	)
-	list.SetColumnWidth(0, 500)
-	list.SetColumnWidth(1, 150)
-
-	// Better yet, just use a VBox with cards for the top offenders
+	// Top offenders cards
 	offenders := container.NewVBox()
 	for i, node := range largestDirs {
 		if i >= 10 {
@@ -205,8 +177,20 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	)
 	tabs.SetTabLocation(container.TabLocationTop)
 
-	state.components.resultsArea.Objects = []fyne.CanvasObject{tabs}
-	state.components.resultsArea.Refresh()
+	// Back button
+	backBtn := widget.NewButtonWithIcon("Back", theme.ContentUndoIcon(), func() {
+		state.updateContent(DiskAnalyzerWidget(state))
+	})
+
+	body := container.NewVBox(
+		tabs,
+		widget.NewSeparator(),
+		container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
+	)
+
+	subtitle := fmt.Sprintf("Analysis complete: %d files found, %s total",
+		result.FileCount, fsutil.FormatBytes(result.TotalSize))
+	state.updateContent(createToolPage("Analysis Results", subtitle, body))
 }
 
 func NewDiskAnalyzerState(window fyne.Window) *DiskAnalyzerState {
