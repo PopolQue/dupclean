@@ -39,7 +39,7 @@ func showChangelog(w fyne.Window) {
 		container.NewHBox(
 			titleText,
 			layout.NewSpacer(),
-			canvas.NewText(fmt.Sprintf("v%s", version.Version), theme.ForegroundColor()),
+			canvas.NewText(fmt.Sprintf("%s", version.Version), theme.ForegroundColor()),
 		),
 		widget.NewSeparator(),
 	)
