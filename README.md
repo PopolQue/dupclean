@@ -1,25 +1,23 @@
-# DupClean — Redundant File Cleaner
+# DupClean — All-in-one Disk Cleanup Tool
 
 [![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml) ![Coverage](https://img.shields.io/badge/Coverage-45.2%25-yellow)
 
-A fast, content-aware duplicate file scanner for music producers, DJs, photographers, and anyone with a messy hard drive.
+A fast, content-aware disk cleanup suite for music producers, DJs, photographers, developers, and anyone with a messy hard drive.
 
-**The key insight:** Two files can have completely different names but identical (or similar) content. DupClean uses advanced hashing algorithms to catch every duplicate — and even finds similar photos!
+**The key insight:** Reclaiming disk space shouldn't require three different apps. DupClean combines an advanced duplicate finder (capable of detecting visually similar photos), a safe system/browser cache cleaner, and an interactive disk space analyzer into a single, unified interface.
 
 ---
 
 ## Features
 
-### Core Features
+### Unified Cleanup Suite
 
-- **Multi-mode scanning** — Audio, general files, or photos with similarity detection
-- **Content-aware detection** — Finds duplicates by hash, not filename
-- **Audio preview** — Listen to files before deciding which to keep
-- **Photo similarity** — Finds resized, re-encoded, or lightly edited photos
-- **Ignore rules** — Exclude specific folders or file extensions per scan
-- **Safe deletion** — Files are moved to Trash, never permanently deleted
-- **Cross-platform** — macOS, Windows, and Linux
-- **GUI + CLI** — Graphical interface for everyday use, terminal mode for power users
+- **Duplicate Finder** — Multi-mode scanning (Audio, Byte, Photo) with content-aware detection, audio preview, and photo similarity.
+- **Cache Cleaner** — Safely reclaim space by clearing browser, system, and developer (npm, go, yarn) caches.
+- **Disk Analyzer** — Fast, concurrent filesystem walker that visualizes your disk usage to find large hidden files and folders.
+- **Safe Deletion** — Files are moved to Trash, never permanently deleted.
+- **Cross-Platform** — Native support for macOS, Windows, and Linux.
+- **GUI + CLI** — Modern graphical interface for everyday use, terminal mode for power users.
 
 ### Scanner Modes
 
@@ -90,21 +88,27 @@ Download the appropriate binary for your platform from [Releases](https://github
 
 ### GUI Mode
 
-#### Launch GUI
+Launch DupClean from your Applications folder (macOS/Windows) or run `dupclean` in the terminal.
 
-```bash
-dupclean
-# or explicitly
-dupclean --gui
-```
+#### Duplicate Finder
+1. Select a folder to scan.
+2. Choose scan mode: Audio, All Files, or Photos.
+3. Click **Start Scan** — an ignore rules dialog appears before scanning begins.
+4. Review duplicate groups — preview files with ▶, use the checkbox to select files to keep, or use **Smart Select** to auto-resolve groups.
+5. Click **Clean Selected** to move unselected files to the Trash.
 
-#### Workflow
+#### Cache Cleaner
+1. Switch to the **Cache Cleaner** tab.
+2. Configure options: set a minimum age (e.g., `7d` to only clean files older than 7 days) to preserve active session data.
+3. Click **Scan for Caches** to find cleanable system, browser, and developer caches.
+4. Select the targets you want to clean (safe targets are pre-selected).
+5. Click **Clean Selected** to free up space.
 
-1. Select a folder to scan
-2. Choose scan mode: Audio, All Files, or Photos
-3. Click **Start Scan** — an ignore rules dialog appears before scanning begins
-4. Review duplicate groups — preview files with ▶, delete with 🗑, or use **Keep #1 & Delete Others**
-5. When done, a summary shows how many files were trashed and how much space was freed
+#### Disk Analyzer
+1. Switch to the **Disk Analyzer** tab.
+2. Select a target drive or folder.
+3. Click **Analyze Disk Space**.
+4. View the results to easily identify the top space-consuming folders and file types.
 
 ---
 
@@ -139,13 +143,16 @@ dupclean --help
 
 ### CLI Options
 
-| Option | Description |
-| ------ | ----------- |
+| Command / Option | Description |
+| ---------------- | ----------- |
+| `dupclean <path>` | Run the duplicate finder on the given path. |
 | `--mode=<mode>` | Scanner mode: `audio` (default), `byte`, `photo` |
 | `--all` | Scan all file types (same as `--mode=byte`) |
 | `--similarity=<pct>` | Minimum similarity for photo mode (0-100, default: 90) |
-| `--gui` | Launch GUI |
-| `--help` | Show help |
+| `dupclean analyze <path>` | Run the disk space analyzer on the given path. |
+| `dupclean clean` | Run the cache cleaner in CLI mode. |
+| `--gui` | Launch the graphical interface. |
+| `--help` | Show help for any command. |
 
 ### Scan Modes Explained
 
@@ -333,19 +340,13 @@ make release              # All platforms
 
 ``` filetree
 dupclean/
-├── main.go              # CLI entry point and argument parsing
-├── gui/
-│   └── app.go           # GUI implementation (Fyne)
-├── scanner/
-│   ├── types.go         # Scanner interface, Options, data models
-│   ├── registry.go      # Scanner registry and mode management
-│   ├── audio.go         # AudioScanner (SHA-256 for audio files)
-│   ├── byte.go          # ByteScanner (SHA-256 for all files)
-│   ├── photo.go         # PhotoScanner (perceptual hashing)
-│   └── utils.go         # Shared utilities (hashing, comparison)
-├── ui/
-│   └── ui.go            # Interactive terminal UI
-└── Makefile             # Build commands
+├── cmd/                 # CLI entry points and argument parsing (Cobra)
+├── gui/                 # Graphical interface implementation (Fyne)
+├── cleaner/             # Cache cleaning logic and target definitions
+├── diskanalyzer/        # Disk space analysis and treemap logic
+├── scanner/             # Duplicate detection (audio, byte, photo)
+├── internal/            # Shared internal utilities (trash, fsutil)
+└── ui/                  # Interactive terminal UI
 ```
 
 ---
