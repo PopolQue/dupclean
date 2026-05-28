@@ -64,7 +64,9 @@ jobs:
     - name: Install dependencies (macOS)
       if: matrix.goos == 'darwin'
       run: |
-        brew install pkg-config
+        if ! command -v pkg-config &> /dev/null; then
+          brew install pkg-config
+        fi
         for i in {1..5}; do
           go install fyne.io/tools/cmd/fyne@latest && break || {
             if [ $i -eq 5 ]; then
@@ -165,9 +167,12 @@ jobs:
       run: |
         PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
         if [ -z "$PREVIOUS_TAG" ]; then
-          CHANGELOG=$(git log --pretty=format:'- %s (%h)' HEAD)
+          CHANGELOG=$(git log --pretty=format:'* %s (%h)' HEAD)
         else
-          CHANGELOG=$(git log --pretty=format:'- %s (%h)' $PREVIOUS_TAG..HEAD)
+          CHANGELOG=$(git log --pretty=format:'* %s (%h)' $PREVIOUS_TAG..HEAD)
+        fi
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="* No changes detected"
         fi
         echo "changelog<<EOF" >> $GITHUB_OUTPUT
         echo "$CHANGELOG" >> $GITHUB_OUTPUT
@@ -178,13 +183,15 @@ jobs:
       with:
         name: DupClean ${{ github.ref_name }}
         body: |
-          ## Changes
+          ### 🚀 Changes in this version
           
           ${{ steps.changelog.outputs.changelog }}
           
-          ## Installation
+          ---
           
-          ### macOS (Recommended: Homebrew)
+          ### 📦 Installation
+          
+          #### macOS (Recommended: Homebrew)
           To avoid security warnings and get both GUI and CLI:
           ```bash
           brew install --cask PopolQue/dupclean/dupclean
@@ -196,19 +203,19 @@ jobs:
           brew install PopolQue/dupclean/dupclean
           ```
           
-          ### macOS (Installer)
+          #### macOS (Manual Installer)
           1. Download `dupclean-darwin-arm64.pkg` (Apple Silicon) or `dupclean-darwin-amd64.pkg` (Intel).
           2. Double-click the file. If it shows a security warning:
              - Go to **System Settings > Privacy & Security**.
              - Scroll down to **Security**.
-             - Click **Open Anyway** (Dennoch öffnen) for DupClean.
+             - Click **Open Anyway** for DupClean.
           3. Follow the wizard. Once installed, the app in your Applications folder will work without further warnings.
           
-          ### Linux
+          #### Linux
           Download the appropriate tarball, extract it, and run the `dupclean` binary.
-          Ensure you have OpenGL dependencies installed.
+          Ensure you have OpenGL dependencies installed (`libgl1-mesa-dev xorg-dev`).
           
-          ### Windows
+          #### Windows
           Download the zip file, extract it, and run `dupclean-windows-amd64.exe`.
         draft: false
         prerelease: false

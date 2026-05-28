@@ -21,6 +21,11 @@ type changelogEntry struct {
 
 var fullChangelog = []changelogEntry{
 	{
+		version: "v0.4.6.1",
+		highlights: `- **CI/CD Improvements**: Resolved macOS 'pkgconf' warnings and added dedicated CodeQL workflow for CGO support.
+- **Better Release Notes**: Enhanced the appearance and formatting of GitHub release pages.`,
+	},
+	{
 		version: "v0.4.6.0",
 		highlights: `- **Improved Update Experience**: Update popups now only show feature highlights, excluding installation guides.
 - **Dynamic Changelog**: After updating, the app now shows all release notes since your last installed version.
