@@ -1,6 +1,6 @@
 # DupClean — All-in-one Disk Cleanup Tool
 
-[![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml) ![Coverage](https://img.shields.io/badge/Coverage-47.3%25-yellow)
+[![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml) [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml) ![Coverage](https://img.shields.io/badge/Coverage-49.1%25-yellow)
 
 A fast, content-aware disk cleanup suite for music producers, DJs, photographers, developers, and anyone with a messy hard drive.
 
