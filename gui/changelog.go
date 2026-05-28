@@ -31,7 +31,7 @@ func ShowChangelogIfNeeded(w fyne.Window) {
 
 func showChangelog(w fyne.Window) {
 	// Header Component
-	titleText := canvas.NewText("What's New", theme.PrimaryColor())
+	titleText := canvas.NewText("What's New", theme.Color(theme.ColorNamePrimary))
 	titleText.TextSize = 20
 	titleText.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -39,16 +39,16 @@ func showChangelog(w fyne.Window) {
 		container.NewHBox(
 			titleText,
 			layout.NewSpacer(),
-			canvas.NewText(fmt.Sprintf("%s", version.Version), theme.ForegroundColor()),
+			canvas.NewText(fmt.Sprintf("v%s", version.Version), theme.Color(theme.ColorNameForeground)),
 		),
 		widget.NewSeparator(),
 	)
 
 	// Most Recent Update Component
 	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(`• Improved update popup with a proper header and version info.
-• Added a dedicated component for recent highlights.
-• Added a structured changelog history component for better navigation.`)
+	recentContent := widget.NewRichTextFromMarkdown(`• Unified UI headers across all sections (Duplicate Finder, Cache Cleaner, Disk Analyzer).
+• Refined sidebar styling with better padding and clear importance levels.
+• Modernized theme API usage and resolved all linting warnings.`)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	recentComponent := container.NewVBox(
@@ -58,13 +58,14 @@ func showChangelog(w fyne.Window) {
 
 	// Changelog History Component
 	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.2 Recap**
-• Each update highlight now appears on its own line for better readability.
-• The changelog window has been refined for better focus.
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.3 Recap**
+• Improved update popup with a proper header and version info.
+• Added a dedicated component for recent highlights.
+• Added a structured changelog history component.
 
-**v0.4.3.1 Recap**
-• Improved the popup layout with word wrapping and vertical scrolling.
-• Reduced default size for better visibility.`)
+**v0.4.3.2 Recap**
+• Each update highlight now appears on its own line for better readability.
+• The changelog window has been refined for better focus.`)
 	historyContent.Wrapping = fyne.TextWrapWord
 
 	historyComponent := container.NewVBox(

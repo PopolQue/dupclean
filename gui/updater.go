@@ -156,7 +156,7 @@ func isNewerVersion(current, latest string) bool {
 }
 
 func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
-	titleText := canvas.NewText("Update Available", theme.PrimaryColor())
+	titleText := canvas.NewText("Update Available", theme.Color(theme.ColorNamePrimary))
 	titleText.TextSize = 20
 	titleText.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -164,7 +164,7 @@ func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
 		container.NewHBox(
 			titleText,
 			layout.NewSpacer(),
-			canvas.NewText(release.TagName, theme.ForegroundColor()),
+			canvas.NewText(release.TagName, theme.Color(theme.ColorNameForeground)),
 		),
 		widget.NewSeparator(),
 	)

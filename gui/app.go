@@ -105,6 +105,26 @@ type AppState struct {
 	Selections         [][]bool      // Tracks which files to keep in each group (matches Groups)
 }
 
+// createSectionHeader creates a consistent header for each tool section
+func createSectionHeader(title, subtitle string) fyne.CanvasObject {
+	titleText := canvas.NewText(title, theme.Color(theme.ColorNamePrimary))
+	titleText.TextSize = 24
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
+
+	subtitleText := canvas.NewText(subtitle, theme.Color(theme.ColorNameForeground))
+	subtitleText.TextSize = 14
+	subtitleText.TextStyle = fyne.TextStyle{Italic: true}
+
+	return container.NewVBox(
+		container.NewHBox(
+			titleText,
+			layout.NewSpacer(),
+		),
+		subtitleText,
+		widget.NewSeparator(),
+	)
+}
+
 // updateContent updates the content container (preserves sidebar)
 func (state *AppState) updateContent(content fyne.CanvasObject) {
 	state.mu.Lock()

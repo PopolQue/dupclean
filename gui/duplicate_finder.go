@@ -18,15 +18,7 @@ import (
 // DuplicateFinderWidget creates the duplicate finder UI component
 func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
 	// Header
-	title := canvas.NewText("Duplicate Finder", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
-	subtitle := canvas.NewText("Find and remove duplicate files by content hash", theme.Color(theme.ColorNameForeground))
-	subtitle.TextSize = 14
-	subtitle.TextStyle = fyne.TextStyle{Italic: true}
-
-	header := container.NewVBox(title, subtitle)
+	header := createSectionHeader("Duplicate Finder", "Find and remove duplicate files by content hash")
 
 	// Folder selection card
 	folderCard := createSelectionCard(state)
@@ -42,7 +34,6 @@ func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
 
 	content := container.NewVBox(
 		header,
-		layout.NewSpacer(),
 		folderCard,
 		optionsCard,
 		progressCard,
@@ -57,18 +48,13 @@ func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
 // DuplicateResultsWidget creates the duplicate results UI component
 func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 	// Header
-	title := canvas.NewText("Scan Results", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
 	statsText := fmt.Sprintf(
-		"%d duplicate groups | %d extra copies | %s wasted",
+		"%d groups | %d extra copies | %s wasted",
 		len(state.Groups),
 		state.Stats.TotalDupes,
 		fsutil.FormatBytes(state.Stats.WastedBytes),
 	)
-	statsLabel := widget.NewLabel(statsText)
-	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
+	header := createSectionHeader("Scan Results", statsText)
 
 	// Group display
 	groupDisplay := createGroupDisplay(state)
@@ -107,9 +93,7 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 	actionButtons := container.NewHBox(cancelBtn, layout.NewSpacer(), smartBtn, cleanBtn)
 
 	content := container.NewVBox(
-		title,
-		statsLabel,
-		widget.NewSeparator(),
+		header,
 		groupDisplay,
 		widget.NewSeparator(),
 		actionButtons,
@@ -121,7 +105,7 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 // DuplicateNoResultsWidget creates the "no duplicates found" UI
 func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
 	title := canvas.NewText("No Duplicates Found!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 32
+	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
 
@@ -158,7 +142,7 @@ func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
 // DuplicateFinalWidget creates the completion screen
 func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 	title := canvas.NewText("Complete!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 32
+	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
 

@@ -8,7 +8,6 @@ import (
 	"dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -37,15 +36,7 @@ type diskAnalyzerComponents struct {
 // DiskAnalyzerWidget creates the disk analyzer UI component
 func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 	// Header
-	title := canvas.NewText("Disk Analyzer", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
-	subtitle := canvas.NewText("Identify large files and folders taking up space", theme.Color(theme.ColorNameForeground))
-	subtitle.TextSize = 14
-	subtitle.TextStyle = fyne.TextStyle{Italic: true}
-
-	header := container.NewVBox(title, subtitle)
+	header := createSectionHeader("Disk Analyzer", "Identify large files and folders taking up space")
 
 	// Folder selection
 	folderEntry := widget.NewEntry()

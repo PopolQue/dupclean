@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -25,13 +24,14 @@ func Sidebar(items []SidebarItem) *widget.List {
 		func() int { return len(data) },
 		func() fyne.CanvasObject {
 			icon := widget.NewIcon(theme.HomeIcon())
-			label := canvas.NewText("Item", theme.Color(theme.ColorNameForeground))
-			label.TextSize = 14
+			label := widget.NewLabel("Item")
 			label.TextStyle = fyne.TextStyle{Bold: true}
 
-			return container.NewHBox(
-				icon,
-				label,
+			return container.NewPadded(
+				container.NewHBox(
+					icon,
+					label,
+				),
 			)
 		},
 		func(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -40,18 +40,19 @@ func Sidebar(items []SidebarItem) *widget.List {
 			}
 
 			item := data[i]
-			hbox := obj.(*fyne.Container)
+			padded := obj.(*fyne.Container)
+			hbox := padded.Objects[0].(*fyne.Container)
 			icon := hbox.Objects[0].(*widget.Icon)
-			label := hbox.Objects[1].(*canvas.Text)
+			label := hbox.Objects[1].(*widget.Label)
 
 			icon.SetResource(item.Icon)
-			label.Text = item.Name
+			label.SetText(item.Name)
 
 			// Highlight selected item
 			if i == selected {
-				label.Color = theme.Color(theme.ColorNamePrimary)
+				label.Importance = widget.HighImportance
 			} else {
-				label.Color = theme.Color(theme.ColorNameForeground)
+				label.Importance = widget.MediumImportance
 			}
 		},
 	)

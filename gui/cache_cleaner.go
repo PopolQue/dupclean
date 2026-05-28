@@ -61,20 +61,13 @@ func (state *CacheCleanerState) updateContent(content fyne.CanvasObject) {
 // CacheCleanerWidget creates the cache cleaner UI component
 func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	// Header
-	title := canvas.NewText("Cache Cleaner", theme.Color(theme.ColorNamePrimary))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-
-	subtitle := canvas.NewText("Clean system, browser, and application caches", theme.Color(theme.ColorNameForeground))
-	subtitle.TextSize = 14
-	subtitle.TextStyle = fyne.TextStyle{Italic: true}
+	header := createSectionHeader("Cache Cleaner", "Clean system, browser, and application caches")
 
 	// Disclaimer
 	disclaimer := canvas.NewText("⚠️ Actual freed space may vary - cache files change constantly", theme.Color(theme.ColorNameWarning))
 	disclaimer.TextSize = 12
+	disclaimer.TextStyle = fyne.TextStyle{Italic: true}
 	disclaimer.Alignment = fyne.TextAlignCenter
-
-	header := container.NewVBox(title, subtitle, disclaimer)
 
 	// Options
 	minAgeEntry := widget.NewEntry()
