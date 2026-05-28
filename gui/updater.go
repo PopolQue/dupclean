@@ -256,17 +256,10 @@ func restartApp() {
 	}
 
 	// Detach the process so it continues after we exit
-	if runtime.GOOS == "windows" {
-		// On Windows, use CREATE_BREAKAWAY_FROM_JOB or similar if needed, 
-		// but usually Start() without waiting is enough if not in a job.
-		// For GUI apps, this is generally fine.
-	} else {
-		// On Unix, use a separate process group
-		// Note: we don't use syscall directly here to keep it cross-platform compatible
-		// without complex build tags, but we ensure Start() is called.
-	}
-
+	// On Windows, Start() without waiting is enough.
+	// On Unix, the process continues even if the parent exits.
 	err = cmd.Start()
+
 	if err != nil {
 		log.Printf("[Updater] Failed to restart application: %v", err)
 	}
