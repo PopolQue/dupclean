@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// vars for testing to allow mocking OS commands
+var (
+	execCommand  = exec.Command
+	execLookPath = exec.LookPath
+)
+
 // MoveToTrash moves a file or directory to the system's trash/recycle bin.
 // This is a unified implementation used across all packages.
 //
@@ -70,26 +76,26 @@ func validatePath(path string) error {
 // moveToTrashMacOS moves a file to trash on macOS.
 func moveToTrashMacOS(path string) error {
 	// Try using the `trash` CLI tool first (brew install trash)
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
+	if _, err := execLookPath("trash"); err == nil {
+		return execCommand("trash", path).Run()
 	}
 
 	// Fall back to AppleScript with proper escaping
 	escapedPath := escapeAppleScriptString(path)
 	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, escapedPath)
-	return exec.Command("osascript", "-e", script).Run()
+	return execCommand("osascript", "-e", script).Run()
 }
 
 // moveToTrashLinux moves a file to trash on Linux.
 func moveToTrashLinux(path string) error {
 	// Try using gio (GNOME)
-	if _, err := exec.LookPath("gio"); err == nil {
-		return exec.Command("gio", "trash", path).Run()
+	if _, err := execLookPath("gio"); err == nil {
+		return execCommand("gio", "trash", path).Run()
 	}
 
 	// Try using trash-cli
-	if _, err := exec.LookPath("trash"); err == nil {
-		return exec.Command("trash", path).Run()
+	if _, err := execLookPath("trash"); err == nil {
+		return execCommand("trash", path).Run()
 	}
 
 	// Fallback to manual move with TOCTOU-safe implementation
@@ -132,7 +138,7 @@ if (Test-Path $path) {
 
 	// Actually, the safest way is to use the Recycler API directly if possible,
 	// but via CLI, passing it as a variable is better.
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", "-")
+	cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", "-")
 	cmd.Stdin = strings.NewReader(script)
 	return cmd.Run()
 }

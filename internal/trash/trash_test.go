@@ -1,10 +1,40 @@
 package trash
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
+
+// mock setup utilities
+func setupMockExec(lookPathFunc func(string) (string, error), cmdFunc func(string, ...string) *exec.Cmd) func() {
+	oldLookPath := execLookPath
+	oldCmd := execCommand
+
+	if lookPathFunc != nil {
+		execLookPath = lookPathFunc
+	}
+	if cmdFunc != nil {
+		execCommand = cmdFunc
+	}
+
+	return func() {
+		execLookPath = oldLookPath
+		execCommand = oldCmd
+	}
+}
+
+// helper command that immediately returns success when run
+func mockSuccessCmd(name string, args ...string) *exec.Cmd {
+	return exec.Command("true")
+}
+
+// helper command that fails when run
+func mockFailCmd(name string, args ...string) *exec.Cmd {
+	return exec.Command("false")
+}
 
 // TestMoveToTrash_EmptyPath tests that empty paths are rejected
 func TestMoveToTrash_EmptyPath(t *testing.T) {
@@ -48,114 +78,152 @@ func TestMoveToTrash_PathTraversal(t *testing.T) {
 // TestMoveToTrash_NonExistentFile tests behavior with non-existent files
 func TestMoveToTrash_NonExistentFile(t *testing.T) {
 	err := MoveToTrash("/nonexistent/path/file.txt")
-	// This may or may not error depending on OS implementation
-	// The important thing is it doesn't crash
 	t.Logf("MoveToTrash non-existent file: %v", err)
 }
 
-// TestMoveToTrash_ValidFile tests moving a valid file to trash
-func TestMoveToTrash_ValidFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
+// --- macOS Tests ---
 
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+func TestMoveToTrashMacOS_TrashCliSuccess(t *testing.T) {
+	cleanup := setupMockExec(
+		func(file string) (string, error) {
+			if file == "trash" {
+				return "/usr/bin/trash", nil
+			}
+			return "", errors.New("not found")
+		},
+		mockSuccessCmd,
+	)
+	defer cleanup()
 
-	// This may fail depending on system, but shouldn't panic
-	err := MoveToTrash(testFile)
+	err := moveToTrashMacOS("/dummy/path")
 	if err != nil {
-		t.Logf("MoveToTrash returned error (may be expected): %v", err)
+		t.Errorf("Expected success when trash cli is found, got %v", err)
 	}
 }
 
-// TestMoveToTrashMacOS tests macOS-specific implementation
-func TestMoveToTrashMacOS(t *testing.T) {
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
+func TestMoveToTrashMacOS_AppleScriptSuccess(t *testing.T) {
+	cleanup := setupMockExec(
+		func(file string) (string, error) {
+			return "", errors.New("not found") // trash cli missing
+		},
+		mockSuccessCmd,
+	)
+	defer cleanup()
 
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	err := moveToTrashMacOS(testFile)
+	err := moveToTrashMacOS("/dummy/path")
 	if err != nil {
-		t.Logf("moveToTrashMacOS returned error (may be expected): %v", err)
+		t.Errorf("Expected success on AppleScript fallback, got %v", err)
 	}
 }
 
-// TestMoveToTrashLinux tests Linux-specific implementation
-func TestMoveToTrashLinux(t *testing.T) {
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
+// --- Linux Tests ---
 
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
+func TestMoveToTrashLinux_GioSuccess(t *testing.T) {
+	cleanup := setupMockExec(
+		func(file string) (string, error) {
+			if file == "gio" {
+				return "/usr/bin/gio", nil
+			}
+			return "", errors.New("not found")
+		},
+		mockSuccessCmd,
+	)
+	defer cleanup()
+
+	err := moveToTrashLinux("/dummy/path")
+	if err != nil {
+		t.Errorf("Expected success when gio is found, got %v", err)
 	}
+}
 
-	// This is safe to run on any OS, it will likely fail on macOS/Windows but we just want coverage
+func TestMoveToTrashLinux_TrashCliSuccess(t *testing.T) {
+	cleanup := setupMockExec(
+		func(file string) (string, error) {
+			if file == "trash" {
+				return "/usr/bin/trash", nil
+			}
+			return "", errors.New("not found")
+		},
+		mockSuccessCmd,
+	)
+	defer cleanup()
+
+	err := moveToTrashLinux("/dummy/path")
+	if err != nil {
+		t.Errorf("Expected success when trash is found, got %v", err)
+	}
+}
+
+func TestMoveToTrashLinux_FallbackToSafeMove(t *testing.T) {
+	// Mock everything missing so it falls back to HOME/.local/share/Trash
+	cleanup := setupMockExec(
+		func(file string) (string, error) { return "", errors.New("not found") },
+		nil,
+	)
+	defer cleanup()
+
+	// Set up dummy home and file
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+	defer os.Unsetenv("HOME")
+
+	testFile := filepath.Join(tmpDir, "test.txt")
+	_ = os.WriteFile(testFile, []byte("test"), 0644)
+
 	err := moveToTrashLinux(testFile)
 	if err != nil {
-		t.Logf("moveToTrashLinux returned error (may be expected): %v", err)
+		t.Errorf("Fallback to safeMoveToTrashDir failed: %v", err)
+	}
+
+	// Verify it was moved
+	trashDir := filepath.Join(tmpDir, ".local", "share", "Trash", "files")
+	trashedFile := filepath.Join(trashDir, "test.txt")
+	if _, err := os.Stat(trashedFile); os.IsNotExist(err) {
+		t.Errorf("File was not moved to the fallback trash directory")
 	}
 }
 
-// TestMoveToTrashLinux_Fallback tests Linux-specific implementation with empty PATH to force fallback
-func TestMoveToTrashLinux_Fallback(t *testing.T) {
-	oldPath := os.Getenv("PATH")
-	os.Setenv("PATH", "")
-	defer os.Setenv("PATH", oldPath)
+func TestMoveToTrashLinux_FallbackToPermanent(t *testing.T) {
+	cleanup := setupMockExec(
+		func(file string) (string, error) { return "", errors.New("not found") },
+		nil,
+	)
+	defer cleanup()
 
-	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", "")
-	defer os.Setenv("HOME", oldHome)
+	// Unset HOME so it skips the safeMoveToTrashDir block
+	os.Unsetenv("HOME")
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	_ = os.WriteFile(testFile, []byte("test"), 0644)
 
 	err := moveToTrashLinux(testFile)
 	if err != nil {
-		t.Logf("moveToTrashLinux fallback returned error: %v", err)
+		t.Errorf("Fallback to os.RemoveAll failed: %v", err)
+	}
+
+	if _, err := os.Stat(testFile); !os.IsNotExist(err) {
+		t.Errorf("File was not permanently deleted")
 	}
 }
 
-// TestMoveToTrashMacOS_Fallback tests macOS-specific implementation with empty PATH to force AppleScript fallback
-func TestMoveToTrashMacOS_Fallback(t *testing.T) {
-	oldPath := os.Getenv("PATH")
-	os.Setenv("PATH", "")
-	defer os.Setenv("PATH", oldPath)
+// --- Windows Tests ---
+
+func TestMoveToTrashWindows_Success(t *testing.T) {
+	cleanup := setupMockExec(nil, mockSuccessCmd)
+	defer cleanup()
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
+	_ = os.WriteFile(testFile, []byte("test"), 0644)
 
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	err := moveToTrashMacOS(testFile)
-	if err != nil {
-		t.Logf("moveToTrashMacOS fallback returned error: %v", err)
-	}
-}
-
-func TestMoveToTrashWindows(t *testing.T) {
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	// This is safe to run on any OS, it will likely fail on macOS/Linux but we just want coverage
 	err := moveToTrashWindows(testFile)
 	if err != nil {
-		t.Logf("moveToTrashWindows returned error (may be expected): %v", err)
+		t.Errorf("Expected success on PowerShell command, got %v", err)
 	}
 }
+
+// --- Other Utility Tests ---
 
 // TestSafeMoveToTrashDir_TOCTOU tests TOCTOU-safe trash directory move
 func TestSafeMoveToTrashDir_TOCTOU(t *testing.T) {
