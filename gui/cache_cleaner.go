@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -407,40 +408,9 @@ func startCacheClean(state *CacheCleanerState) {
 
 // isProtectedPath returns true for system-protected directories
 func isProtectedPath(path string) bool {
-	// macOS system paths
-	protectedDarwin := []string{
-		"/var/folders",
-		"/private/var",
-		"/System",
-		"/Library/Caches/com.apple",
+	if path == "" {
+		return false
 	}
-
-	// Windows system paths
-	protectedWindows := []string{
-		`C:\Windows`,
-		`C:\Program Files`,
-		`C:\Program Files (x86)`,
-		`C:\ProgramData`,
-	}
-
-	// Linux system paths
-	protectedLinux := []string{
-		"/etc",
-		"/bin",
-		"/usr",
-		"/sbin",
-		"/lib",
-		"/boot",
-		"/dev",
-		"/proc",
-		"/sys",
-	}
-
-	// Combine all protected paths for safety (inclusive protection)
-	var protected []string
-	protected = append(protected, protectedDarwin...)
-	protected = append(protected, protectedWindows...)
-	protected = append(protected, protectedLinux...)
 
 	// Normalize path for comparison
 	absPath, err := filepath.Abs(path)
@@ -449,9 +419,44 @@ func isProtectedPath(path string) bool {
 		return true
 	}
 
+	var protected []string
+	switch runtime.GOOS {
+	case "darwin":
+		protected = []string{
+			"/var/folders",
+			"/private/var",
+			"/System",
+			"/Library/Caches/com.apple",
+		}
+	case "windows":
+		// Windows system paths (common locations)
+		protected = []string{
+			`C:\Windows`,
+			`C:\Program Files`,
+			`C:\Program Files (x86)`,
+			`C:\ProgramData`,
+		}
+	case "linux":
+		protected = []string{
+			"/etc",
+			"/bin",
+			"/usr",
+			"/sbin",
+			"/lib",
+			"/boot",
+			"/dev",
+			"/proc",
+			"/sys",
+		}
+	}
+
 	for _, p := range protected {
 		// Check if path matches or is within a protected path
-		if absPath == p || strings.HasPrefix(absPath, p) {
+		// We use strings.HasPrefix but need to ensure it's a full path match or a bundle ID subpath
+		if absPath == p ||
+			strings.HasPrefix(absPath, p+string(filepath.Separator)) ||
+			strings.HasPrefix(absPath, p+"/") ||
+			strings.HasPrefix(absPath, p+".") {
 			return true
 		}
 	}

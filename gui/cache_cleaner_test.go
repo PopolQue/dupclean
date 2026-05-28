@@ -3,6 +3,7 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -10,22 +11,40 @@ func TestIsProtectedPath(t *testing.T) {
 	tests := []struct {
 		path     string
 		expected bool
+		os       string
 	}{
-		{"/var/folders/abc123", true},
-		{"/var/folders", true},
-		{"/private/var", true},
-		{"/System/Library", true},
-		{"/Library/Caches/com.apple", true},
-		{"/Users/davidcutura/Library/Caches", false},
-		{"/Users/davidcutura/Library/Logs", false},
-		{"/tmp", false},
-		{"", false},
+		// macOS paths (only expected to be true on macOS)
+		{"/var/folders/abc123", true, "darwin"},
+		{"/var/folders", true, "darwin"},
+		{"/private/var", true, "darwin"},
+		{"/System/Library", true, "darwin"},
+		{"/Library/Caches/com.apple", true, "darwin"},
+
+		// Windows paths (only expected to be true on Windows)
+		{`C:\Windows\System32`, true, "windows"},
+		{`C:\Program Files\Common`, true, "windows"},
+
+		// Linux paths (only expected to be true on Linux)
+		{"/etc/passwd", true, "linux"},
+		{"/usr/bin", true, "linux"},
+
+		// Common non-protected paths
+		{"/Users/davidcutura/Library/Caches", false, "darwin"},
+		{"/tmp", false, "darwin"},
+		{"/tmp", false, "linux"},
+		{`C:\Users\test\Downloads`, false, "windows"},
+		{"", false, ""},
 	}
 
 	for _, test := range tests {
+		// Skip tests not relevant to the current OS
+		if test.os != "" && runtime.GOOS != test.os {
+			continue
+		}
+
 		result := isProtectedPath(test.path)
 		if result != test.expected {
-			t.Errorf("isProtectedPath(%q) = %v, expected %v", test.path, result, test.expected)
+			t.Errorf("isProtectedPath(%q) = %v, expected %v (OS: %s)", test.path, result, test.expected, runtime.GOOS)
 		}
 	}
 }

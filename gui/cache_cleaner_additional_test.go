@@ -2,6 +2,7 @@ package gui
 
 import (
 	"os"
+	"runtime"
 	"testing"
 
 	"dupclean/cleaner"
@@ -199,20 +200,42 @@ func TestCacheCleanerWidget_NilTargets(t *testing.T) {
 // Test isProtectedPath function
 func TestIsProtectedPath_ProtectedPaths(t *testing.T) {
 	// Test paths that should be protected based on actual implementation
-	protectedPaths := []string{
-		"/var/folders",
-		"/var/folders/test",
-		"/private/var",
-		"/private/var/test",
-		"/System",
-		"/System/test",
-		"/Library/Caches/com.apple",
-		"/Library/Caches/com.apple.test",
+	var protectedPaths []string
+
+	switch runtime.GOOS {
+	case "darwin":
+		protectedPaths = []string{
+			"/var/folders",
+			"/var/folders/test",
+			"/private/var",
+			"/private/var/test",
+			"/System",
+			"/System/test",
+			"/Library/Caches/com.apple",
+			"/Library/Caches/com.apple.test",
+		}
+	case "windows":
+		protectedPaths = []string{
+			`C:\Windows`,
+			`C:\Windows\System32`,
+			`C:\Program Files`,
+			`C:\Program Files\App`,
+			`C:\ProgramData`,
+		}
+	case "linux":
+		protectedPaths = []string{
+			"/etc",
+			"/etc/passwd",
+			"/usr",
+			"/usr/bin",
+			"/bin",
+			"/lib",
+		}
 	}
 
 	for _, path := range protectedPaths {
 		if !isProtectedPath(path) {
-			t.Errorf("isProtectedPath(%q) should return true", path)
+			t.Errorf("isProtectedPath(%q) should return true on %s", path, runtime.GOOS)
 		}
 	}
 }
@@ -222,14 +245,26 @@ func TestIsProtectedPath_NonProtectedPaths(t *testing.T) {
 	nonProtectedPaths := []string{
 		"/Users/test/Cache",
 		"/home/user/.cache",
-		"C:\\Users\\test\\AppData\\Local\\Temp",
 		"/tmp",
 		"/var/tmp",
 	}
 
+	if runtime.GOOS == "windows" {
+		nonProtectedPaths = append(nonProtectedPaths, `C:\Users\test\AppData\Local\Temp`)
+	}
+
 	for _, path := range nonProtectedPaths {
+		// Only check if it makes sense for the current OS
+		// (e.g., skip /Users check on Windows)
+		if runtime.GOOS == "windows" && (path[0] == '/') {
+			continue
+		}
+		if runtime.GOOS != "windows" && path[1] == ':' {
+			continue
+		}
+
 		if isProtectedPath(path) {
-			t.Errorf("isProtectedPath(%q) should return false", path)
+			t.Errorf("isProtectedPath(%q) should return false on %s", path, runtime.GOOS)
 		}
 	}
 }

@@ -45,10 +45,8 @@ func showChangelog(w fyne.Window) {
 
 	// Most Recent Update Component
 	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(`• **Windows Compatibility**: Improved test reliability and filesystem handling for Windows.
-• **Code Quality**: Resolved several linting warnings and formatting issues.
-• **CI Pipeline**: Added automated Windows testing to our GitHub Actions workflow.
-• **UI Polish**: Fixed minor layout issues in the Disk Analyzer.`)
+	recentContent := widget.NewRichTextFromMarkdown(`• **Windows Fix**: Resolved critical test failures on Windows related to system path protection.
+• **Cross-Platform Robustness**: Improved platform-aware path handling in the Cache Cleaner.`)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	recentComponent := container.NewVBox(
@@ -58,14 +56,13 @@ func showChangelog(w fyne.Window) {
 
 	// Changelog History Component
 	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.4.0 Recap**
-• Complete UI Rebranding: Modern dark theme inspired by our new app icon.
-• New Color Palette: Vibrant purple and deep dark indigo tones for a premium feel.
-• Custom Theme: Fully implemented custom Fyne theme for consistent branding.
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.5.0 Recap**
+• UI Polish: Standardized all tool pages with a consistent header and layout.
+• Windows Compatibility: Added automated Windows testing to CI.
+• Code Quality: Resolved several linting warnings.
 
-**v0.4.3.4 Recap**
-• Unified UI headers across all sections.
-• Modernized theme API usage and resolved linting warnings.`)
+**v0.4.4.0 Recap**
+• Complete UI Rebranding: Modern dark theme inspired by our new app icon.`)
 	historyContent.Wrapping = fyne.TextWrapWord
 
 	historyComponent := container.NewVBox(
