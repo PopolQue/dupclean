@@ -156,9 +156,33 @@ func isNewerVersion(current, latest string) bool {
 }
 
 func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
-	info := widget.NewLabel(fmt.Sprintf("A new version (%s) is available.\n\nChanges:\n%s", release.TagName, release.Body))
+	titleText := canvas.NewText("Update Available", theme.PrimaryColor())
+	titleText.TextSize = 20
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
 
-	dialog.ShowCustomConfirm("Update Available", "Download & Install", "Later", container.NewVScroll(info), func(confirm bool) {
+	header := container.NewVBox(
+		container.NewHBox(
+			titleText,
+			layout.NewSpacer(),
+			canvas.NewText(release.TagName, theme.ForegroundColor()),
+		),
+		widget.NewSeparator(),
+	)
+
+	recentTitle := widget.NewLabelWithStyle("Release Notes", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	recentContent := widget.NewRichTextFromMarkdown(release.Body)
+	recentContent.Wrapping = fyne.TextWrapWord
+
+	content := container.NewVBox(
+		header,
+		recentTitle,
+		recentContent,
+	)
+
+	scroll := container.NewVScroll(content)
+	scroll.SetMinSize(fyne.NewSize(500, 400))
+
+	dialog.ShowCustomConfirm("New Update Found", "Download & Install", "Later", scroll, func(confirm bool) {
 		if confirm {
 			downloadAndInstallUpdate(state, release)
 		}

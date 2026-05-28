@@ -6,8 +6,11 @@ import (
 	"dupclean/internal/version"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -27,33 +30,58 @@ func ShowChangelogIfNeeded(w fyne.Window) {
 }
 
 func showChangelog(w fyne.Window) {
-	title := fmt.Sprintf("What's New in %s", version.Version)
+	// Header Component
+	titleText := canvas.NewText("What's New", theme.PrimaryColor())
+	titleText.TextSize = 20
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
 
-	changelogText := `### v0.4.3.2 Release Highlights
+	header := container.NewVBox(
+		container.NewHBox(
+			titleText,
+			layout.NewSpacer(),
+			canvas.NewText(fmt.Sprintf("v%s", version.Version), theme.ForegroundColor()),
+		),
+		widget.NewSeparator(),
+	)
 
-**UI Improvements**
+	// Most Recent Update Component
+	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	recentContent := widget.NewRichTextFromMarkdown(`• Each update highlight now appears on its own line for better readability.
+• The changelog window has been refined for better focus.`)
+	recentContent.Wrapping = fyne.TextWrapWord
 
-• Each update highlight now appears on its own line for better readability.
+	recentComponent := container.NewVBox(
+		recentTitle,
+		recentContent,
+	)
 
-• The changelog window has been refined for better focus.
-
-**v0.4.3.1 Recap**
-
+	// Changelog History Component
+	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.1 Recap**
 • Improved the popup layout with word wrapping and vertical scrolling.
-
 • Reduced default size for better visibility.
 
 **v0.4.3 Features**
-
 • Introduced the "What's New" popup to keep you informed.
+• Added a manual changelog viewer in the Update screen.`)
+	historyContent.Wrapping = fyne.TextWrapWord
 
-• Added a manual changelog viewer in the Update screen.`
+	historyComponent := container.NewVBox(
+		historyTitle,
+		historyContent,
+	)
 
-	content := widget.NewRichTextFromMarkdown(changelogText)
-	content.Wrapping = fyne.TextWrapWord
+	// Combine components
+	content := container.NewVBox(
+		header,
+		recentComponent,
+		widget.NewSeparator(),
+		historyComponent,
+	)
+
 	scroll := container.NewVScroll(content)
-	scroll.SetMinSize(fyne.NewSize(450, 350))
+	scroll.SetMinSize(fyne.NewSize(500, 400))
 
-	d := dialog.NewCustom(title, "Got it!", scroll, w)
+	d := dialog.NewCustom("DupClean Update", "Got it!", scroll, w)
 	d.Show()
 }
