@@ -92,8 +92,8 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		}()
 	})
 
-	viewChangelogBtn := widget.NewButtonWithIcon("View Current Changelog", theme.InfoIcon(), func() {
-		showChangelog(state.Window)
+	viewChangelogBtn := widget.NewButtonWithIcon("View Full Changelog", theme.InfoIcon(), func() {
+		ShowFullChangelog(state.Window)
 	})
 
 	body := container.NewVBox(
@@ -168,8 +168,15 @@ func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
 		widget.NewSeparator(),
 	)
 
-	recentTitle := widget.NewLabelWithStyle("Release Notes", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(release.Body)
+	// Filter body to only show highlights (exclude installation guide)
+	body := release.Body
+	if strings.Contains(body, "## Installation") {
+		body = strings.Split(body, "## Installation")[0]
+	}
+	body = strings.TrimSpace(body)
+
+	recentTitle := widget.NewLabelWithStyle("Release Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	recentContent := widget.NewRichTextFromMarkdown(body)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	content := container.NewVBox(
