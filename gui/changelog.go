@@ -1,8 +1,6 @@
 package gui
 
 import (
-	"fmt"
-
 	"dupclean/internal/version"
 
 	"fyne.io/fyne/v2"
@@ -39,7 +37,7 @@ func showChangelog(w fyne.Window) {
 		container.NewHBox(
 			titleText,
 			layout.NewSpacer(),
-			canvas.NewText(fmt.Sprintf("%s", version.Version), theme.Color(theme.ColorNameForeground)),
+			canvas.NewText(version.Version, theme.Color(theme.ColorNameForeground)),
 		),
 		widget.NewSeparator(),
 	)
