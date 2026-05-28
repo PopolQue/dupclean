@@ -29,21 +29,20 @@ func ShowChangelogIfNeeded(w fyne.Window) {
 func showChangelog(w fyne.Window) {
 	title := fmt.Sprintf("What's New in %s", version.Version)
 
-	changelogText := `### v0.4.3 Release Highlights
+	changelogText := `### v0.4.3.1 Release Highlights
 
-**Popup Feature**
+**UI Refinements**
+• Improved the "What's New" popup layout with word wrapping and vertical scrolling.
+• Reduced the default size of the changelog window for better visibility.
+
+**v0.4.3 Features**
 • Introduced the "What's New" popup to keep you informed about recent improvements.
-• Added a manual changelog viewer in the Update screen.
-
-**v0.4.2 Recap (Recent Improvements)**
-• Fixed Cleaner CLI selection bug and UI race conditions.
-• Added advanced safety triggers for permanent deletion.
-• Improved hard link detection on Windows.
-• Enhanced error detection for localized systems.`
+• Added a manual changelog viewer in the Update screen.`
 
 	content := widget.NewRichTextFromMarkdown(changelogText)
+	content.Wrapping = fyne.TextWrapWord
 	scroll := container.NewVScroll(content)
-	scroll.SetMinSize(fyne.NewSize(500, 400))
+	scroll.SetMinSize(fyne.NewSize(450, 350))
 
 	d := dialog.NewCustom(title, "Got it!", scroll, w)
 	d.Show()
