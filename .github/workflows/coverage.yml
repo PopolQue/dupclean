@@ -12,6 +12,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Update coverage badge
+    defaults:
+      run:
+        shell: bash
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
