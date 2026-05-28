@@ -21,6 +21,10 @@ type changelogEntry struct {
 
 var fullChangelog = []changelogEntry{
 	{
+		version:    "v0.4.7.1",
+		highlights: `- **CI/CD Improvements**: Upgraded CodeQL actions to v4 to fully resolve Node.js deprecation warnings and documented how to resolve GitHub default setup conflicts.`,
+	},
+	{
 		version: "v0.4.7.0",
 		highlights: `- **UI Polish & Consistency**: Unified layout schemas across all tabs to prevent jumping. Standardized typography for headers and text.
 - **Branding**: The DupClean logo is now fully embedded in the header, replacing the default folder icon.`,
