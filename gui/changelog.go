@@ -45,8 +45,7 @@ func showChangelog(w fyne.Window) {
 
 	// Most Recent Update Component
 	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(`- **CI Stability**: Resolved PowerShell syntax errors on Windows runners by enforcing bash.
-- **Node.js 24**: Properly configured GitHub Actions to use Node.js 24 to avoid deprecation warnings.`)
+	recentContent := widget.NewRichTextFromMarkdown(`- **CI Infrastructure**: Upgraded GitHub Actions to latest major versions (v6) to natively support Node.js 24 and remove deprecation warnings.`)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	recentComponent := container.NewVBox(
@@ -56,13 +55,12 @@ func showChangelog(w fyne.Window) {
 
 	// Changelog History Component
 	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.5.2 Recap**
-- Auto-Restart Fix: Improved application restart reliability after updates on macOS.
-- Archive Extraction: Enhanced robustness when extracting update binaries from archives.
-- UI Polish: Improved "What's New" formatting for better readability.
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.5.3 Recap**
+- CI Stability: Resolved PowerShell syntax errors on Windows runners by enforcing bash.
+- Node.js 24: Initial configuration for GitHub Actions to use Node.js 24.
 
-**v0.4.5.1 Recap**
-- Windows Fix: Resolved critical test failures on Windows related to system path protection.`)
+**v0.4.5.2 Recap**
+- Auto-Restart Fix: Improved application restart reliability after updates on macOS.`)
 	historyContent.Wrapping = fyne.TextWrapWord
 
 	historyComponent := container.NewVBox(
