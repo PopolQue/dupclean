@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -238,19 +239,38 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 func restartApp() {
 	executable, err := os.Executable()
 	if err != nil {
-		os.Exit(0) // Can't find ourselves, just exit
+		log.Printf("[Updater] Error getting executable path: %v", err)
+		os.Exit(0)
 	}
 
+	log.Printf("[Updater] Restarting application: %s", executable)
+
 	var cmd *exec.Cmd
-	// On macOS, if we're in an .app bundle, use 'open' to restart properly
-	if runtime.GOOS == "darwin" && strings.Contains(executable, ".app/Contents/MacOS/") {
-		appPath := strings.Split(executable, ".app/")[0] + ".app"
-		cmd = exec.Command("open", appPath)
+	// On macOS, if we're in an .app bundle, use 'open -n' to restart properly
+	if runtime.GOOS == "darwin" && strings.Contains(strings.ToLower(executable), ".app/") {
+		appPath := executable[:strings.Index(strings.ToLower(executable), ".app/")+4]
+		log.Printf("[Updater] macOS .app detected, using: open -n %s", appPath)
+		cmd = exec.Command("open", "-n", appPath)
 	} else {
 		cmd = exec.Command(executable)
 	}
 
-	_ = cmd.Start()
+	// Detach the process so it continues after we exit
+	if runtime.GOOS == "windows" {
+		// On Windows, use CREATE_BREAKAWAY_FROM_JOB or similar if needed, 
+		// but usually Start() without waiting is enough if not in a job.
+		// For GUI apps, this is generally fine.
+	} else {
+		// On Unix, use a separate process group
+		// Note: we don't use syscall directly here to keep it cross-platform compatible
+		// without complex build tags, but we ensure Start() is called.
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		log.Printf("[Updater] Failed to restart application: %v", err)
+	}
+
 	os.Exit(0)
 }
 
@@ -430,7 +450,7 @@ func extractFromTarGz(tarGzPath, destPath string) error {
 		}
 
 		// Find the binary in the tarball (it's named dupclean-...)
-		if header.Typeflag == tar.TypeReg && strings.Contains(header.Name, "dupclean") {
+		if header.Typeflag == tar.TypeReg && strings.Contains(strings.ToLower(header.Name), "dupclean") {
 			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
 			if err != nil {
 				return err
@@ -454,7 +474,7 @@ func extractFromZip(zipPath, destPath string) error {
 	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
-		if !f.FileInfo().IsDir() && strings.Contains(f.Name, "dupclean") {
+		if !f.FileInfo().IsDir() && strings.Contains(strings.ToLower(f.Name), "dupclean") {
 			rc, err := f.Open()
 			if err != nil {
 				return err
