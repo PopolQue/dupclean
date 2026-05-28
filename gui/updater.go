@@ -95,6 +95,10 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		}()
 	})
 
+	viewChangelogBtn := widget.NewButtonWithIcon("View Current Changelog", theme.InfoIcon(), func() {
+		showChangelog(state.Window)
+	})
+
 	content := container.NewVBox(
 		title,
 		versionLabel,
@@ -102,6 +106,7 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		statusLabel,
 		progressBar,
 		checkBtn,
+		viewChangelogBtn,
 	)
 
 	return container.NewCenter(content)

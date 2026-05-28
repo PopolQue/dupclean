@@ -119,7 +119,7 @@ func (state *AppState) updateContent(content fyne.CanvasObject) {
 func RunGUI() {
 	log.Println("RunGUI: starting...")
 
-	fyneApp := app.New()
+	fyneApp := app.NewWithID("com.popolque.dupclean")
 
 	log.Println("RunGUI: setting icon...")
 	fyneApp.SetIcon(theme.FolderOpenIcon())
@@ -156,6 +156,7 @@ func RunGUI() {
 	})
 
 	log.Println("RunGUI: showing window...")
+	ShowChangelogIfNeeded(w)
 	w.ShowAndRun()
 	log.Println("RunGUI: window closed")
 }
