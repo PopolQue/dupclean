@@ -13,6 +13,8 @@ jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -39,7 +41,17 @@ jobs:
         brew install glfw
 
     - name: Download dependencies
-      run: go mod download
+      run: |
+        for i in {1..5}; do
+          go mod download && break || {
+            if [ $i -eq 5 ]; then
+              echo "Failed to download dependencies after 5 attempts"
+              exit 1
+            fi
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          }
+        done
 
     - name: Build
       run: go build -v ./...
@@ -63,6 +75,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -78,7 +92,17 @@ jobs:
         sudo apt-get install -y libgl1-mesa-dev xorg-dev
 
     - name: Download dependencies
-      run: go mod download
+      run: |
+        for i in {1..5}; do
+          go mod download && break || {
+            if [ $i -eq 5 ]; then
+              echo "Failed to download dependencies after 5 attempts"
+              exit 1
+            fi
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          }
+        done
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v8
@@ -89,6 +113,8 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -102,6 +128,19 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+    - name: Download dependencies
+      run: |
+        for i in {1..5}; do
+          go mod download && break || {
+            if [ $i -eq 5 ]; then
+              echo "Failed to download dependencies after 5 attempts"
+              exit 1
+            fi
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          }
+        done
 
     - name: Generate coverage
       run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...

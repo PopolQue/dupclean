@@ -12,6 +12,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Update coverage badge
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,13 +22,25 @@ jobs:
           fetch-depth: 0
       
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
-
       - name: Install Fyne deps
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+      - name: Download dependencies
+        run: |
+          for i in {1..5}; do
+            go mod download && break || {
+              if [ $i -eq 5 ]; then
+                echo "Failed to download dependencies after 5 attempts"
+                exit 1
+              fi
+              echo "Attempt $i failed, retrying in 5 seconds..."
+              sleep 5
+            }
+          done
 
 
       - name: Run Test

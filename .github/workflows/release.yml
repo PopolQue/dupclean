@@ -13,7 +13,9 @@ jobs:
   release:
     name: Release
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     defaults:
       run:
         shell: bash
@@ -65,7 +67,16 @@ jobs:
       if: matrix.goos == 'darwin'
       run: |
         brew install pkg-config
-        go install fyne.io/tools/cmd/fyne@latest
+        for i in {1..5}; do
+          go install fyne.io/tools/cmd/fyne@latest && break || {
+            if [ $i -eq 5 ]; then
+              echo "Failed to install fyne tools after 5 attempts"
+              exit 1
+            fi
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          }
+        done
 
     - name: Build (non-macOS)
       if: matrix.goos != 'darwin'

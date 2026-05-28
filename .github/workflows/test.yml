@@ -11,6 +11,8 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -29,6 +31,19 @@ jobs:
       - name: Install Fyne deps (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install glfw
+
+      - name: Download dependencies
+        run: |
+          for i in {1..5}; do
+            go mod download && break || {
+              if [ $i -eq 5 ]; then
+                echo "Failed to download dependencies after 5 attempts"
+                exit 1
+              fi
+              echo "Attempt $i failed, retrying in 5 seconds..."
+              sleep 5
+            }
+          done
 
       - name: Run tests
         run: go test ./...
