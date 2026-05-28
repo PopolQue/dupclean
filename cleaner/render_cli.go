@@ -76,7 +76,8 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 	}
 
 	for {
-		printSelection(result)
+		visible := getVisibleTargets(result)
+		printSelection(visible, result.TotalSize)
 
 		fmt.Print("\n> ")
 		input, _ := reader.ReadString('\n')
@@ -96,8 +97,8 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 			selectTargets(result, false, false)
 		default:
 			// Try to parse as index to toggle
-			if idx, err := strconv.Atoi(input); err == nil && idx > 0 && idx <= len(result.Targets) {
-				result.Targets[idx-1].Selected = !result.Targets[idx-1].Selected
+			if idx, err := strconv.Atoi(input); err == nil && idx > 0 && idx <= len(visible) {
+				visible[idx-1].Selected = !visible[idx-1].Selected
 			}
 		}
 	}
@@ -177,12 +178,10 @@ stage3:
 	}
 }
 
-func printSelection(result *ScanResult) {
+func printSelection(visibleTargets []*CleanTarget, totalReclaimable int64) {
 	categories := make(map[string][]*CleanTarget)
-	for _, t := range result.Targets {
-		if t.TotalSize > 0 {
-			categories[t.Category] = append(categories[t.Category], t)
-		}
+	for _, t := range visibleTargets {
+		categories[t.Category] = append(categories[t.Category], t)
 	}
 
 	catNames := make([]string, 0, len(categories))
@@ -201,30 +200,56 @@ func printSelection(result *ScanResult) {
 				checkbox = "[✓]"
 			}
 			sizeStr := formatSize(t.TotalSize)
-			fmt.Printf("  %s  %-30s  %s\n", checkbox, t.Label, sizeStr)
+			fmt.Printf("  %2d. %s  %-30s  %s\n", i, checkbox, t.Label, sizeStr)
 			i++
 		}
 		fmt.Println()
 	}
 
-	selected := getSelectedTargets(result)
-	totalSize := getTotalSize(selected)
-	fmt.Printf("  Selected: %s\n", formatSize(totalSize))
+	var selectedSize int64
+	for _, t := range visibleTargets {
+		if t.Selected {
+			selectedSize += t.TotalSize
+		}
+	}
+	fmt.Printf("  Selected: %s (out of %s total)\n", formatSize(selectedSize), formatSize(totalReclaimable))
 }
 
-func selectTargets(result *ScanResult, selectIt bool, includeModerate bool) {
+func getVisibleTargets(result *ScanResult) []*CleanTarget {
+	var visible []*CleanTarget
+	for _, t := range result.Targets {
+		if t.TotalSize > 0 {
+			visible = append(visible, t)
+		}
+	}
+	return visible
+}
+
+// selectTargets updates selection state based on risk levels.
+func selectTargets(result *ScanResult, selected bool, includeModerate bool) {
 	for _, t := range result.Targets {
 		if t.TotalSize == 0 {
 			continue
 		}
-		if includeModerate || (t.Risk == RiskSafe || t.Risk == RiskLow) {
-			t.Selected = selectIt
+		if selected {
+			if includeModerate {
+				if t.Risk <= RiskModerate {
+					t.Selected = true
+				}
+			} else {
+				if t.Risk <= RiskLow {
+					t.Selected = true
+				}
+			}
+		} else {
+			t.Selected = false
 		}
 	}
 }
 
+// getSelectedTargets returns all selected targets.
 func getSelectedTargets(result *ScanResult) []*CleanTarget {
-	selected := make([]*CleanTarget, 0)
+	var selected []*CleanTarget
 	for _, t := range result.Targets {
 		if t.Selected && t.TotalSize > 0 {
 			selected = append(selected, t)
@@ -233,6 +258,7 @@ func getSelectedTargets(result *ScanResult) []*CleanTarget {
 	return selected
 }
 
+// getTotalSize returns the sum of TotalSize for all given targets.
 func getTotalSize(targets []*CleanTarget) int64 {
 	var total int64
 	for _, t := range targets {

@@ -46,13 +46,6 @@ func NewPhotoScanner() *PhotoScanner {
 	}
 }
 
-// hashedPhoto holds a photo path with its computed perceptual hash
-type hashedPhoto struct {
-	path string
-	hash *goimagehash.ImageHash
-	info os.FileInfo
-}
-
 // Scan implements the Scanner interface for photo duplicate detection
 func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	startTime := time.Now()
@@ -129,7 +122,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 			return nil
 		}
 
-		if inode, ok := getInode(info); ok {
+		if inode, ok := getInode(path, info); ok {
 			if visitedInodes[inode] {
 				return nil
 			}
@@ -261,7 +254,17 @@ func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, er
 
 // groupBySimilarity groups photos by perceptual hash similarity
 func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup {
-	used := make([]bool, len(photos))
+	if len(photos) == 0 {
+		return nil
+	}
+
+	// Build BK-Tree for efficient similarity search
+	tree := NewBKTree()
+	for _, p := range photos {
+		tree.Add(p)
+	}
+
+	used := make(map[string]bool)
 	groups := make([]DuplicateGroup, 0)
 
 	// Calculate maximum Hamming distance for our similarity threshold
@@ -271,48 +274,43 @@ func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup 
 		maxDistance = 1
 	}
 
-	for i, photo := range photos {
-		if used[i] {
+	for _, photo := range photos {
+		if used[photo.path] {
 			continue
 		}
 
-		// Start a new group with this photo
-		group := DuplicateGroup{
-			Hash:       photo.hash.ToString(),
-			Files:      []FileInfo{},
-			Similarity: 100,
-		}
-		group.Files = append(group.Files, FileInfo{
-			Path:    photo.path,
-			Name:    filepath.Base(photo.path),
-			Size:    photo.info.Size(),
-			ModTime: photo.info.ModTime(),
-			Hash:    photo.hash.ToString(),
-		})
-		used[i] = true
+		// Find similar photos using BK-Tree
+		similar := tree.Search(photo.hash, maxDistance)
 
-		// Find similar photos
-		for j := i + 1; j < len(photos); j++ {
-			if used[j] {
-				continue
-			}
-
-			distance, _ := photo.hash.Distance(photos[j].hash)
-			if distance <= maxDistance {
-				group.Files = append(group.Files, FileInfo{
-					Path:    photos[j].path,
-					Name:    filepath.Base(photos[j].path),
-					Size:    photos[j].info.Size(),
-					ModTime: photos[j].info.ModTime(),
-					Hash:    photos[j].hash.ToString(),
-				})
-				used[j] = true
+		// Filter out photos that are already used
+		var groupPhotos []hashedPhoto
+		for _, p := range similar {
+			if !used[p.path] {
+				groupPhotos = append(groupPhotos, p)
 			}
 		}
 
 		// Only add groups with 2+ photos
-		if len(group.Files) >= 2 {
+		if len(groupPhotos) >= 2 {
+			group := DuplicateGroup{
+				Hash:       photo.hash.ToString(),
+				Files:      make([]FileInfo, 0, len(groupPhotos)),
+				Similarity: 100,
+			}
+			for _, p := range groupPhotos {
+				group.Files = append(group.Files, FileInfo{
+					Path:    p.path,
+					Name:    filepath.Base(p.path),
+					Size:    p.info.Size(),
+					ModTime: p.info.ModTime(),
+					Hash:    p.hash.ToString(),
+				})
+				used[p.path] = true
+			}
 			groups = append(groups, group)
+		} else {
+			// Mark as used even if no group is formed to avoid re-processing
+			used[photo.path] = true
 		}
 	}
 

@@ -464,6 +464,7 @@ func cleanSelected(state *AppState) {
 	state.DeletedCount += deletedCount
 	state.FreedBytes += freedBytes
 	state.Groups = nil
+	state.Selections = nil
 	state.mu.Unlock()
 
 	state.updateContent(DuplicateFinalWidget(state))
@@ -563,6 +564,15 @@ func createFileCard(groupIndex, fileIndex int, f scanner.FileInfo, state *AppSta
 func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	stopPlayback(state)
 
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	keepAndDeleteLocked(state, keepIndex, files)
+}
+
+// keepAndDeleteLocked performs the deletion and state update.
+// The caller MUST hold state.mu.Lock().
+func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInfo) {
 	if len(files) == 0 {
 		return
 	}
@@ -573,20 +583,18 @@ func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 			continue
 		}
 		// Always count the deletion, even if moveToTrash fails (e.g., in tests)
-		state.mu.Lock()
 		state.DeletedCount++
 		state.FreedBytes += f.Size
-		state.mu.Unlock()
 		_ = moveToTrash(f.Path)
 	}
 
-	state.mu.Lock()
-	defer state.mu.Unlock()
-
-	// Remove the resolved group from the list
+	// Remove the resolved group from the list and sync selections
 	for i, g := range state.Groups {
 		if g.Hash == groupHash {
 			state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)
+			if i < len(state.Selections) {
+				state.Selections = append(state.Selections[:i], state.Selections[i+1:]...)
+			}
 			break
 		}
 	}
@@ -594,10 +602,12 @@ func keepAndDelete(state *AppState, keepIndex int, files []scanner.FileInfo) {
 
 // SmartCleanAll automatically resolves all duplicate groups by keeping the "best" file
 func SmartCleanAll(state *AppState) {
-	state.mu.RLock()
+	stopPlayback(state)
+
+	state.mu.Lock()
+	// Copy groups to avoid iteration issues while modifying state.Groups
 	groups := make([]scanner.DuplicateGroup, len(state.Groups))
 	copy(groups, state.Groups)
-	state.mu.RUnlock()
 
 	for _, g := range groups {
 		files := g.Files
@@ -616,8 +626,9 @@ func SmartCleanAll(state *AppState) {
 		})
 
 		// Keep index 0 (the best match based on sort above)
-		keepAndDelete(state, 0, files)
+		keepAndDeleteLocked(state, 0, files)
 	}
+	state.mu.Unlock()
 
 	if state.RefreshResults != nil {
 		state.RefreshResults()

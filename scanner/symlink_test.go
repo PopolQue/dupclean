@@ -312,7 +312,7 @@ func TestGetInode(t *testing.T) {
 		t.Fatalf("Stat failed: %v", err)
 	}
 
-	inode, ok := getInode(info)
+	inode, ok := getInode(testFile, info)
 
 	// On Unix systems, should return valid inode
 	// On Windows, should return (0, false)

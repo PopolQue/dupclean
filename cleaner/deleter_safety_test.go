@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"runtime"
 	"testing"
 )
 
@@ -15,7 +16,15 @@ func TestDeleteEntry_SafetyChecks(t *testing.T) {
 		{"empty path", "", true, true},
 		{"empty path non-permanent", "", false, true},
 		{"root unix", "/", true, true},
-		{"root windows", `\`, true, true},
+	}
+
+	if runtime.GOOS == "windows" {
+		tests = append(tests, struct {
+			name      string
+			path      string
+			permanent bool
+			wantErr   bool
+		}{"root windows", `\`, true, true})
 	}
 
 	for _, tt := range tests {

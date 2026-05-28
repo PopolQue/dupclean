@@ -1,11 +1,15 @@
 package cleaner
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 
 	"dupclean/internal/trash"
 )
@@ -121,14 +125,22 @@ type deleteResult struct {
 	Path       string
 }
 
+// protectedPaths contains directories that should never be permanently deleted.
+var protectedPaths = []string{
+	"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64", "/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/tmp", "/usr", "/var",
+	"C:\\", "C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)", "C:\\Users",
+}
+
 // deleteEntry deletes a single entry.
 func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64, skipped bool, err error) {
 	// Path validation for all operations
 	if entry.Path == "" {
 		return 0, 0, false, fmt.Errorf("cannot delete empty path")
 	}
-	if entry.Path == "/" || entry.Path == `\` {
-		return 0, 0, false, fmt.Errorf("cannot delete root directory")
+
+	absPath, err := filepath.Abs(entry.Path)
+	if err != nil {
+		return 0, 0, false, fmt.Errorf("invalid path: %w", err)
 	}
 
 	if !permanent {
@@ -143,6 +155,12 @@ func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64
 		return 1, entry.Size, false, nil
 	}
 
+	// Permanent deletion safety: ensure we're not deleting something we shouldn't
+	// This is a "double-check" beyond the initial path validation.
+	if err := verifyDeletionSafety(absPath); err != nil {
+		return 0, 0, false, err
+	}
+
 	// Permanent deletion
 	err = os.RemoveAll(entry.Path)
 	if err != nil {
@@ -155,24 +173,71 @@ func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64
 	return 1, entry.Size, false, nil
 }
 
-// isFileInUse checks if an error indicates a file is in use.
+// verifyDeletionSafety performs a final check before permanent deletion.
+func verifyDeletionSafety(path string) error {
+	cleanPath := filepath.Clean(path)
+
+	// Block roots
+	if cleanPath == "/" || (runtime.GOOS == "windows" && len(cleanPath) <= 3 && strings.HasSuffix(cleanPath, ":\\")) {
+		return fmt.Errorf("safety trigger: permanent deletion of root blocked: %s", path)
+	}
+
+	for _, protected := range protectedPaths {
+		if cleanPath == filepath.Clean(protected) {
+			return fmt.Errorf("safety trigger: permanent deletion of protected path blocked: %s", path)
+		}
+	}
+
+	// Heuristic: Don't allow deleting the user's home directory itself
+	home, err := os.UserHomeDir()
+	if err == nil {
+		if cleanPath == filepath.Clean(home) {
+			return fmt.Errorf("safety trigger: permanent deletion of home directory blocked: %s", path)
+		}
+	}
+
+	return nil
+}
+
+// isFileInUse checks if an error indicates a file is in use or access is denied.
 func isFileInUse(err error) bool {
 	if err == nil {
 		return false
 	}
-	// Check for common "file in use" errors
+
+	// Robust check using standard errors
+	if errors.Is(err, os.ErrPermission) {
+		return true
+	}
+
+	// Platform-specific checks via error codes
+	if runtime.GOOS == "windows" {
+		var errno syscall.Errno
+		if errors.As(err, &errno) {
+			switch errno {
+			case 32: // ERROR_SHARING_VIOLATION
+				return true
+			case 5: // ERROR_ACCESS_DENIED
+				return true
+			}
+		}
+	}
+
+	// Fallback to string matching for localized systems and wrapped errors
 	errStr := strings.ToLower(err.Error())
 	substrs := []string{
 		"busy",
 		"in use",
 		"sharing violation",
-		"permission denied",
 		"access is denied",
+		"permission denied",
+		"operation not permitted",
 	}
 	for _, sub := range substrs {
 		if strings.Contains(errStr, sub) {
 			return true
 		}
 	}
+
 	return false
 }

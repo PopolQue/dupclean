@@ -136,7 +136,7 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 				}
 
 				// Track inode to avoid hard link duplicates
-				if inode, ok := getInode(info); ok {
+				if inode, ok := getInode(p, info); ok {
 					inodeMu.Lock()
 					if _, seen := visitedInodes[inode]; seen {
 						inodeMu.Unlock()

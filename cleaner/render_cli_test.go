@@ -106,7 +106,7 @@ func TestPrintSelection(t *testing.T) {
 	}
 
 	// printSelection writes to stdout, just verify it doesn't panic
-	printSelection(result)
+	printSelection(result.Targets, result.TotalSize)
 }
 
 func TestPrintSelection_Empty(t *testing.T) {
@@ -116,7 +116,7 @@ func TestPrintSelection_Empty(t *testing.T) {
 	}
 
 	// Should not panic
-	printSelection(result)
+	printSelection(result.Targets, result.TotalSize)
 }
 
 func TestSelectTargets(t *testing.T) {

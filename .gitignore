@@ -9,7 +9,7 @@ coverage.out
 coverage.txt
 gui_coverage.out
 docs/
-/.vscode/
+**/.vscode/
 internal/.DS_Store
 .vscode
 .vscode/changelists.json

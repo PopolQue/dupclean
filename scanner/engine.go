@@ -90,7 +90,7 @@ func detectDuplicatesEngine(root string, opts Options, filter func(path string, 
 		}
 
 		// Skip hard links using inode tracking
-		if inode, ok := getInode(info); ok {
+		if inode, ok := getInode(path, info); ok {
 			if visitedInodes[inode] {
 				return nil
 			}
