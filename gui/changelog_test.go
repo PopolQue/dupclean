@@ -17,7 +17,7 @@ func TestChangelogLogic(t *testing.T) {
 
 	// First run: should show changelog (we can't easily check the dialog, but we check if preferences are updated)
 	// We call a modified version of the function that doesn't require a window for testing logic
-	
+
 	lastSeen := p.String(lastSeenVersionKey)
 	if lastSeen != "" {
 		t.Errorf("Expected empty lastSeen on first run, got %s", lastSeen)
@@ -25,7 +25,7 @@ func TestChangelogLogic(t *testing.T) {
 
 	// Update last seen
 	p.SetString(lastSeenVersionKey, version.Version)
-	
+
 	lastSeen = p.String(lastSeenVersionKey)
 	if lastSeen != version.Version {
 		t.Errorf("Expected lastSeen to be %s, got %s", version.Version, lastSeen)
