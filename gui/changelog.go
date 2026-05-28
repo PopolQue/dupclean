@@ -46,8 +46,9 @@ func showChangelog(w fyne.Window) {
 
 	// Most Recent Update Component
 	recentTitle := widget.NewLabelWithStyle("Latest Highlights", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	recentContent := widget.NewRichTextFromMarkdown(`• Each update highlight now appears on its own line for better readability.
-• The changelog window has been refined for better focus.`)
+	recentContent := widget.NewRichTextFromMarkdown(`• Improved update popup with a proper header and version info.
+• Added a dedicated component for recent highlights.
+• Added a structured changelog history component for better navigation.`)
 	recentContent.Wrapping = fyne.TextWrapWord
 
 	recentComponent := container.NewVBox(
@@ -57,13 +58,13 @@ func showChangelog(w fyne.Window) {
 
 	// Changelog History Component
 	historyTitle := widget.NewLabelWithStyle("Previous Updates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.1 Recap**
-• Improved the popup layout with word wrapping and vertical scrolling.
-• Reduced default size for better visibility.
+	historyContent := widget.NewRichTextFromMarkdown(`**v0.4.3.2 Recap**
+• Each update highlight now appears on its own line for better readability.
+• The changelog window has been refined for better focus.
 
-**v0.4.3 Features**
-• Introduced the "What's New" popup to keep you informed.
-• Added a manual changelog viewer in the Update screen.`)
+**v0.4.3.1 Recap**
+• Improved the popup layout with word wrapping and vertical scrolling.
+• Reduced default size for better visibility.`)
 	historyContent.Wrapping = fyne.TextWrapWord
 
 	historyComponent := container.NewVBox(
