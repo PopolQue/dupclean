@@ -195,6 +195,19 @@ func TestKeepAndDelete_SingleFile(t *testing.T) {
 
 // Test keepAndDelete with multiple files keeping last
 func TestKeepAndDelete_KeepLastFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	file1 := filepath.Join(tmpDir, "file1.wav")
+	file2 := filepath.Join(tmpDir, "file2.wav")
+	file3 := filepath.Join(tmpDir, "file3.wav")
+
+	_ = os.WriteFile(file1, make([]byte, 100), 0644)
+	_ = os.WriteFile(file2, make([]byte, 200), 0644)
+	_ = os.WriteFile(file3, make([]byte, 300), 0644)
+
+	info1, _ := os.Stat(file1)
+	info2, _ := os.Stat(file2)
+	info3, _ := os.Stat(file3)
+
 	state := &AppState{
 		DeletedCount:      0,
 		FreedBytes:        0,
@@ -203,9 +216,9 @@ func TestKeepAndDelete_KeepLastFile(t *testing.T) {
 			{
 				Hash: "hash1",
 				Files: []scanner.FileInfo{
-					{Path: "/test/file1.wav", Name: "file1.wav", Size: 100, Hash: "hash1"},
-					{Path: "/test/file2.wav", Name: "file2.wav", Size: 200, Hash: "hash1"},
-					{Path: "/test/file3.wav", Name: "file3.wav", Size: 300, Hash: "hash1"},
+					{Path: file1, Name: "file1.wav", Size: 100, Hash: "hash1", ModTime: info1.ModTime()},
+					{Path: file2, Name: "file2.wav", Size: 200, Hash: "hash1", ModTime: info2.ModTime()},
+					{Path: file3, Name: "file3.wav", Size: 300, Hash: "hash1", ModTime: info3.ModTime()},
 				},
 			},
 		},

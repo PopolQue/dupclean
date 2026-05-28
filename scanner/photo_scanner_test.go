@@ -56,7 +56,7 @@ func TestPhotoScanner_Scan_IgnoreExtensions(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create test files
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	png1 := filepath.Join(tmpDir, "image1.png")
 	jpg := filepath.Join(tmpDir, "image.jpg")
 
@@ -92,7 +92,7 @@ func TestPhotoScanner_Scan_MinSize(t *testing.T) {
 	small := filepath.Join(tmpDir, "small.png")
 	large := filepath.Join(tmpDir, "large.png")
 
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	if err := os.WriteFile(small, pngHeader, 0644); err != nil {
 		t.Fatalf("Failed to create small PNG: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestPhotoScanner_Scan_MinSize(t *testing.T) {
 func TestPhotoScanner_Scan_HiddenFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	visible := filepath.Join(tmpDir, "visible.png")
 	hidden := filepath.Join(tmpDir, ".hidden.png")
 
@@ -151,7 +151,7 @@ func TestPhotoScanner_Scan_HiddenFiles(t *testing.T) {
 func TestPhotoScanner_Scan_IncludeHidden(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	visible := filepath.Join(tmpDir, "visible.png")
 	hidden := filepath.Join(tmpDir, ".hidden.png")
 
@@ -181,7 +181,7 @@ func TestPhotoScanner_Scan_IncludeHidden(t *testing.T) {
 func TestPhotoScanner_Scan_IgnoreFolders(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	rootFile := filepath.Join(tmpDir, "root.png")
 	ignoredDir := filepath.Join(tmpDir, "@eaDir")
 	ignoredFile := filepath.Join(ignoredDir, "syno.png")
@@ -217,7 +217,7 @@ func TestPhotoScanner_Scan_SimilarityThreshold(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create identical PNG files (will have same hash)
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	file1 := filepath.Join(tmpDir, "copy1.png")
 	file2 := filepath.Join(tmpDir, "copy2.png")
 
@@ -242,15 +242,20 @@ func TestPhotoScanner_Scan_SimilarityThreshold(t *testing.T) {
 	if stats.TotalScanned != 2 {
 		t.Errorf("Expected 2 files scanned, got %d", stats.TotalScanned)
 	}
-	// May or may not find duplicates depending on hash
-	_ = result
+	if len(result) != 1 {
+		t.Errorf("Expected 1 group, got %d", len(result))
+		for _, e := range stats.Errors {
+			t.Logf("Scan error: %v", e)
+		}
+	}
+
 }
 
 func TestPhotoScanner_Scan_LowSimilarity(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create identical files
-	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	pngHeader := valid1x1PNG
 	file1 := filepath.Join(tmpDir, "copy1.png")
 	file2 := filepath.Join(tmpDir, "copy2.png")
 

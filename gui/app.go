@@ -500,6 +500,11 @@ func cleanSelected(state *AppState) {
 	for i, group := range groups {
 		for j, f := range group.Files {
 			if !selections[i][j] {
+				info, err := os.Stat(f.Path)
+				if err != nil || info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
+					log.Printf("[cleanSelected] Skipping %s: file modified or deleted since scan", f.Path)
+					continue
+				}
 				if err := moveToTrash(f.Path); err == nil {
 					deletedCount++
 					freedBytes += f.Size
@@ -626,6 +631,13 @@ func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInf
 		if idx == keepIndex {
 			continue
 		}
+
+		info, err := os.Stat(f.Path)
+		if err != nil || info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
+			log.Printf("[keepAndDeleteLocked] Skipping %s: file modified or deleted since scan", f.Path)
+			continue
+		}
+
 		// Always count the deletion, even if moveToTrash fails (e.g., in tests)
 		state.DeletedCount++
 		state.FreedBytes += f.Size

@@ -1,5 +1,5 @@
 cask "dupclean" do
-  version "0.4.7.1"
+  version "0.4.7.2"
 
   if Hardware::CPU.intel?
     sha256 :no_check # Placeholder - update with actual SHA256 after release
