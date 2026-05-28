@@ -53,10 +53,19 @@ func (m *dupCleanTheme) Font(style fyne.TextStyle) fyne.Resource {
 
 func (m *dupCleanTheme) Size(name fyne.ThemeSizeName) float32 {
 	if name == theme.SizeNamePadding {
-		return 6
+		return 8
 	}
 	if name == theme.SizeNameInlineIcon {
 		return 20
+	}
+	if name == theme.SizeNameHeadingText {
+		return 24
+	}
+	if name == theme.SizeNameSubHeadingText {
+		return 18
+	}
+	if name == theme.SizeNameText {
+		return 14
 	}
 	return theme.DefaultTheme().Size(name)
 }

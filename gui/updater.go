@@ -97,15 +97,13 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 	})
 
 	body := container.NewVBox(
-		versionLabel,
-		layout.NewSpacer(),
+		widget.NewCard("Version Info", "", versionLabel),
 		widget.NewCard("Update Status", "", container.NewVBox(
 			statusLabel,
 			progressBar,
 		)),
-		layout.NewSpacer(),
 		container.NewHBox(layout.NewSpacer(), checkBtn, layout.NewSpacer()),
-		viewChangelogBtn,
+		container.NewHBox(layout.NewSpacer(), viewChangelogBtn, layout.NewSpacer()),
 	)
 
 	return createToolPage("Check for Updates", "Keep DupClean up to date with the latest features", body)
@@ -155,9 +153,9 @@ func isNewerVersion(current, latest string) bool {
 }
 
 func showUpdateDialog(state *UpdaterState, release *GitHubRelease) {
-	titleText := canvas.NewText("Update Available", theme.Color(theme.ColorNamePrimary))
-	titleText.TextSize = 20
-	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	titleText := widget.NewLabelWithStyle("Update Available", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	titleText.Importance = widget.HighImportance
+	titleText.SizeName = theme.SizeNameSubHeadingText
 
 	header := container.NewVBox(
 		container.NewHBox(

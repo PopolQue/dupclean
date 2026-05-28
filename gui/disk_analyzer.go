@@ -77,7 +77,6 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 
 	body := container.NewVBox(
 		widget.NewCard("Target Folder", "Select the directory you want to analyze", folderRow),
-		layout.NewSpacer(),
 		container.NewHBox(layout.NewSpacer(), analyzeBtn, layout.NewSpacer()),
 		progressCard,
 	)

@@ -164,11 +164,7 @@ func RunGUI() {
 	fyneApp.Settings().SetTheme(NewDupCleanTheme())
 
 	log.Println("RunGUI: setting icon...")
-	if iconRes, err := fyne.LoadResourceFromPath("dupclean_abstract_icon.png"); err == nil {
-		fyneApp.SetIcon(iconRes)
-	} else {
-		fyneApp.SetIcon(theme.FolderOpenIcon())
-	}
+	fyneApp.SetIcon(appLogo)
 
 	log.Println("RunGUI: creating window...")
 	w := fyneApp.NewWindow("DupClean - Duplicate File Finder & Cache Cleaner")
@@ -210,20 +206,17 @@ func RunGUI() {
 // createMainLayoutWithSidebar creates the main application layout with sidebar navigation
 func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerState, diskState *DiskAnalyzerState) fyne.CanvasObject {
 	// App header
-	logo := canvas.NewImageFromResource(theme.FolderOpenIcon())
-	if iconRes, err := fyne.LoadResourceFromPath("dupclean_abstract_icon.png"); err == nil {
-		logo = canvas.NewImageFromResource(iconRes)
-	}
+	logo := canvas.NewImageFromResource(appLogo)
 	logo.FillMode = canvas.ImageFillContain
 	logo.SetMinSize(fyne.NewSize(48, 48))
 
-	appName := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
-	appName.TextSize = 28
+	appName := widget.NewLabel("DupClean")
 	appName.TextStyle = fyne.TextStyle{Bold: true}
+	appName.SizeName = theme.SizeNameHeadingText
 
-	appSubtitle := canvas.NewText("All-in-one disk cleanup tool", theme.Color(theme.ColorNameForeground))
-	appSubtitle.TextSize = 12
+	appSubtitle := widget.NewLabel("All-in-one disk cleanup tool")
 	appSubtitle.TextStyle = fyne.TextStyle{Italic: true}
+	appSubtitle.SizeName = theme.SizeNameSubHeadingText
 
 	header := container.NewPadded(container.NewHBox(
 		logo,

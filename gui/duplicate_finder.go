@@ -33,7 +33,6 @@ func DuplicateFinderWidget(state *AppState) fyne.CanvasObject {
 		folderCard,
 		optionsCard,
 		progressCard,
-		layout.NewSpacer(),
 		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
 	)
 
@@ -96,10 +95,9 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 
 // DuplicateNoResultsWidget creates the "no duplicates found" UI
 func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
-	title := canvas.NewText("No Duplicates Found!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
+	title := widget.NewLabelWithStyle("No Duplicates Found!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title.Importance = widget.HighImportance
+	title.SizeName = theme.SizeNameHeadingText
 
 	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
 	icon.FillMode = canvas.ImageFillContain
@@ -136,10 +134,9 @@ func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
 
 // DuplicateFinalWidget creates the completion screen
 func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
-	title := canvas.NewText("Complete!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
+	title := widget.NewLabelWithStyle("Complete!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title.Importance = widget.HighImportance
+	title.SizeName = theme.SizeNameHeadingText
 
 	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
 	icon.FillMode = canvas.ImageFillContain

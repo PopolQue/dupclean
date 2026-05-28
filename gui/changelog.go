@@ -21,6 +21,11 @@ type changelogEntry struct {
 
 var fullChangelog = []changelogEntry{
 	{
+		version: "v0.4.7.0",
+		highlights: `- **UI Polish & Consistency**: Unified layout schemas across all tabs to prevent jumping. Standardized typography for headers and text.
+- **Branding**: The DupClean logo is now fully embedded in the header, replacing the default folder icon.`,
+	},
+	{
 		version: "v0.4.6.1",
 		highlights: `- **CI/CD Improvements**: Resolved macOS 'pkgconf' warnings and added dedicated CodeQL workflow for CGO support.
 - **Better Release Notes**: Enhanced the appearance and formatting of GitHub release pages.`,

@@ -94,17 +94,13 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	))
 
 	// Disclaimer
-	disclaimer := canvas.NewText("⚠️ Actual freed space may vary - cache files change constantly", theme.Color(theme.ColorNameWarning))
-	disclaimer.TextSize = 12
-	disclaimer.TextStyle = fyne.TextStyle{Italic: true}
-	disclaimer.Alignment = fyne.TextAlignCenter
+	disclaimer := widget.NewLabelWithStyle("⚠️ Actual freed space may vary - cache files change constantly", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
+	disclaimer.Importance = widget.WarningImportance
 
 	body := container.NewVBox(
 		widget.NewCard("Options", "Filter and performance settings", optionsForm),
-		layout.NewSpacer(),
 		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
 		progressCard,
-		layout.NewSpacer(),
 		disclaimer,
 	)
 
@@ -235,17 +231,17 @@ func displayCacheResults(state *CacheCleanerState) {
 	cleanBtn.Importance = widget.HighImportance
 
 	// Create total label - will be updated on selection
-	totalLabel := canvas.NewText("Selected: 0 B", theme.Color(theme.ColorNamePrimary))
-	totalLabel.TextSize = 18
-	totalLabel.TextStyle = fyne.TextStyle{Bold: true}
+	totalLabel := widget.NewLabelWithStyle("Selected: 0 B", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	totalLabel.Importance = widget.HighImportance
+	totalLabel.SizeName = theme.SizeNameSubHeadingText
 
 	// Create category sections
 	for _, cat := range catNames {
 		targets := categories[cat]
 
-		catLabel := canvas.NewText(cat, theme.Color(theme.ColorNamePrimary))
-		catLabel.TextSize = 18
-		catLabel.TextStyle = fyne.TextStyle{Bold: true}
+		catLabel := widget.NewLabelWithStyle(cat, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+		catLabel.Importance = widget.HighImportance
+		catLabel.SizeName = theme.SizeNameSubHeadingText
 		resultsContainer.Add(catLabel)
 		resultsContainer.Add(widget.NewSeparator())
 
@@ -277,7 +273,7 @@ func displayCacheResults(state *CacheCleanerState) {
 }
 
 // createCacheTargetCard creates a card for a cache target
-func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget, totalLabel *canvas.Text, cleanBtn *widget.Button) *widget.Card {
+func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget, totalLabel *widget.Label, cleanBtn *widget.Button) *widget.Card {
 	// Risk icon
 	riskIcon := theme.ConfirmIcon()
 	switch target.Risk {
@@ -314,15 +310,14 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 	return widget.NewCard("", "", cardContent)
 }
 
-func updateCacheTotal(state *CacheCleanerState, totalLabel *canvas.Text, cleanBtn *widget.Button) {
+func updateCacheTotal(state *CacheCleanerState, totalLabel *widget.Label, cleanBtn *widget.Button) {
 	var selectedSize int64
 	for _, t := range state.Targets {
 		if state.SelectedTargets[t.ID] {
 			selectedSize += t.TotalSize
 		}
 	}
-	totalLabel.Text = fmt.Sprintf("Selected: %s", fsutil.FormatBytes(selectedSize))
-	totalLabel.Refresh()
+	totalLabel.SetText(fmt.Sprintf("Selected: %s", fsutil.FormatBytes(selectedSize)))
 
 	if selectedSize > 0 {
 		cleanBtn.Enable()
@@ -563,10 +558,9 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 }
 
 func showCacheCleanComplete(state *CacheCleanerState) {
-	title := canvas.NewText("Cleaning Complete!", theme.Color(theme.ColorNameSuccess))
-	title.TextSize = 32
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
+	title := widget.NewLabelWithStyle("Cleaning Complete!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title.Importance = widget.HighImportance
+	title.SizeName = theme.SizeNameHeadingText
 
 	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
 	icon.FillMode = canvas.ImageFillContain
