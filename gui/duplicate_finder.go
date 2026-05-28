@@ -152,12 +152,19 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 		subMessage = fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.FreedBytes))
 	}
 
+	if state.SkippedCount > 0 {
+		subMessage += fmt.Sprintf("\n⚠️ %d file(s) skipped (modified since scan)", state.SkippedCount)
+	}
+
 	resultLabel := widget.NewLabel(message)
 	resultLabel.TextStyle = fyne.TextStyle{Bold: true}
 	resultLabel.Alignment = fyne.TextAlignCenter
 
 	subLabel := widget.NewLabel(subMessage)
 	subLabel.TextStyle = fyne.TextStyle{Italic: true}
+	if state.SkippedCount > 0 {
+		subLabel.Importance = widget.WarningImportance
+	}
 	subLabel.Alignment = fyne.TextAlignCenter
 
 	backBtn := widget.NewButtonWithIcon("Start New Scan", theme.ViewRefreshIcon(), func() {
@@ -165,6 +172,8 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 		state.CurrentGroupIndex = 0
 		state.DeletedCount = 0
 		state.FreedBytes = 0
+		state.SkippedCount = 0
+		state.SkippedFiles = nil
 		state.FolderPath = ""
 		state.updateContent(DuplicateFinderWidget(state))
 	})

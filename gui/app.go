@@ -92,6 +92,8 @@ type AppState struct {
 	CurrentGroupIndex  int
 	DeletedCount       int
 	FreedBytes         int64
+	SkippedCount       int
+	SkippedFiles       []string
 	Stats              scanner.ScanStats
 	CurrentPlayer      *exec.Cmd
 	StopPlayer         func()
@@ -481,6 +483,17 @@ func showResults(state *AppState, stats scanner.ScanStats) {
 	state.updateContent(DuplicateResultsWidget(state))
 }
 
+func safeToDelete(f scanner.FileInfo) (bool, error) {
+	info, err := os.Stat(f.Path)
+	if err != nil {
+		return false, err // file gone or inaccessible
+	}
+	if info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
+		return false, fmt.Errorf("file modified since scan")
+	}
+	return true, nil
+}
+
 func cleanSelected(state *AppState) {
 	stopPlayback(state)
 
@@ -496,13 +509,16 @@ func cleanSelected(state *AppState) {
 
 	var deletedCount int
 	var freedBytes int64
+	var skippedCount int
+	var skippedFiles []string
 
 	for i, group := range groups {
 		for j, f := range group.Files {
 			if !selections[i][j] {
-				info, err := os.Stat(f.Path)
-				if err != nil || info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
-					log.Printf("[cleanSelected] Skipping %s: file modified or deleted since scan", f.Path)
+				if ok, err := safeToDelete(f); !ok {
+					log.Printf("[cleanSelected] Skipping %s: %v", f.Path, err)
+					skippedCount++
+					skippedFiles = append(skippedFiles, f.Name)
 					continue
 				}
 				if err := moveToTrash(f.Path); err == nil {
@@ -516,6 +532,8 @@ func cleanSelected(state *AppState) {
 	state.mu.Lock()
 	state.DeletedCount += deletedCount
 	state.FreedBytes += freedBytes
+	state.SkippedCount += skippedCount
+	state.SkippedFiles = append(state.SkippedFiles, skippedFiles...)
 	state.Groups = nil
 	state.Selections = nil
 	state.mu.Unlock()
@@ -632,9 +650,10 @@ func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInf
 			continue
 		}
 
-		info, err := os.Stat(f.Path)
-		if err != nil || info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
-			log.Printf("[keepAndDeleteLocked] Skipping %s: file modified or deleted since scan", f.Path)
+		if ok, err := safeToDelete(f); !ok {
+			log.Printf("[keepAndDeleteLocked] Skipping %s: %v", f.Path, err)
+			state.SkippedCount++
+			state.SkippedFiles = append(state.SkippedFiles, f.Name)
 			continue
 		}
 
@@ -645,6 +664,7 @@ func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInf
 	}
 
 	// Remove the resolved group from the list and sync selections
+
 	for i, g := range state.Groups {
 		if g.Hash == groupHash {
 			state.Groups = append(state.Groups[:i], state.Groups[i+1:]...)

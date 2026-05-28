@@ -50,6 +50,12 @@ func TestAppState_Initialization(t *testing.T) {
 	if state.FreedBytes != 0 {
 		t.Errorf("FreedBytes = %d, want 0", state.FreedBytes)
 	}
+	if state.SkippedCount != 0 {
+		t.Errorf("SkippedCount = %d, want 0", state.SkippedCount)
+	}
+	if len(state.SkippedFiles) != 0 {
+		t.Errorf("SkippedFiles length = %d, want 0", len(state.SkippedFiles))
+	}
 }
 
 // Test updateContent method
@@ -66,6 +72,48 @@ func TestAppState_UpdateContent(t *testing.T) {
 		Objects: []interface{}{},
 	}
 	_ = container
+}
+
+// Test safeToDelete functionality
+func TestSafeToDelete(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test_safetodelete.txt")
+
+	// Create a test file
+	content := []byte("test content")
+	if err := os.WriteFile(testFile, content, 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	info, _ := os.Stat(testFile)
+
+	// 1. Valid case
+	f := scanner.FileInfo{
+		Path:    testFile,
+		Size:    int64(len(content)),
+		ModTime: info.ModTime(),
+	}
+
+	ok, err := safeToDelete(f)
+	if !ok || err != nil {
+		t.Errorf("safeToDelete failed for valid file: %v", err)
+	}
+
+	// 2. Modified size
+	fModifiedSize := f
+	fModifiedSize.Size = 999
+	ok, err = safeToDelete(fModifiedSize)
+	if ok || err == nil {
+		t.Error("safeToDelete should fail when size has changed")
+	}
+
+	// 3. Non-existent file
+	fMissing := f
+	fMissing.Path = "/nonexistent/path/file.txt"
+	ok, err = safeToDelete(fMissing)
+	if ok || err == nil {
+		t.Error("safeToDelete should fail for non-existent file")
+	}
 }
 
 // Test formatBytes edge cases
