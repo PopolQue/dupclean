@@ -107,20 +107,25 @@ type AppState struct {
 
 // createSectionHeader creates a consistent header for each tool section
 func createSectionHeader(title, subtitle string) fyne.CanvasObject {
-	titleText := canvas.NewText(title, theme.Color(theme.ColorNamePrimary))
-	titleText.TextSize = 24
-	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	titleLabel := widget.NewLabel(title)
+	titleLabel.TextStyle = fyne.TextStyle{Bold: true}
+	titleLabel.Importance = widget.HighImportance
+	titleLabel.SizeName = theme.SizeNameHeadingText
 
-	subtitleText := canvas.NewText(subtitle, theme.Color(theme.ColorNameForeground))
-	subtitleText.TextSize = 14
-	subtitleText.TextStyle = fyne.TextStyle{Italic: true}
+	subtitleLabel := widget.NewLabel(subtitle)
+	subtitleLabel.TextStyle = fyne.TextStyle{Italic: true}
+
+	accent := canvas.NewRectangle(theme.Color(theme.ColorNamePrimary))
+	accent.SetMinSize(fyne.NewSize(4, 32))
+	accent.CornerRadius = 2
 
 	return container.NewVBox(
 		container.NewHBox(
-			titleText,
+			accent,
+			titleLabel,
 			layout.NewSpacer(),
 		),
-		subtitleText,
+		subtitleLabel,
 		widget.NewSeparator(),
 	)
 }
@@ -140,9 +145,14 @@ func RunGUI() {
 	log.Println("RunGUI: starting...")
 
 	fyneApp := app.NewWithID("com.popolque.dupclean")
+	fyneApp.Settings().SetTheme(NewDupCleanTheme())
 
 	log.Println("RunGUI: setting icon...")
-	fyneApp.SetIcon(theme.FolderOpenIcon())
+	if iconRes, err := fyne.LoadResourceFromPath("dupclean_abstract_icon.png"); err == nil {
+		fyneApp.SetIcon(iconRes)
+	} else {
+		fyneApp.SetIcon(theme.FolderOpenIcon())
+	}
 
 	log.Println("RunGUI: creating window...")
 	w := fyneApp.NewWindow("DupClean - Duplicate File Finder & Cache Cleaner")
@@ -184,18 +194,26 @@ func RunGUI() {
 // createMainLayoutWithSidebar creates the main application layout with sidebar navigation
 func createMainLayoutWithSidebar(dupState *AppState, cacheState *CacheCleanerState, diskState *DiskAnalyzerState) fyne.CanvasObject {
 	// App header
+	logo := canvas.NewImageFromResource(theme.FolderOpenIcon())
+	if iconRes, err := fyne.LoadResourceFromPath("dupclean_abstract_icon.png"); err == nil {
+		logo = canvas.NewImageFromResource(iconRes)
+	}
+	logo.FillMode = canvas.ImageFillContain
+	logo.SetMinSize(fyne.NewSize(48, 48))
+
 	appName := canvas.NewText("DupClean", theme.Color(theme.ColorNamePrimary))
-	appName.TextSize = 24
+	appName.TextSize = 28
 	appName.TextStyle = fyne.TextStyle{Bold: true}
 
 	appSubtitle := canvas.NewText("All-in-one disk cleanup tool", theme.Color(theme.ColorNameForeground))
-	appSubtitle.TextSize = 14
+	appSubtitle.TextSize = 12
 	appSubtitle.TextStyle = fyne.TextStyle{Italic: true}
 
-	header := container.NewHBox(
+	header := container.NewPadded(container.NewHBox(
+		logo,
 		container.NewVBox(appName, appSubtitle),
 		layout.NewSpacer(),
-	)
+	))
 
 	// Create content area
 	contentContainer := container.NewStack()

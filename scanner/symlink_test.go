@@ -314,21 +314,10 @@ func TestGetInode(t *testing.T) {
 
 	inode, ok := getInode(testFile, info)
 
-	// On Unix systems, should return valid inode
-	// On Windows, should return (0, false)
-	if runtime.GOOS != "windows" {
-		if !ok {
-			t.Error("getInode should return true on Unix systems")
-		}
-		if inode == 0 {
-			t.Error("getInode should return non-zero inode on Unix systems")
-		}
-	} else {
-		if ok {
-			t.Error("getInode should return false on Windows")
-		}
-		if inode != 0 {
-			t.Error("getInode should return 0 on Windows")
-		}
+	if !ok {
+		t.Errorf("getInode should return true (GOOS: %s)", runtime.GOOS)
+	}
+	if inode == 0 {
+		t.Errorf("getInode should return non-zero inode (GOOS: %s)", runtime.GOOS)
 	}
 }
