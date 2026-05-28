@@ -29,14 +29,24 @@ func ShowChangelogIfNeeded(w fyne.Window) {
 func showChangelog(w fyne.Window) {
 	title := fmt.Sprintf("What's New in %s", version.Version)
 
-	changelogText := `### v0.4.3.1 Release Highlights
+	changelogText := `### v0.4.3.2 Release Highlights
 
-**UI Refinements**
-• Improved the "What's New" popup layout with word wrapping and vertical scrolling.
-• Reduced the default size of the changelog window for better visibility.
+**UI Improvements**
+
+• Each update highlight now appears on its own line for better readability.
+
+• The changelog window has been refined for better focus.
+
+**v0.4.3.1 Recap**
+
+• Improved the popup layout with word wrapping and vertical scrolling.
+
+• Reduced default size for better visibility.
 
 **v0.4.3 Features**
-• Introduced the "What's New" popup to keep you informed about recent improvements.
+
+• Introduced the "What's New" popup to keep you informed.
+
 • Added a manual changelog viewer in the Update screen.`
 
 	content := widget.NewRichTextFromMarkdown(changelogText)
