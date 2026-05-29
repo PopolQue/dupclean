@@ -48,12 +48,22 @@ jobs:
         run: |
           go test -v ./... -covermode=count -coverprofile=coverage.out
           go tool cover -func=coverage.out -o=coverage.out
+          # Generate non-GUI coverage
+          go test -coverprofile=coverage-nogui.out $(go list ./... | grep -v gui)
 
 
       - name: Go Coverage Badge
         uses: tj-actions/coverage-badge-go@v3
         with:
           filename: coverage.out
+
+
+      - name: Go Coverage Badge (No GUI)
+        uses: tj-actions/coverage-badge-go@v3
+        with:
+          filename: coverage-nogui.out
+          text: "Coverage (no GUI)"
+          pattern: '!\[Coverage \(no GUI\)\]\(https://img\.shields\.io/badge/Coverage_\(no_GUI\)-([0-9.]+)%25-([a-z]+)\)'
 
 
       - name: Verify Changed files
@@ -72,7 +82,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add README.md
-          git commit -m "chore: Updated coverage badge."
+          git commit -m "chore: Updated coverage badges."
 
 
       - name: Push changes

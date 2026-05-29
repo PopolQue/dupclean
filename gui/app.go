@@ -135,18 +135,53 @@ func createSectionHeader(title, subtitle string) fyne.CanvasObject {
 
 // createToolPage wraps a content in a standard tool layout with header and padding
 func createToolPage(title, subtitle string, content fyne.CanvasObject) fyne.CanvasObject {
+	return createToolPageWithFooter(title, subtitle, content, nil)
+}
+
+// createToolPageWithFooter wraps a content in a standard tool layout with a fixed header and footer
+func createToolPageWithFooter(title, subtitle string, content fyne.CanvasObject, footer fyne.CanvasObject) fyne.CanvasObject {
 	header := createSectionHeader(title, subtitle)
 
-	// Main layout: Header at top, content in center
-	// Use Border to keep header fixed if we decide to scroll only the content,
-	// but for now, we'll follow a simpler VBox inside Scroll approach for consistent look
+	// Ensure content is scrolled if it's not already
+	scrolledContent := content
+	if _, ok := content.(*container.Scroll); !ok {
+		// Only wrap if it's likely to need scrolling
+		scrolledContent = container.NewVScroll(content)
+	}
 
-	mainContent := container.NewVBox(
-		header,
-		content,
-	)
+	main := container.NewBorder(header, footer, nil, nil, scrolledContent)
+	return container.NewPadded(main)
+}
 
-	return container.NewPadded(container.NewScroll(mainContent))
+// createStatusPage creates a centered status page (success, error, empty state)
+func createStatusPage(title, subtitle string, icon fyne.Resource, message, subMessage string, actions fyne.CanvasObject) fyne.CanvasObject {
+	iconImg := canvas.NewImageFromResource(icon)
+	iconImg.FillMode = canvas.ImageFillContain
+	iconImg.SetMinSize(fyne.NewSize(80, 80))
+
+	messageLabel := widget.NewLabelWithStyle(message, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	messageLabel.Importance = widget.HighImportance
+	messageLabel.SizeName = theme.SizeNameHeadingText
+
+	subLabel := widget.NewLabel(subMessage)
+	subLabel.TextStyle = fyne.TextStyle{Italic: true}
+	subLabel.Alignment = fyne.TextAlignCenter
+
+	content := container.NewCenter(container.NewVBox(
+		layout.NewSpacer(),
+		iconImg,
+		messageLabel,
+		subLabel,
+		layout.NewSpacer(),
+	))
+
+	// For status pages, the actions are often centered but we'll use footer for consistency if provided
+	var body fyne.CanvasObject = content
+	if actions != nil {
+		body = container.NewBorder(nil, container.NewCenter(actions), nil, nil, content)
+	}
+
+	return createToolPage(title, subtitle, body)
 }
 
 // updateContent updates the content container (preserves sidebar)

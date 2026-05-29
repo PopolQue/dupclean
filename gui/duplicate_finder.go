@@ -7,7 +7,6 @@ import (
 	"dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -84,88 +83,44 @@ func DuplicateResultsWidget(state *AppState) fyne.CanvasObject {
 
 	actionButtons := container.NewHBox(cancelBtn, layout.NewSpacer(), smartBtn, cleanBtn)
 
-	body := container.NewVBox(
-		groupDisplay,
-		widget.NewSeparator(),
-		actionButtons,
-	)
-
-	return createToolPage("Scan Results", statsText, body)
+	return createToolPageWithFooter("Scan Results", statsText, groupDisplay, actionButtons)
 }
 
 // DuplicateNoResultsWidget creates the "no duplicates found" UI
 func DuplicateNoResultsWidget(state *AppState) fyne.CanvasObject {
-	title := widget.NewLabelWithStyle("No Duplicates Found!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	title.Importance = widget.HighImportance
-	title.SizeName = theme.SizeNameHeadingText
-
-	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
 	statsText := fmt.Sprintf(
-		"Scanned %d files in %s\nYour files are clean!",
+		"Scanned %d files in %s. Your files are clean!",
 		state.Stats.TotalScanned,
 		state.Stats.ScanDuration.Round(time.Second),
 	)
-	statsLabel := widget.NewLabel(statsText)
-	statsLabel.Alignment = fyne.TextAlignCenter
-	statsLabel.TextStyle = fyne.TextStyle{Italic: true}
 
 	backBtn := widget.NewButtonWithIcon("Back to Home", theme.HomeIcon(), func() {
 		state.updateContent(DuplicateFinderWidget(state))
 	})
 	backBtn.Importance = widget.HighImportance
 
-	body := container.NewVBox(
-		layout.NewSpacer(),
-		container.NewCenter(container.NewVBox(
-			icon,
-			title,
-			statsLabel,
-			layout.NewSpacer(),
-			container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
-		)),
-		layout.NewSpacer(),
+	return createStatusPage(
+		"Scan Complete",
+		"No duplicates were found",
+		theme.ConfirmIcon(),
+		"No Duplicates Found!",
+		statsText,
+		backBtn,
 	)
-
-	return createToolPage("Scan Complete", "No duplicates were found", body)
 }
 
 // DuplicateFinalWidget creates the completion screen
 func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
-	title := widget.NewLabelWithStyle("Complete!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	title.Importance = widget.HighImportance
-	title.SizeName = theme.SizeNameHeadingText
-
-	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
-	var message string
 	var subMessage string
 	if state.DeletedCount == 0 {
-		message = "No files were deleted"
-		subMessage = "Your files are safe."
+		subMessage = "No files were deleted. Your files are safe."
 	} else {
-		message = fmt.Sprintf("Moved %d file(s) to Trash", state.DeletedCount)
-		subMessage = fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.FreedBytes))
+		subMessage = fmt.Sprintf("Moved %d file(s) to Trash\nFreed %s of disk space", state.DeletedCount, fsutil.FormatBytes(state.FreedBytes))
 	}
 
 	if state.SkippedCount > 0 {
 		subMessage += fmt.Sprintf("\n⚠️ %d file(s) skipped (modified since scan)", state.SkippedCount)
 	}
-
-	resultLabel := widget.NewLabel(message)
-	resultLabel.TextStyle = fyne.TextStyle{Bold: true}
-	resultLabel.Alignment = fyne.TextAlignCenter
-
-	subLabel := widget.NewLabel(subMessage)
-	subLabel.TextStyle = fyne.TextStyle{Italic: true}
-	if state.SkippedCount > 0 {
-		subLabel.Importance = widget.WarningImportance
-	}
-	subLabel.Alignment = fyne.TextAlignCenter
 
 	backBtn := widget.NewButtonWithIcon("Start New Scan", theme.ViewRefreshIcon(), func() {
 		state.Groups = nil
@@ -185,20 +140,14 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 
 	btnRow := container.NewHBox(backBtn, quitBtn)
 
-	body := container.NewVBox(
-		layout.NewSpacer(),
-		container.NewCenter(container.NewVBox(
-			icon,
-			title,
-			resultLabel,
-			subLabel,
-			layout.NewSpacer(),
-			container.NewHBox(layout.NewSpacer(), btnRow, layout.NewSpacer()),
-		)),
-		layout.NewSpacer(),
+	return createStatusPage(
+		"Cleaning Finished",
+		"Summary of the cleaning operation",
+		theme.ConfirmIcon(),
+		"Complete!",
+		subMessage,
+		btnRow,
 	)
-
-	return createToolPage("Cleaning Finished", "Summary of the cleaning operation", body)
 }
 
 // ShowDuplicateResults shows the appropriate results screen based on scan results

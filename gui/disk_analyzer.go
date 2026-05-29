@@ -181,15 +181,11 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 		state.updateContent(DiskAnalyzerWidget(state))
 	})
 
-	body := container.NewVBox(
-		tabs,
-		widget.NewSeparator(),
-		container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
-	)
+	footer := container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer())
 
 	subtitle := fmt.Sprintf("Analysis complete: %d files found, %s total",
 		result.FileCount, fsutil.FormatBytes(result.TotalSize))
-	state.updateContent(createToolPage("Analysis Results", subtitle, body))
+	state.updateContent(createToolPageWithFooter("Analysis Results", subtitle, tabs, footer))
 }
 
 func NewDiskAnalyzerState(window fyne.Window) *DiskAnalyzerState {

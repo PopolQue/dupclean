@@ -15,7 +15,6 @@ import (
 	"dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -261,14 +260,8 @@ func displayCacheResults(state *CacheCleanerState) {
 
 	buttonRow := container.NewHBox(cancelBtn, layout.NewSpacer(), totalLabel, layout.NewSpacer(), cleanBtn)
 
-	body := container.NewVBox(
-		resultsContainer,
-		widget.NewSeparator(),
-		buttonRow,
-	)
-
 	subtitle := fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize))
-	state.updateContent(createToolPage("Scan Results", subtitle, body))
+	state.updateContent(createToolPageWithFooter("Scan Results", subtitle, resultsContainer, buttonRow))
 }
 
 // createCacheTargetCard creates a card for a cache target
@@ -564,44 +557,22 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 }
 
 func showCacheCleanComplete(state *CacheCleanerState) {
-	title := widget.NewLabelWithStyle("Cleaning Complete!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	title.Importance = widget.HighImportance
-	title.SizeName = theme.SizeNameHeadingText
-
-	icon := canvas.NewImageFromResource(theme.ConfirmIcon())
-	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(80, 80))
-
 	message := fmt.Sprintf("Cleaned %d cache locations", state.CleanedCount)
 	subMessage := fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.CleanedBytes))
-
-	resultLabel := widget.NewLabel(message)
-	resultLabel.TextStyle = fyne.TextStyle{Bold: true}
-	resultLabel.Alignment = fyne.TextAlignCenter
-
-	subLabel := widget.NewLabel(subMessage)
-	subLabel.TextStyle = fyne.TextStyle{Italic: true}
-	subLabel.Alignment = fyne.TextAlignCenter
 
 	backBtn := widget.NewButtonWithIcon("Scan Again", theme.ViewRefreshIcon(), func() {
 		state.updateContent(CacheCleanerWidget(state))
 	})
 	backBtn.Importance = widget.HighImportance
 
-	body := container.NewVBox(
-		layout.NewSpacer(),
-		container.NewCenter(container.NewVBox(
-			icon,
-			title,
-			resultLabel,
-			subLabel,
-			layout.NewSpacer(),
-			container.NewHBox(layout.NewSpacer(), backBtn, layout.NewSpacer()),
-		)),
-		layout.NewSpacer(),
-	)
-
-	state.updateContent(createToolPage("Cleaning Finished", "Summary of the cleaning operation", body))
+	state.updateContent(createStatusPage(
+		"Cleaning Finished",
+		"Summary of the cleaning operation",
+		theme.ConfirmIcon(),
+		"Cleaning Complete!",
+		message+"\n"+subMessage,
+		backBtn,
+	))
 }
 
 // NewCacheCleanerState creates a new cache cleaner state
