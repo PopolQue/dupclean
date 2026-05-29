@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
-
-	"dupclean/internal/trash"
 )
 
 // DeleteOptions configures how deletion is performed.
@@ -138,14 +135,14 @@ func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64
 		return 0, 0, false, fmt.Errorf("cannot delete empty path")
 	}
 
-	absPath, err := filepath.Abs(entry.Path)
+	abs, err := absPath(entry.Path)
 	if err != nil {
 		return 0, 0, false, fmt.Errorf("invalid path: %w", err)
 	}
 
 	if !permanent {
 		// For trash operations, use the unified trash package which has built-in validation
-		if err := trash.MoveToTrash(entry.Path); err != nil {
+		if err := moveToTrash(entry.Path); err != nil {
 			// Check if file is in use
 			if isFileInUse(err) {
 				return 0, 0, true, nil // skipped, not an error
@@ -157,12 +154,13 @@ func deleteEntry(entry EntryInfo, permanent bool) (deleted int, freedBytes int64
 
 	// Permanent deletion safety: ensure we're not deleting something we shouldn't
 	// This is a "double-check" beyond the initial path validation.
-	if err := verifyDeletionSafety(absPath); err != nil {
+	if err := verifyDeletionSafety(abs); err != nil {
 		return 0, 0, false, err
 	}
 
 	// Permanent deletion
-	err = os.RemoveAll(entry.Path)
+	err = osRemoveAll(entry.Path)
+
 	if err != nil {
 		// Check if file is in use
 		if isFileInUse(err) {
@@ -178,7 +176,7 @@ func verifyDeletionSafety(path string) error {
 	cleanPath := filepath.Clean(path)
 
 	// Block roots
-	if cleanPath == "/" || (runtime.GOOS == "windows" && len(cleanPath) <= 3 && strings.HasSuffix(cleanPath, ":\\")) {
+	if cleanPath == "/" || (goos == "windows" && len(cleanPath) <= 3 && strings.HasSuffix(cleanPath, ":\\")) {
 		return fmt.Errorf("safety trigger: permanent deletion of root blocked: %s", path)
 	}
 
@@ -189,7 +187,7 @@ func verifyDeletionSafety(path string) error {
 	}
 
 	// Heuristic: Don't allow deleting the user's home directory itself
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err == nil {
 		if cleanPath == filepath.Clean(home) {
 			return fmt.Errorf("safety trigger: permanent deletion of home directory blocked: %s", path)
@@ -211,7 +209,7 @@ func isFileInUse(err error) bool {
 	}
 
 	// Platform-specific checks via error codes
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		var errno syscall.Errno
 		if errors.As(err, &errno) {
 			switch errno {

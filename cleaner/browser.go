@@ -3,12 +3,11 @@ package cleaner
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // GetBrowserTargets returns browser cache targets for the current OS.
 func GetBrowserTargets() []*CleanTarget {
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		return getBrowserTargetsMac()
 	case "linux":
@@ -16,9 +15,10 @@ func GetBrowserTargets() []*CleanTarget {
 	case "windows":
 		return getBrowserTargetsWindows()
 	default:
-		return []*CleanTarget{}
+		return nil
 	}
 }
+
 
 func getBrowserTargetsMac() []*CleanTarget {
 	home, _ := os.UserHomeDir()

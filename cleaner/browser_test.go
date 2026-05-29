@@ -6,36 +6,35 @@ import (
 	"testing"
 )
 
-func TestGetBrowserTargetsCrossPlatform(t *testing.T) {
-	targets := GetBrowserTargets()
+func TestGetBrowserTargets_CrossPlatform(t *testing.T) {
+	oldOS := goos
+	defer func() { goos = oldOS }()
 
-	if targets == nil {
-		t.Fatal("GetBrowserTargets() returned nil")
-	}
+	platforms := []string{"darwin", "linux", "windows", "unsupported"}
 
-	// Should return targets for current OS
-	if len(targets) == 0 {
-		t.Log("No browser targets for this OS (expected in some environments)")
-	}
+	for _, p := range platforms {
+		t.Run("Platform_"+p, func(t *testing.T) {
+			goos = p
+			targets := GetBrowserTargets()
 
-	// Verify all targets have required fields
-	for _, target := range targets {
-		if target.ID == "" {
-			t.Error("Browser target missing ID")
-		}
-		if target.Category != "Browser" {
-			t.Errorf("Expected category 'Browser', got %q", target.Category)
-		}
-		if target.Label == "" {
-			t.Errorf("Browser target %s missing label", target.ID)
-		}
-		if len(target.Paths) == 0 {
-			t.Errorf("Browser target %s has no paths", target.ID)
-		}
+			if p == "unsupported" {
+				if targets != nil {
+					t.Errorf("Expected nil for unsupported platform, got %d targets", len(targets))
+				}
+				return
+			}
+
+			if targets == nil {
+				t.Fatalf("GetBrowserTargets() returned nil for %s", p)
+			}
+			if len(targets) == 0 {
+				t.Errorf("GetBrowserTargets() returned 0 targets for %s", p)
+			}
+		})
 	}
 }
 
-func TestGetBrowserTargetsMac_Platform(t *testing.T) {
+func TestGetBrowserTargetsMac_Logic(t *testing.T) {
 	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
@@ -67,7 +66,7 @@ func TestGetBrowserTargetsMac_Platform(t *testing.T) {
 	}
 }
 
-func TestGetBrowserTargetsLinux_Platform(t *testing.T) {
+func TestGetBrowserTargetsLinux_Logic(t *testing.T) {
 	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
@@ -99,7 +98,7 @@ func TestGetBrowserTargetsLinux_Platform(t *testing.T) {
 	}
 }
 
-func TestGetBrowserTargetsWindows_Platform(t *testing.T) {
+func TestGetBrowserTargetsWindows_Logic(t *testing.T) {
 	originalAppData := os.Getenv("LOCALAPPDATA")
 	defer func() {
 		if originalAppData != "" {

@@ -14,6 +14,7 @@ import (
 var (
 	execCommand  = exec.Command
 	execLookPath = exec.LookPath
+	goos         = runtime.GOOS
 )
 
 // MoveToTrash moves a file or directory to the system's trash/recycle bin.
@@ -35,7 +36,7 @@ func MoveToTrash(path string) error {
 		return fmt.Errorf("invalid path: %w", err)
 	}
 
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		return moveToTrashMacOS(absPath)
 	case "linux":

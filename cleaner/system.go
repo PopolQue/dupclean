@@ -3,12 +3,11 @@ package cleaner
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // getSystemTargets returns OS-specific system cache and temp targets.
 func GetSystemTargets() []*CleanTarget {
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		return getMacOSTargets()
 	case "linux":
@@ -16,9 +15,10 @@ func GetSystemTargets() []*CleanTarget {
 	case "windows":
 		return getWindowsTargets()
 	default:
-		return []*CleanTarget{}
+		return nil
 	}
 }
+
 
 func getMacOSTargets() []*CleanTarget {
 	home, _ := os.UserHomeDir()

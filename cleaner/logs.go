@@ -3,12 +3,11 @@ package cleaner
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // GetLogsTargets returns log file targets for the current OS.
 func GetLogsTargets() []*CleanTarget {
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		return getLogsTargetsMac()
 	case "linux":
@@ -16,9 +15,10 @@ func GetLogsTargets() []*CleanTarget {
 	case "windows":
 		return getLogsTargetsWindows()
 	default:
-		return []*CleanTarget{}
+		return nil
 	}
 }
+
 
 func getLogsTargetsMac() []*CleanTarget {
 	home, _ := os.UserHomeDir()

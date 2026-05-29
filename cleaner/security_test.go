@@ -1,14 +1,14 @@
 package cleaner
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
-func TestSafePlayMedia_AllPlatforms(t *testing.T) {
+func TestSafePlayMedia_Logic(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.wav")
 	if err := os.WriteFile(testFile, []byte("dummy wave content"), 0644); err != nil {
@@ -22,18 +22,31 @@ func TestSafePlayMedia_AllPlatforms(t *testing.T) {
 	}
 	defer func() { execCommand = oldExec }()
 
-	// Test all supported OS branches via runtime.GOOS manipulation or just calling them
-	// We can't easily change runtime.GOOS, but we can at least test the current one fully
-	cmd, err := SafePlayMedia(testFile)
-	if err != nil {
-		t.Errorf("SafePlayMedia failed on current platform %s: %v", runtime.GOOS, err)
-	}
-	if cmd == nil {
-		t.Error("SafePlayMedia returned nil cmd")
-	}
+	oldOS := goos
+	defer func() { goos = oldOS }()
 
-	// Test unsupported OS error (if we can find one)
-	// This is hard without refactoring SafePlayMedia to accept GOOS as param
+	platforms := []string{"darwin", "linux", "windows", "unsupported"}
+
+	for _, p := range platforms {
+		t.Run("Platform_"+p, func(t *testing.T) {
+			goos = p
+			cmd, err := SafePlayMedia(testFile)
+
+			if p == "unsupported" {
+				if err == nil {
+					t.Errorf("Expected error for unsupported platform")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("SafePlayMedia failed on platform %s: %v", p, err)
+			}
+			if cmd == nil {
+				t.Error("SafePlayMedia returned nil cmd")
+			}
+		})
+	}
 }
 
 func TestSafeMoveToTrash(t *testing.T) {
@@ -82,5 +95,14 @@ func TestValidateMediaPath(t *testing.T) {
 
 	if err := validateMediaPath(filepath.Join(tmpDir, "missing.wav")); err == nil {
 		t.Error("validateMediaPath should fail for missing file")
+	}
+
+	// Test absPath error
+	oldAbs := absPath
+	absPath = func(path string) (string, error) { return "", errors.New("abs error") }
+	defer func() { absPath = oldAbs }()
+
+	if err := validateMediaPath("foo"); err == nil {
+		t.Error("validateMediaPath should fail on abs error")
 	}
 }

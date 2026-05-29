@@ -91,6 +91,7 @@ Download the appropriate binary for your platform from [Releases](https://github
 Launch DupClean from your Applications folder (macOS/Windows) or run `dupclean` in the terminal.
 
 #### Duplicate Finder
+
 1. Select a folder to scan.
 2. Choose scan mode: Audio, All Files, or Photos.
 3. Click **Start Scan** — an ignore rules dialog appears before scanning begins.
@@ -98,6 +99,7 @@ Launch DupClean from your Applications folder (macOS/Windows) or run `dupclean` 
 5. Click **Clean Selected** to move unselected files to the Trash.
 
 #### Cache Cleaner
+
 1. Switch to the **Cache Cleaner** tab.
 2. Configure options: set a minimum age (e.g., `7d` to only clean files older than 7 days) to preserve active session data.
 3. Click **Scan for Caches** to find cleanable system, browser, and developer caches.
@@ -105,6 +107,7 @@ Launch DupClean from your Applications folder (macOS/Windows) or run `dupclean` 
 5. Click **Clean Selected** to free up space.
 
 #### Disk Analyzer
+
 1. Switch to the **Disk Analyzer** tab.
 2. Select a target drive or folder.
 3. Click **Analyze Disk Space**.

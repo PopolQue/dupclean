@@ -1,34 +1,105 @@
 package cleaner
 
 import (
-	"runtime"
+	"errors"
+	"os"
+	"syscall"
 	"testing"
 )
 
-// TestDeleteEntry_SafetyChecks tests that deleteEntry has proper safety checks
-func TestDeleteEntry_SafetyChecks(t *testing.T) {
-	tests := []struct {
-		name      string
-		path      string
-		permanent bool
-		wantErr   bool
-	}{
-		{"empty path", "", true, true},
-		{"empty path non-permanent", "", false, true},
-		{"root unix", "/", true, true},
-	}
+func TestVerifyDeletionSafety_CrossPlatform(t *testing.T) {
+	oldOS := goos
+	oldHomeDir := userHomeDir
+	defer func() {
+		goos = oldOS
+		userHomeDir = oldHomeDir
+	}()
 
-	if runtime.GOOS == "windows" {
-		tests = append(tests, struct {
-			name      string
-			path      string
-			permanent bool
-			wantErr   bool
-		}{"root windows", `\`, true, true})
+	tmpDir := t.TempDir()
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+
+	tests := []struct {
+		name    string
+		path    string
+		os      string
+		wantErr bool
+	}{
+		{"Unix root", "/", "linux", true},
+		{"Windows root", "C:\\", "windows", true},
+		{"Protected path", "/etc", "linux", true},
+		{"User home", tmpDir, "linux", true},
+		{"Safe path", "/home/user/safe", "linux", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			goos = tt.os
+			err := verifyDeletionSafety(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("verifyDeletionSafety(%q) on %s error = %v, wantErr %v", tt.path, tt.os, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestIsFileInUse_CrossPlatform(t *testing.T) {
+	oldOS := goos
+	defer func() { goos = oldOS }()
+
+	tests := []struct {
+		name     string
+		err      error
+		os       string
+		expected bool
+	}{
+		{"Nil error", nil, "linux", false},
+		{"Permission error", os.ErrPermission, "linux", true},
+		{"Busy string", errors.New("file is busy"), "linux", true},
+		{"In use string", errors.New("file in use"), "linux", true},
+		{"Windows sharing violation", syscall.Errno(32), "windows", true},
+		{"Windows access denied", syscall.Errno(5), "windows", true},
+		{"Random error", errors.New("random error"), "linux", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			goos = tt.os
+			result := isFileInUse(tt.err)
+			if result != tt.expected {
+				t.Errorf("isFileInUse(%v) on %s = %v, want %v", tt.err, tt.os, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestDeleteEntry_SafetyChecks tests that deleteEntry has proper safety checks
+func TestDeleteEntry_SafetyChecks(t *testing.T) {
+	oldOS := goos
+	oldAbs := absPath
+	defer func() {
+		goos = oldOS
+		absPath = oldAbs
+	}()
+
+	// Mock absPath to return path as-is for easy root testing
+	absPath = func(path string) (string, error) { return path, nil }
+
+	tests := []struct {
+		name      string
+		path      string
+		os        string
+		permanent bool
+		wantErr   bool
+	}{
+		{"empty path", "", "linux", true, true},
+		{"empty path non-permanent", "", "linux", false, true},
+		{"root unix", "/", "linux", true, true},
+		{"root windows", `C:\`, "windows", true, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			goos = tt.os
 			entry := EntryInfo{
 				Path: tt.path,
 				Size: 100,
@@ -53,54 +124,4 @@ func TestDeleteEntry_SafetyChecks(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestDelete_SafetyEmptyPath tests that Delete handles empty paths safely
-func TestDelete_SafetyEmptyPath(t *testing.T) {
-	opts := DeleteOptions{
-		Permanent:   true,
-		Concurrency: 1,
-	}
-
-	// Empty path should error, not delete everything
-	result, err := Delete([]EntryInfo{
-		{Path: "", Size: 100},
-	}, opts)
-
-	// Error should be in the Errors slice
-	if len(result.Errors) == 0 {
-		t.Error("Delete with empty path should have an error in Errors slice")
-	}
-	if result.Deleted != 0 {
-		t.Errorf("Delete with empty path should delete 0 files, got %d", result.Deleted)
-	}
-	if result.FreedBytes != 0 {
-		t.Errorf("Delete with empty path should free 0 bytes, got %d", result.FreedBytes)
-	}
-	_ = err // err is nil, but error is in result.Errors
-}
-
-// TestDelete_SafetyRootPath tests that Delete handles root path safely
-func TestDelete_SafetyRootPath(t *testing.T) {
-	opts := DeleteOptions{
-		Permanent:   true,
-		Concurrency: 1,
-	}
-
-	// Root path should error, not delete everything
-	result, err := Delete([]EntryInfo{
-		{Path: "/", Size: 100},
-	}, opts)
-
-	// Error should be in the Errors slice
-	if len(result.Errors) == 0 {
-		t.Error("Delete with root path should have an error in Errors slice")
-	}
-	if result.Deleted != 0 {
-		t.Errorf("Delete with root path should delete 0 files, got %d", result.Deleted)
-	}
-	if result.FreedBytes != 0 {
-		t.Errorf("Delete with root path should free 0 bytes, got %d", result.FreedBytes)
-	}
-	_ = err // err is nil, but error is in result.Errors
 }

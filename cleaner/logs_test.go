@@ -5,31 +5,35 @@ import (
 	"testing"
 )
 
-func TestGetLogsTargetsCrossPlatform(t *testing.T) {
-	targets := GetLogsTargets()
+func TestGetLogsTargets_CrossPlatform(t *testing.T) {
+	oldOS := goos
+	defer func() { goos = oldOS }()
 
-	if targets == nil {
-		t.Fatal("GetLogsTargets() returned nil")
-	}
+	platforms := []string{"darwin", "linux", "windows", "unsupported"}
 
-	if len(targets) == 0 {
-		t.Error("GetLogsTargets() returned no targets")
-	}
+	for _, p := range platforms {
+		t.Run("Platform_"+p, func(t *testing.T) {
+			goos = p
+			targets := GetLogsTargets()
 
-	for _, target := range targets {
-		if target.ID == "" {
-			t.Error("Logs target missing ID")
-		}
-		if target.Category != "Logs" {
-			t.Errorf("Expected category 'Logs', got %q", target.Category)
-		}
-		if target.Label == "" {
-			t.Errorf("Logs target %s missing label", target.ID)
-		}
+			if p == "unsupported" {
+				if targets != nil {
+					t.Errorf("Expected nil for unsupported platform")
+				}
+				return
+			}
+
+			if targets == nil {
+				t.Fatalf("GetLogsTargets() returned nil for %s", p)
+			}
+			if len(targets) == 0 {
+				t.Errorf("GetLogsTargets() returned 0 targets for %s", p)
+			}
+		})
 	}
 }
 
-func TestGetLogsTargetsMac_Platform(t *testing.T) {
+func TestGetLogsTargetsMac_Logic(t *testing.T) {
 	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
@@ -57,7 +61,7 @@ func TestGetLogsTargetsMac_Platform(t *testing.T) {
 	}
 }
 
-func TestGetLogsTargetsLinux_Platform(t *testing.T) {
+func TestGetLogsTargetsLinux_Logic(t *testing.T) {
 	targets := getLogsTargetsLinux()
 
 	if len(targets) == 0 {
@@ -75,7 +79,7 @@ func TestGetLogsTargetsLinux_Platform(t *testing.T) {
 	}
 }
 
-func TestGetLogsTargetsWindows_Platform(t *testing.T) {
+func TestGetLogsTargetsWindows_Logic(t *testing.T) {
 	targets := getLogsTargetsWindows()
 
 	if len(targets) == 0 {

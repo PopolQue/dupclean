@@ -9,9 +9,10 @@ import (
 )
 
 // mock setup utilities
-func setupMockExec(lookPathFunc func(string) (string, error), cmdFunc func(string, ...string) *exec.Cmd) func() {
+func setupMockExec(lookPathFunc func(string) (string, error), cmdFunc func(string, ...string) *exec.Cmd, os string) func() {
 	oldLookPath := execLookPath
 	oldCmd := execCommand
+	oldOS := goos
 
 	if lookPathFunc != nil {
 		execLookPath = lookPathFunc
@@ -19,10 +20,14 @@ func setupMockExec(lookPathFunc func(string) (string, error), cmdFunc func(strin
 	if cmdFunc != nil {
 		execCommand = cmdFunc
 	}
+	if os != "" {
+		goos = os
+	}
 
 	return func() {
 		execLookPath = oldLookPath
 		execCommand = oldCmd
+		goos = oldOS
 	}
 }
 
@@ -34,6 +39,27 @@ func mockSuccessCmd(name string, args ...string) *exec.Cmd {
 // helper command that fails when run
 func mockFailCmd(name string, args ...string) *exec.Cmd {
 	return exec.Command("false")
+}
+
+// TestMoveToTrash_CrossPlatform tests all OS branches of MoveToTrash
+func TestMoveToTrash_CrossPlatform(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+	_ = os.WriteFile(testFile, []byte("test"), 0644)
+
+	platforms := []string{"darwin", "linux", "windows", "freebsd"}
+
+	for _, p := range platforms {
+		t.Run("Platform_"+p, func(t *testing.T) {
+			cleanup := setupMockExec(nil, mockSuccessCmd, p)
+			defer cleanup()
+
+			err := MoveToTrash(testFile)
+			if err != nil {
+				t.Errorf("MoveToTrash failed for %s: %v", p, err)
+			}
+		})
+	}
 }
 
 // TestMoveToTrash_EmptyPath tests that empty paths are rejected
@@ -92,6 +118,7 @@ func TestMoveToTrashMacOS_TrashCliSuccess(t *testing.T) {
 			return "", errors.New("not found")
 		},
 		mockSuccessCmd,
+		"darwin",
 	)
 	defer cleanup()
 
@@ -107,6 +134,7 @@ func TestMoveToTrashMacOS_AppleScriptSuccess(t *testing.T) {
 			return "", errors.New("not found") // trash cli missing
 		},
 		mockSuccessCmd,
+		"darwin",
 	)
 	defer cleanup()
 
@@ -127,6 +155,7 @@ func TestMoveToTrashLinux_GioSuccess(t *testing.T) {
 			return "", errors.New("not found")
 		},
 		mockSuccessCmd,
+		"linux",
 	)
 	defer cleanup()
 
@@ -145,6 +174,7 @@ func TestMoveToTrashLinux_TrashCliSuccess(t *testing.T) {
 			return "", errors.New("not found")
 		},
 		mockSuccessCmd,
+		"linux",
 	)
 	defer cleanup()
 
@@ -159,6 +189,7 @@ func TestMoveToTrashLinux_FallbackToSafeMove(t *testing.T) {
 	cleanup := setupMockExec(
 		func(file string) (string, error) { return "", errors.New("not found") },
 		nil,
+		"linux",
 	)
 	defer cleanup()
 
@@ -187,6 +218,7 @@ func TestMoveToTrashLinux_FallbackToPermanent(t *testing.T) {
 	cleanup := setupMockExec(
 		func(file string) (string, error) { return "", errors.New("not found") },
 		nil,
+		"linux",
 	)
 	defer cleanup()
 
@@ -210,7 +242,7 @@ func TestMoveToTrashLinux_FallbackToPermanent(t *testing.T) {
 // --- Windows Tests ---
 
 func TestMoveToTrashWindows_Success(t *testing.T) {
-	cleanup := setupMockExec(nil, mockSuccessCmd)
+	cleanup := setupMockExec(nil, mockSuccessCmd, "windows")
 	defer cleanup()
 
 	tmpDir := t.TempDir()

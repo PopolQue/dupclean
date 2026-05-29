@@ -4,15 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
-
-	"dupclean/internal/trash"
 )
-
-// execCommand is used for mocking in tests
-var execCommand = exec.Command
 
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
 func SafePlayMedia(path string) (*exec.Cmd, error) {
@@ -20,29 +13,29 @@ func SafePlayMedia(path string) (*exec.Cmd, error) {
 		return nil, err
 	}
 
-	absPath, _ := filepath.Abs(path)
+	absPathVal, _ := absPath(path)
 
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
-		return execCommand("afplay", absPath), nil
+		return execCommand("afplay", absPathVal), nil
 	case "linux":
-		return execCommand("aplay", absPath), nil
+		return execCommand("aplay", absPathVal), nil
 	case "windows":
-		escapedPath := escapePowerShellString(absPath)
+		escapedPath := escapePowerShellString(absPathVal)
 		psScript := `
 $player = New-Object Media.SoundPlayer '` + escapedPath + `'
 $player.PlaySync()
 `
 		return execCommand("powershell", "-Command", psScript), nil
 	default:
-		return nil, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+		return nil, fmt.Errorf("unsupported OS: %s", goos)
 	}
 }
 
 // SafeMoveToTrash moves a file to trash using the unified internal/trash package.
 // This is a wrapper for backwards compatibility.
 func SafeMoveToTrash(path string) error {
-	return trash.MoveToTrash(path)
+	return moveToTrash(path)
 }
 
 // escapePowerShellString escapes special characters for PowerShell strings.
@@ -56,11 +49,11 @@ func validateMediaPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("empty path")
 	}
-	absPath, err := filepath.Abs(path)
+	absPathVal, err := absPath(path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err)
 	}
-	if _, err := os.Stat(absPath); err != nil {
+	if _, err := os.Stat(absPathVal); err != nil {
 		return fmt.Errorf("file does not exist: %w", err)
 	}
 	return nil

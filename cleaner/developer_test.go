@@ -2,47 +2,38 @@ package cleaner
 
 import (
 	"os"
-	"runtime"
 	"testing"
 )
 
-func TestGetDeveloperTargetsCrossPlatform(t *testing.T) {
-	targets := GetDeveloperTargets()
+func TestGetDeveloperTargets_CrossPlatform(t *testing.T) {
+	oldOS := goos
+	defer func() { goos = oldOS }()
 
-	if targets == nil {
-		t.Fatal("GetDeveloperTargets() returned nil")
-	}
+	platforms := []string{"darwin", "linux", "windows", "unsupported"}
 
-	if len(targets) == 0 {
-		t.Error("GetDeveloperTargets() returned no targets")
-	}
+	for _, p := range platforms {
+		t.Run("Platform_"+p, func(t *testing.T) {
+			goos = p
+			targets := GetDeveloperTargets()
 
-	for _, target := range targets {
-		if target.ID == "" {
-			t.Error("Developer target missing ID")
-		}
-		if target.Category != "Developer" {
-			t.Errorf("Expected category 'Developer', got %q", target.Category)
-		}
-		if target.Label == "" {
-			t.Errorf("Developer target %s missing label", target.ID)
-		}
-	}
+			if p == "unsupported" {
+				if targets != nil {
+					t.Errorf("Expected nil for unsupported platform, got %d targets", len(targets))
+				}
+				return
+			}
 
-	// Check for Go cache target (not present on Windows)
-	goCacheFound := false
-	for _, t := range targets {
-		if t.ID == "dev-go-cache" {
-			goCacheFound = true
-		}
-	}
-	// Go cache target is only available on Unix-like systems
-	if !goCacheFound && runtime.GOOS != "windows" {
-		t.Error("Missing Go cache target")
+			if targets == nil {
+				t.Fatalf("GetDeveloperTargets() returned nil for %s", p)
+			}
+			if len(targets) == 0 {
+				t.Errorf("GetDeveloperTargets() returned 0 targets for %s", p)
+			}
+		})
 	}
 }
 
-func TestGetDeveloperTargetsMacOS_Platform(t *testing.T) {
+func TestGetDeveloperTargetsMacOS_Logic(t *testing.T) {
 	originalHome := os.Getenv("HOME")
 	defer func() {
 		if originalHome != "" {
@@ -70,7 +61,7 @@ func TestGetDeveloperTargetsMacOS_Platform(t *testing.T) {
 	}
 }
 
-func TestGetDeveloperTargetsLinux_Platform(t *testing.T) {
+func TestGetDeveloperTargetsLinux_Logic(t *testing.T) {
 	targets := getDeveloperTargetsLinux()
 
 	if len(targets) == 0 {
@@ -84,7 +75,7 @@ func TestGetDeveloperTargetsLinux_Platform(t *testing.T) {
 	}
 }
 
-func TestGetDeveloperTargetsWindows_Platform(t *testing.T) {
+func TestGetDeveloperTargetsWindows_Logic(t *testing.T) {
 	originalAppData := os.Getenv("LOCALAPPDATA")
 	originalUserProfile := os.Getenv("USERPROFILE")
 	defer func() {

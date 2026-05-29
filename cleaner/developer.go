@@ -4,13 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
 // GetDeveloperTargets returns developer tool cache targets.
 func GetDeveloperTargets() []*CleanTarget {
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		return getDeveloperTargetsMacOS()
 	case "linux":
@@ -18,9 +17,10 @@ func GetDeveloperTargets() []*CleanTarget {
 	case "windows":
 		return getDeveloperTargetsWindows()
 	default:
-		return []*CleanTarget{}
+		return nil
 	}
 }
+
 
 func getDeveloperTargetsMacOS() []*CleanTarget {
 	home, _ := os.UserHomeDir()
