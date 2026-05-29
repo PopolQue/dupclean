@@ -69,8 +69,16 @@ func Sidebar(items []SidebarItem) *widget.List {
 func CreateSidebar() fyne.CanvasObject {
 	items := []SidebarItem{
 		{
-			Name: "Duplicate Finder",
-			Icon: theme.SearchIcon(),
+			Name: "General Finder",
+			Icon: theme.FileIcon(),
+		},
+		{
+			Name: "Audio Finder",
+			Icon: theme.MediaMusicIcon(),
+		},
+		{
+			Name: "Photo Finder",
+			Icon: theme.MediaPhotoIcon(),
 		},
 		{
 			Name: "Cache Cleaner",
@@ -81,7 +89,7 @@ func CreateSidebar() fyne.CanvasObject {
 			Icon: theme.StorageIcon(),
 		},
 		{
-			Name: "About",
+			Name: "Updates",
 			Icon: theme.InfoIcon(),
 		},
 	}

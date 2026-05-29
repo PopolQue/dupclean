@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"dupclean/internal/version"
+	"dupclean/gui/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -96,17 +97,20 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		ShowFullChangelog(state.Window)
 	})
 
-	body := container.NewVBox(
-		widget.NewCard("Version Info", "", versionLabel),
-		widget.NewCard("Update Status", "", container.NewVBox(
-			statusLabel,
-			progressBar,
-		)),
-		container.NewHBox(layout.NewSpacer(), checkBtn, layout.NewSpacer()),
+	versionCard := widget.NewCard("Version Info", "Information about your current installation", versionLabel)
+	statusCard := widget.NewCard("Update Status", "Current update progress and status", container.NewVBox(
+		statusLabel,
+		progressBar,
+	))
+
+	return components.ToolHome(
+		"Check for Updates",
+		"Keep DupClean up to date with the latest features",
+		[]fyne.CanvasObject{versionCard},
+		checkBtn,
+		statusCard,
 		container.NewHBox(layout.NewSpacer(), viewChangelogBtn, layout.NewSpacer()),
 	)
-
-	return createToolPage("Check for Updates", "Keep DupClean up to date with the latest features", body)
 }
 
 func checkForUpdates() (*GitHubRelease, error) {

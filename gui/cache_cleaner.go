@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"dupclean/cleaner"
+	"dupclean/gui/components"
 	"dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -64,63 +64,63 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 		state.MinAgeStr = s
 	}
 
-	workersSelect := widget.NewSelect([]string{"1", "2", "4", "8", "16"}, func(s string) {
-		val, _ := strconv.Atoi(s)
+	// Performance options
+	workerSlider := widget.NewSlider(1, 16)
+	workerSlider.SetValue(float64(state.Concurrency))
+	workerLabel := widget.NewLabel(fmt.Sprintf("%d", state.Concurrency))
+	workerSlider.OnChanged = func(v float64) {
+		val := int(v)
 		state.Concurrency = val
-	})
-	workersSelect.SetSelected(fmt.Sprintf("%d", state.Concurrency))
+		workerLabel.SetText(fmt.Sprintf("%d", val))
+	}
+	workerContainer := container.NewBorder(nil, nil, nil, workerLabel, workerSlider)
 
 	optionsForm := widget.NewForm(
 		widget.NewFormItem("Min Age", minAgeEntry),
-		widget.NewFormItem("Workers", workersSelect),
+		widget.NewFormItem("Workers", workerContainer),
 	)
+	optionsCard := widget.NewCard("Scan Settings", "Define filter criteria and performance", optionsForm)
 
-	// Scan button
+	// Action
 	scanBtn := widget.NewButtonWithIcon("Scan for Caches", theme.SearchIcon(), func() {
 		startCacheScan(state)
 	})
 	scanBtn.Importance = widget.HighImportance
+	registerStartButton(scanBtn)
 
-	// Progress indicator
-	progressLabel := widget.NewLabel("Ready to scan")
 	progressBar := widget.NewProgressBar()
 	progressBar.Hide()
 
-	progressCard := widget.NewCard("", "", container.NewVBox(
-		progressLabel,
-		progressBar,
-	))
-
-	// Disclaimer
+	// Log/Menu
 	disclaimer := widget.NewLabelWithStyle("⚠️ Actual freed space may vary - cache files change constantly", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
 	disclaimer.Importance = widget.WarningImportance
-
-	body := container.NewVBox(
-		widget.NewCard("Options", "Filter and performance settings", optionsForm),
-		container.NewHBox(layout.NewSpacer(), scanBtn, layout.NewSpacer()),
-		progressCard,
-		disclaimer,
-	)
+	logArea := container.NewVBox(disclaimer)
 
 	// Store references for updates
 	state.cacheCleanerComponents = &cacheCleanerComponents{
 		scanBtn:       scanBtn,
-		progressLabel: progressLabel,
+		progressLabel: widget.NewLabel(""),
 		progressBar:   progressBar,
 		minAgeEntry:   minAgeEntry,
-		workersSelect: workersSelect,
 	}
 
-	return createToolPage("Cache Cleaner", "Clean system, browser, and application caches", body)
+	return components.FixedTabLayout(
+		"Cache Cleaner",
+		"Clean system, browser, and application caches",
+		optionsCard,
+		scanBtn,
+		progressBar,
+		logArea,
+	)
 }
 
 func startCacheScan(state *CacheCleanerState) {
 	state.IsScanning = true
+	setProcessRunning(true)
 
 	comp := state.cacheCleanerComponents
 	comp.scanBtn.Disable()
 	comp.minAgeEntry.Disable()
-	comp.workersSelect.Disable()
 
 	comp.progressLabel.SetText("Scanning for caches...")
 	comp.progressBar.Show()
@@ -131,10 +131,10 @@ func startCacheScan(state *CacheCleanerState) {
 		minAge, err := parseDuration(state.MinAgeStr)
 		if err != nil {
 			fyne.Do(func() {
+				setProcessRunning(false)
 				comp.progressLabel.SetText(fmt.Sprintf("Invalid Min Age: %v", err))
 				comp.scanBtn.Enable()
 				comp.minAgeEntry.Enable()
-				comp.workersSelect.Enable()
 			})
 			return
 		}
@@ -178,10 +178,10 @@ func startCacheScan(state *CacheCleanerState) {
 		result, err := cleaner.Scan(targets, opts)
 		if err != nil {
 			fyne.Do(func() {
+				setProcessRunning(false)
 				comp.progressLabel.SetText(fmt.Sprintf("Error: %v", err))
 				comp.scanBtn.Enable()
 				comp.minAgeEntry.Enable()
-				comp.workersSelect.Enable()
 			})
 			return
 		}
@@ -189,6 +189,7 @@ func startCacheScan(state *CacheCleanerState) {
 		state.Targets = result.Targets
 		state.TotalSize = result.TotalSize
 		state.IsScanning = false
+		setProcessRunning(false)
 
 		// Pre-select safe targets
 		state.SelectedTargets = make(map[string]bool)
@@ -205,7 +206,8 @@ func startCacheScan(state *CacheCleanerState) {
 }
 
 func displayCacheResults(state *CacheCleanerState) {
-	resultsContainer := container.NewVBox()
+	// Accordion for categories
+	accordion := widget.NewAccordion()
 
 	// Group by category
 	categories := make(map[string][]*cleaner.CleanTarget)
@@ -233,22 +235,17 @@ func displayCacheResults(state *CacheCleanerState) {
 	totalLabel.Importance = widget.HighImportance
 	totalLabel.SizeName = theme.SizeNameSubHeadingText
 
-	// Create category sections
+	// Create accordion items
 	for _, cat := range catNames {
 		targets := categories[cat]
-
-		catLabel := widget.NewLabelWithStyle(cat, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-		catLabel.Importance = widget.HighImportance
-		catLabel.SizeName = theme.SizeNameSubHeadingText
-		resultsContainer.Add(catLabel)
-		resultsContainer.Add(widget.NewSeparator())
+		catContent := container.NewVBox()
 
 		for _, t := range targets {
 			targetCard := createCacheTargetCard(state, t, totalLabel, cleanBtn)
-			resultsContainer.Add(targetCard)
+			catContent.Add(targetCard)
 		}
 
-		resultsContainer.Add(layout.NewSpacer())
+		accordion.Append(widget.NewAccordionItem(cat, catContent))
 	}
 
 	updateCacheTotal(state, totalLabel, cleanBtn)
@@ -258,22 +255,29 @@ func displayCacheResults(state *CacheCleanerState) {
 	})
 	cancelBtn.Importance = widget.LowImportance
 
-	buttonRow := container.NewHBox(cancelBtn, layout.NewSpacer(), totalLabel, layout.NewSpacer(), cleanBtn)
+	buttonRow := components.ActionFooter(cancelBtn, totalLabel, cleanBtn)
 
 	subtitle := fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize))
-	state.updateContent(createToolPageWithFooter("Scan Results", subtitle, resultsContainer, buttonRow))
+	state.updateContent(components.ToolPageWithFooter("Scan Results", subtitle, accordion, buttonRow))
 }
 
 // createCacheTargetCard creates a card for a cache target
 func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget, totalLabel *widget.Label, cleanBtn *widget.Button) *widget.Card {
-	// Risk icon
+	// Risk icon and badge
 	riskIcon := theme.ConfirmIcon()
+	riskText := "Safe"
+	riskImportance := widget.SuccessImportance
 	switch target.Risk {
 	case cleaner.RiskModerate:
 		riskIcon = theme.WarningIcon()
+		riskText = "Moderate"
+		riskImportance = widget.WarningImportance
 	case cleaner.RiskHigh:
 		riskIcon = theme.ErrorIcon()
+		riskText = "High Risk"
+		riskImportance = widget.DangerImportance
 	}
+	riskBadge := components.StatusBadge(riskText, riskImportance)
 
 	// Target checkbox
 	targetCheck := widget.NewCheck(fmt.Sprintf("%s (%s)", target.Label, fsutil.FormatBytes(target.TotalSize)), func(checked bool) {
@@ -286,20 +290,11 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 	descLabel := widget.NewLabel(target.Description)
 	descLabel.TextStyle = fyne.TextStyle{Italic: true}
 
-	// File count
-	fileCountLabel := widget.NewLabel(fmt.Sprintf("%d items", target.FileCount))
-	fileCountLabel.TextStyle = fyne.TextStyle{Italic: true}
+	// Metadata
+	metadata := fmt.Sprintf("%d items", target.FileCount)
 
-	cardContent := container.NewVBox(
-		container.NewHBox(
-			widget.NewIcon(riskIcon),
-			targetCheck,
-		),
-		descLabel,
-		fileCountLabel,
-	)
-
-	return widget.NewCard("", "", cardContent)
+	actions := container.NewHBox(riskBadge, widget.NewIcon(riskIcon))
+	return components.ResultCard("", descLabel, metadata, targetCheck, actions)
 }
 
 func updateCacheTotal(state *CacheCleanerState, totalLabel *widget.Label, cleanBtn *widget.Button) {
@@ -350,15 +345,14 @@ func startCacheClean(state *CacheCleanerState) {
 			progressBar := widget.NewProgressBar()
 			progressBar.SetValue(0)
 
-			progressBody := container.NewVBox(
-				layout.NewSpacer(),
-				widget.NewCard("Progress", "Cleaning selected caches", container.NewVBox(
-					progressLabel,
-					progressBar,
-				)),
-				layout.NewSpacer(),
-			)
-			state.updateContent(createToolPage("Cleaning", "Please wait while we clean your system", progressBody))
+			state.updateContent(components.ProgressPage(
+				"Cleaning",
+				"Please wait while we clean your system",
+				"Progress",
+				"Cleaning selected caches",
+				progressLabel,
+				progressBar,
+			))
 
 			go func() {
 				cleaned := 0
@@ -565,7 +559,7 @@ func showCacheCleanComplete(state *CacheCleanerState) {
 	})
 	backBtn.Importance = widget.HighImportance
 
-	state.updateContent(createStatusPage(
+	state.updateContent(components.StatusPage(
 		"Cleaning Finished",
 		"Summary of the cleaning operation",
 		theme.ConfirmIcon(),

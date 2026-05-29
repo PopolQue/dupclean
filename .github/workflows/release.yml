@@ -3,8 +3,8 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'
-      - '[0-9]*'
+    - 'v*'
+    - '[0-9]*'
 
 permissions:
   contents: write
@@ -20,31 +20,31 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            artifact: dupclean-linux-amd64
-            cgo: 1
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-            artifact: dupclean-linux-arm64
-            cgo: 0
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            artifact: dupclean-darwin-arm64
-            cgo: 1
-          - os: macos-15-intel
-            goos: darwin
-            goarch: amd64
-            artifact: dupclean-darwin-amd64
-            cgo: 1
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            artifact: dupclean-windows-amd64.exe
-            cgo: 1
+        - os: ubuntu-latest
+          goos: linux
+          goarch: amd64
+          artifact: dupclean-linux-amd64
+          cgo: 1
+        - os: ubuntu-latest
+          goos: linux
+          goarch: arm64
+          artifact: dupclean-linux-arm64
+          cgo: 0
+        - os: macos-latest
+          goos: darwin
+          goarch: arm64
+          artifact: dupclean-darwin-arm64
+          cgo: 1
+        - os: macos-15-intel
+          goos: darwin
+          goarch: amd64
+          artifact: dupclean-darwin-amd64
+          cgo: 1
+        - os: windows-latest
+          goos: windows
+          goarch: amd64
+          artifact: dupclean-windows-amd64.exe
+          cgo: 1
 
     steps:
     - name: Checkout code
@@ -98,14 +98,14 @@ jobs:
       run: |
         # Use fyne package to create a proper .app bundle with GUI tags
         fyne package --target darwin --tags gui --name DupClean --app-id com.dupclean.app --icon dupclean_abstract_icon.png
-        
+
         # Apply ad-hoc signature (required for Apple Silicon)
         codesign --force --deep --sign - DupClean.app
-        
+
         # Prepare PKG structure
         mkdir -p pkg_root/Applications
         mv DupClean.app pkg_root/Applications/
-        
+
         # Create post-install script to remove quarantine
         mkdir scripts
         cat <<EOF > scripts/postinstall
@@ -115,7 +115,7 @@ jobs:
         exit 0
         EOF
         chmod +x scripts/postinstall
-        
+
         # Build PKG
         pkgbuild --root pkg_root \
                  --identifier com.dupclean.app \
@@ -123,7 +123,7 @@ jobs:
                  --install-location / \
                  --scripts scripts \
                  ${{ matrix.artifact }}.pkg
-        
+
         # Create ZIP of the .app bundle for Cask
         zip -r ${{ matrix.artifact }}.app.zip pkg_root/Applications/DupClean.app
 
@@ -183,14 +183,14 @@ jobs:
       with:
         name: DupClean ${{ github.ref_name }}
         body: |
-          ### 🚀 Changes in this version
-          
+          ### Changes in this version
+
           ${{ steps.changelog.outputs.changelog }}
-          
+
           ---
-          
-          ### 📦 Installation
-          
+
+          ### Installation
+
           #### macOS (Recommended: Homebrew)
           To avoid security warnings and get both GUI and CLI:
           ```bash
@@ -202,7 +202,7 @@ jobs:
           ```bash
           brew install PopolQue/dupclean/dupclean
           ```
-          
+
           #### macOS (Manual Installer)
           1. Download `dupclean-darwin-arm64.pkg` (Apple Silicon) or `dupclean-darwin-amd64.pkg` (Intel).
           2. Double-click the file. If it shows a security warning:
@@ -210,11 +210,11 @@ jobs:
              - Scroll down to **Security**.
              - Click **Open Anyway** for DupClean.
           3. Follow the wizard. Once installed, the app in your Applications folder will work without further warnings.
-          
+
           #### Linux
           Download the appropriate tarball, extract it, and run the `dupclean` binary.
           Ensure you have OpenGL dependencies installed (`libgl1-mesa-dev xorg-dev`).
-          
+
           #### Windows
           Download the zip file, extract it, and run `dupclean-windows-amd64.exe`.
         draft: false

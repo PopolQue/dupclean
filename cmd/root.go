@@ -8,7 +8,7 @@ import (
 
 	"dupclean/internal/version"
 	"dupclean/scanner"
-	"dupclean/ui"
+	"dupclean/cli/interactive"
 
 	"github.com/spf13/cobra"
 )
@@ -117,5 +117,5 @@ func runDuplicateFinder(folder string) {
 		os.Exit(1)
 	}
 
-	ui.Run(groups, stats)
+	interactive.Run(groups, stats)
 }

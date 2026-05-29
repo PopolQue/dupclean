@@ -15,3 +15,4 @@ internal/.DS_Store
 .vscode/changelists.json
 **/fyne
 GEMINI.md
+dupclean_gui
