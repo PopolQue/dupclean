@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -408,14 +407,14 @@ func isProtectedPath(path string) bool {
 	}
 
 	// Normalize path for comparison
-	absPath, err := filepath.Abs(path)
+	abs, err := absPath(path)
 	if err != nil {
 		// If we can't resolve the path, be conservative and protect it
 		return true
 	}
 
 	var protected []string
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		protected = []string{
 			"/var/folders",
@@ -448,10 +447,10 @@ func isProtectedPath(path string) bool {
 	for _, p := range protected {
 		// Check if path matches or is within a protected path
 		// We use strings.HasPrefix but need to ensure it's a full path match or a bundle ID subpath
-		if absPath == p ||
-			strings.HasPrefix(absPath, p+string(filepath.Separator)) ||
-			strings.HasPrefix(absPath, p+"/") ||
-			strings.HasPrefix(absPath, p+".") {
+		if abs == p ||
+			strings.HasPrefix(abs, p+pathSeparator) ||
+			strings.HasPrefix(abs, p+"/") ||
+			strings.HasPrefix(abs, p+".") {
 			return true
 		}
 	}

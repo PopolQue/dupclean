@@ -1,13 +1,18 @@
 package gui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"dupclean/internal/fsutil"
 	"dupclean/scanner"
+
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 )
 
 func TestCleanPath_NonExistent_BusinessLogic(t *testing.T) {
@@ -150,9 +155,10 @@ func TestKeepAndDelete_SingleGroup(t *testing.T) {
 	state := &AppState{
 		Groups: []scanner.DuplicateGroup{
 			{
+				Hash: "abc",
 				Files: []scanner.FileInfo{
-					{Path: file1},
-					{Path: file2},
+					{Path: file1, Hash: "abc"},
+					{Path: file2, Hash: "abc"},
 				},
 			},
 		},
@@ -188,15 +194,17 @@ func TestKeepAndDelete_MultipleGroups(t *testing.T) {
 	state := &AppState{
 		Groups: []scanner.DuplicateGroup{
 			{
+				Hash: "abc",
 				Files: []scanner.FileInfo{
-					{Path: file1},
-					{Path: file2},
+					{Path: file1, Hash: "abc"},
+					{Path: file2, Hash: "abc"},
 				},
 			},
 			{
+				Hash: "def",
 				Files: []scanner.FileInfo{
-					{Path: file3},
-					{Path: file4},
+					{Path: file3, Hash: "def"},
+					{Path: file4, Hash: "def"},
 				},
 			},
 		},
@@ -214,6 +222,155 @@ func TestKeepAndDelete_MultipleGroups(t *testing.T) {
 	// CurrentGroupIndex should be updated
 	if state.CurrentGroupIndex != 0 {
 		t.Errorf("Expected CurrentGroupIndex to be 0, got %d", state.CurrentGroupIndex)
+	}
+}
+
+func TestSmartCleanAll_BusinessLogic(t *testing.T) {
+	oldTrash := moveToTrash
+	oldSafe := safeToDelete
+	moveToTrash = func(path string) error { return nil }
+	safeToDelete = func(f scanner.FileInfo) (bool, error) { return true, nil }
+	defer func() {
+		moveToTrash = oldTrash
+		safeToDelete = oldSafe
+	}()
+
+	state := &AppState{
+		Groups: []scanner.DuplicateGroup{
+			{
+				Hash: "abc",
+				Files: []scanner.FileInfo{
+					{Path: "/path/1/a", Size: 100, Hash: "abc"},
+					{Path: "/path/1/b", Size: 100, Hash: "abc"},
+				},
+			},
+			{
+				Hash: "def",
+				Files: []scanner.FileInfo{
+					{Path: "/path/2/a", Size: 200, Hash: "def"},
+					{Path: "/path/2/b", Size: 200, Hash: "def"},
+				},
+			},
+		},
+	}
+
+	SmartCleanAll(state)
+
+	if state.DeletedCount != 2 {
+		t.Errorf("Expected 2 files deleted, got %d", state.DeletedCount)
+	}
+	if state.FreedBytes != 300 {
+		t.Errorf("Expected 300 bytes freed, got %d", state.FreedBytes)
+	}
+	if len(state.Groups) != 0 {
+		t.Errorf("Expected 0 groups left, got %d", len(state.Groups))
+	}
+}
+
+func TestCleanSelected_BusinessLogic(t *testing.T) {
+	oldTrash := moveToTrash
+	oldSafe := safeToDelete
+	moveToTrash = func(path string) error { return nil }
+	safeToDelete = func(f scanner.FileInfo) (bool, error) { return true, nil }
+	defer func() {
+		moveToTrash = oldTrash
+		safeToDelete = oldSafe
+	}()
+
+	state := &AppState{
+		Groups: []scanner.DuplicateGroup{
+			{
+				Hash: "abc",
+				Files: []scanner.FileInfo{
+					{Name: "a", Path: "/path/1/a", Size: 100, Hash: "abc"},
+					{Name: "b", Path: "/path/1/b", Size: 100, Hash: "abc"},
+				},
+			},
+		},
+		Selections: [][]bool{
+			{true, false}, // Keep first, delete second
+		},
+		ContentContainer: container.NewMax(),
+	}
+
+	cleanSelected(state)
+
+	if state.DeletedCount != 1 {
+		t.Errorf("Expected 1 file deleted, got %d", state.DeletedCount)
+	}
+	if state.FreedBytes != 100 {
+		t.Errorf("Expected 100 bytes freed, got %d", state.FreedBytes)
+	}
+}
+
+func TestKeepAndDeleteLocked_Failures(t *testing.T) {
+	oldTrash := moveToTrash
+	oldSafe := safeToDelete
+	defer func() {
+		moveToTrash = oldTrash
+		safeToDelete = oldSafe
+	}()
+
+	state := &AppState{}
+	files := []scanner.FileInfo{
+		{Name: "a", Path: "/a", Size: 100, ModTime: time.Now(), Hash: "abc"},
+		{Name: "b", Path: "/b", Size: 100, ModTime: time.Now(), Hash: "abc"},
+	}
+
+	t.Run("SafeToDeleteFail", func(t *testing.T) {
+		safeToDelete = func(f scanner.FileInfo) (bool, error) { return false, errors.New("modified") }
+		state.SkippedCount = 0
+		state.SkippedFiles = nil
+		keepAndDeleteLocked(state, 0, files)
+		if state.SkippedCount != 1 {
+			t.Errorf("Expected 1 skipped, got %d", state.SkippedCount)
+		}
+	})
+
+	t.Run("MoveToTrashFail", func(t *testing.T) {
+		safeToDelete = func(f scanner.FileInfo) (bool, error) { return true, nil }
+		moveToTrash = func(path string) error { return errors.New("trash error") }
+		state.SkippedCount = 0
+		state.SkippedFiles = nil
+		state.DeletedCount = 0
+		keepAndDeleteLocked(state, 0, files)
+		if state.SkippedCount != 1 {
+			t.Errorf("Expected 1 skipped, got %d", state.SkippedCount)
+		}
+		if state.DeletedCount != 0 {
+			t.Errorf("Expected 0 deleted, got %d", state.DeletedCount)
+		}
+	})
+}
+
+func TestStartScan_BusinessLogic(t *testing.T) {
+	oldFind := findDuplicates
+	findDuplicates = func(root string, scanAll bool, progress func(scanner.ScanProgress), ignoreFolders, ignoreExtensions []string) ([]scanner.DuplicateGroup, scanner.ScanStats, error) {
+		return []scanner.DuplicateGroup{
+			{Hash: "abc", Files: []scanner.FileInfo{{Path: "/a", Hash: "abc"}, {Path: "/b", Hash: "abc"}}},
+		}, scanner.ScanStats{TotalScanned: 10}, nil
+	}
+	defer func() { findDuplicates = oldFind }()
+
+	state := &AppState{
+		FolderPath: t.TempDir(),
+		progressComponents: &progressComponents{
+			label:  widget.NewLabel(""),
+			status: widget.NewLabel(""),
+			bar:    widget.NewProgressBar(),
+		},
+		ContentContainer: container.NewMax(),
+	}
+
+	startScan(state, nil, nil)
+
+	// Wait for goroutine to finish (heuristic)
+	time.Sleep(100 * time.Millisecond)
+
+	state.mu.RLock()
+	defer state.mu.RUnlock()
+	if len(state.Groups) != 1 {
+		t.Errorf("Expected 1 group, got %d", len(state.Groups))
 	}
 }
 

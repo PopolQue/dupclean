@@ -2,8 +2,6 @@ package ui
 
 import (
 	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,19 +10,15 @@ import (
 	"dupclean/scanner"
 )
 
-// captureOutput captures stdout from a function
+// captureOutput captures output from a function using the package-level stdout
 func captureOutput(f func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	var buf bytes.Buffer
+	oldStdout := stdout
+	stdout = &buf
+	defer func() { stdout = oldStdout }()
 
 	f()
 
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
 	return buf.String()
 }
 
@@ -64,38 +58,128 @@ func TestRun_EmptyGroups(t *testing.T) {
 	}
 }
 
-func TestRun_WithDuplicates_OutputStructure(t *testing.T) {
-	stats := scanner.ScanStats{
-		TotalScanned: 10,
-		TotalDupes:   5,
-		WastedBytes:  1024,
-		ScanDuration: 1 * time.Second,
-	}
+func TestRun_Quit(t *testing.T) {
+	oldStdout := stdout
+	oldStdin := stdin
+	var buf bytes.Buffer
+	stdout = &buf
+	stdin = strings.NewReader("q\n")
+	defer func() {
+		stdout = oldStdout
+		stdin = oldStdin
+	}()
 
 	groups := []scanner.DuplicateGroup{
 		{
+			Hash: "abc",
 			Files: []scanner.FileInfo{
-				{
-					Path:    "/test/file1.mp3",
-					Name:    "file1.mp3",
-					Size:    1024,
-					ModTime: time.Now(),
-				},
-				{
-					Path:    "/test/file2.mp3",
-					Name:    "file2.mp3",
-					Size:    1024,
-					ModTime: time.Now(),
-				},
+				{Name: "file1.txt", Path: "/path/1", Size: 100, ModTime: time.Now()},
+				{Name: "file2.txt", Path: "/path/2", Size: 100, ModTime: time.Now()},
 			},
 		},
 	}
 
-	// Note: Run() is interactive, so we can't fully test it
-	// But we can verify it doesn't panic with valid input
-	// The actual interactive part would hang, so we skip full execution
-	_ = groups
-	_ = stats
+	stats := scanner.ScanStats{
+		TotalScanned: 2,
+		TotalDupes:   1,
+		WastedBytes:  100,
+	}
+
+	Run(groups, stats)
+
+	output := buf.String()
+	if !strings.Contains(output, "Stopped early") {
+		t.Errorf("Expected output to contain 'Stopped early', got: %s", output)
+	}
+}
+
+func TestRun_Skip(t *testing.T) {
+	oldStdout := stdout
+	oldStdin := stdin
+	var buf bytes.Buffer
+	stdout = &buf
+	// Skip the first group, then quit
+	stdin = strings.NewReader("s\nq\n")
+	defer func() {
+		stdout = oldStdout
+		stdin = oldStdin
+	}()
+
+	groups := []scanner.DuplicateGroup{
+		{
+			Hash: "abc",
+			Files: []scanner.FileInfo{
+				{Name: "file1.txt", Path: "/path/1", Size: 100, ModTime: time.Now()},
+				{Name: "file2.txt", Path: "/path/2", Size: 100, ModTime: time.Now()},
+			},
+		},
+	}
+
+	Run(groups, scanner.ScanStats{})
+
+	output := buf.String()
+	if !strings.Contains(output, "Skipped this group") {
+		t.Errorf("Expected output to contain 'Skipped this group', got: %s", output)
+	}
+}
+
+func TestRun_SkipAll(t *testing.T) {
+	oldStdout := stdout
+	oldStdin := stdin
+	var buf bytes.Buffer
+	stdout = &buf
+	stdin = strings.NewReader("a\n")
+	defer func() {
+		stdout = oldStdout
+		stdin = oldStdin
+	}()
+
+	groups := []scanner.DuplicateGroup{
+		{
+			Hash: "abc",
+			Files: []scanner.FileInfo{
+				{Name: "file1.txt", Path: "/path/1", Size: 100, ModTime: time.Now()},
+				{Name: "file2.txt", Path: "/path/2", Size: 100, ModTime: time.Now()},
+			},
+		},
+	}
+
+	Run(groups, scanner.ScanStats{})
+
+	output := buf.String()
+	if !strings.Contains(output, "Skipping all remaining groups") {
+		t.Errorf("Expected output to contain 'Skipping all remaining groups', got: %s", output)
+	}
+}
+
+func TestRun_InvalidChoice(t *testing.T) {
+	oldStdout := stdout
+	oldStdin := stdin
+	var buf bytes.Buffer
+	stdout = &buf
+	// Invalid number, then quit
+	stdin = strings.NewReader("9\nq\n")
+	defer func() {
+		stdout = oldStdout
+		stdin = oldStdin
+	}()
+
+	groups := []scanner.DuplicateGroup{
+		{
+			Hash: "abc",
+			Files: []scanner.FileInfo{
+				{Name: "file1.txt", Path: "/path/1", Size: 100, ModTime: time.Now()},
+				{Name: "file2.txt", Path: "/path/2", Size: 100, ModTime: time.Now()},
+			},
+		},
+	}
+
+	Run(groups, scanner.ScanStats{})
+
+	output := buf.String()
+	if !strings.Contains(output, "Invalid choice") {
+		t.Errorf("Expected output to contain 'Invalid choice', got: %s", output)
+	}
 }
 
 func TestFormatBytes_Comprehensive(t *testing.T) {

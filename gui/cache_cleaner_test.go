@@ -3,49 +3,64 @@ package gui
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
 func TestIsProtectedPath(t *testing.T) {
+	oldOS := goos
+	oldAbs := absPath
+	oldSep := pathSeparator
+	defer func() {
+		goos = oldOS
+		absPath = oldAbs
+		pathSeparator = oldSep
+	}()
+
+	// Mock absPath to return the path as-is for testing
+	absPath = func(path string) (string, error) { return path, nil }
+
 	tests := []struct {
 		path     string
 		expected bool
 		os       string
+		sep      string
 	}{
-		// macOS paths (only expected to be true on macOS)
-		{"/var/folders/abc123", true, "darwin"},
-		{"/var/folders", true, "darwin"},
-		{"/private/var", true, "darwin"},
-		{"/System/Library", true, "darwin"},
-		{"/Library/Caches/com.apple", true, "darwin"},
+		// macOS paths
+		{"/var/folders/abc123", true, "darwin", "/"},
+		{"/var/folders", true, "darwin", "/"},
+		{"/private/var", true, "darwin", "/"},
+		{"/System/Library", true, "darwin", "/"},
+		{"/Library/Caches/com.apple", true, "darwin", "/"},
 
-		// Windows paths (only expected to be true on Windows)
-		{`C:\Windows\System32`, true, "windows"},
-		{`C:\Program Files\Common`, true, "windows"},
+		// Windows paths
+		{`C:\Windows\System32`, true, "windows", `\`},
+		{`C:\Program Files\Common`, true, "windows", `\`},
 
-		// Linux paths (only expected to be true on Linux)
-		{"/etc/passwd", true, "linux"},
-		{"/usr/bin", true, "linux"},
+		// Linux paths
+		{"/etc/passwd", true, "linux", "/"},
+		{"/usr/bin", true, "linux", "/"},
 
 		// Common non-protected paths
-		{"/Users/davidcutura/Library/Caches", false, "darwin"},
-		{"/tmp", false, "darwin"},
-		{"/tmp", false, "linux"},
-		{`C:\Users\test\Downloads`, false, "windows"},
-		{"", false, ""},
+		{"/Users/user/Library/Caches", false, "darwin", "/"},
+		{"/tmp", false, "darwin", "/"},
+		{"/tmp", false, "linux", "/"},
+		{`C:\Users\test\Downloads`, false, "windows", `\`},
+		{"", false, "", "/"},
 	}
 
 	for _, test := range tests {
-		// Skip tests not relevant to the current OS
-		if test.os != "" && runtime.GOOS != test.os {
-			continue
-		}
-
-		result := isProtectedPath(test.path)
-		if result != test.expected {
-			t.Errorf("isProtectedPath(%q) = %v, expected %v (OS: %s)", test.path, result, test.expected, runtime.GOOS)
-		}
+		t.Run(test.os+"_"+test.path, func(t *testing.T) {
+			if test.os != "" {
+				goos = test.os
+			}
+			if test.sep != "" {
+				pathSeparator = test.sep
+			}
+			result := isProtectedPath(test.path)
+			if result != test.expected {
+				t.Errorf("isProtectedPath(%q) on %s (sep=%s) = %v, want %v", test.path, test.os, test.sep, result, test.expected)
+			}
+		})
 	}
 }
 

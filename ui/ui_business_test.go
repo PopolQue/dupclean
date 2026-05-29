@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"bytes"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -43,19 +41,7 @@ func TestFormatBytes_UI(t *testing.T) {
 }
 
 func TestPrintHeader_Business(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	printHeader()
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(printHeader)
 
 	// Verify header contains expected elements
 	if !strings.Contains(output, "DUPCLEAN") {
@@ -67,24 +53,15 @@ func TestPrintHeader_Business(t *testing.T) {
 }
 
 func TestPrintScanSummary_Business(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
 	stats := scanner.ScanStats{
 		TotalScanned: 100,
 		TotalDupes:   25,
 		WastedBytes:  50000,
 		ScanDuration: 10 * time.Second,
 	}
-	printScanSummary(stats, 5)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(func() {
+		printScanSummary(stats, 5)
+	})
 
 	// Verify summary contains expected elements
 	if !strings.Contains(output, "Scan Summary") {
@@ -99,18 +76,9 @@ func TestPrintScanSummary_Business(t *testing.T) {
 }
 
 func TestPrintFinalSummary_Business_WithDeletions(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	printFinalSummary(5, 1048576)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(func() {
+		printFinalSummary(5, 1048576)
+	})
 
 	if !strings.Contains(output, "Cleanup Complete") {
 		t.Error("Should contain 'Cleanup Complete'")
@@ -130,18 +98,9 @@ func TestPrintFinalSummary_Business_WithDeletions(t *testing.T) {
 }
 
 func TestPrintFinalSummary_Business_NoDeletions(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	printFinalSummary(0, 0)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(func() {
+		printFinalSummary(0, 0)
+	})
 
 	if !strings.Contains(output, "Nothing was deleted") {
 		t.Error("Should contain 'Nothing was deleted'")
@@ -152,18 +111,7 @@ func TestPrintFinalSummary_Business_NoDeletions(t *testing.T) {
 }
 
 func TestPrintControlsHelp_Business(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	printControlsHelp()
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(printControlsHelp)
 
 	if !strings.Contains(output, "Controls") {
 		t.Error("Should contain 'Controls'")
@@ -181,6 +129,7 @@ func TestPrintControlsHelp_Business(t *testing.T) {
 		t.Error("Should show quit hint")
 	}
 }
+
 
 func TestFormatBytes_EdgeCases(t *testing.T) {
 	// Test zero
@@ -215,24 +164,15 @@ func TestFormatBytes_EdgeCases(t *testing.T) {
 }
 
 func TestPrintScanSummary_Business_ZeroValues(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
 	stats := scanner.ScanStats{
 		TotalScanned: 0,
 		TotalDupes:   0,
 		WastedBytes:  0,
 		ScanDuration: 0,
 	}
-	printScanSummary(stats, 0)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(func() {
+		printScanSummary(stats, 0)
+	})
 
 	if !strings.Contains(output, "Scan Summary") {
 		t.Error("Should contain 'Scan Summary'")
@@ -240,19 +180,10 @@ func TestPrintScanSummary_Business_ZeroValues(t *testing.T) {
 }
 
 func TestPrintFinalSummary_Business_LargeAmounts(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
 	// Test with large freed amount (GB)
-	printFinalSummary(100, 10737418240) // 10 GB
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
+	output := captureOutput(func() {
+		printFinalSummary(100, 10737418240) // 10 GB
+	})
 
 	if !strings.Contains(output, "GB") {
 		t.Error("Should show GB for large amounts")

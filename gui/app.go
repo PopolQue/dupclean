@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -423,7 +424,7 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 		ignoreExtensions := state.IgnoreExtensions
 		state.mu.RUnlock()
 
-		groups, stats, err := scanner.FindDuplicates(folderPath, scanAll, progressCallback, ignoreFolders, ignoreExtensions)
+		groups, stats, err := findDuplicates(folderPath, scanAll, progressCallback, ignoreFolders, ignoreExtensions)
 		if err != nil {
 			state.mu.Lock()
 			state.IsScanning = false
@@ -483,16 +484,25 @@ func showResults(state *AppState, stats scanner.ScanStats) {
 	state.updateContent(DuplicateResultsWidget(state))
 }
 
-func safeToDelete(f scanner.FileInfo) (bool, error) {
-	info, err := os.Stat(f.Path)
-	if err != nil {
-		return false, err // file gone or inaccessible
+var (
+	moveToTrash    = trash.MoveToTrash
+	findDuplicates = scanner.FindDuplicates
+	goos           = runtime.GOOS
+	userHomeDir    = os.UserHomeDir
+	absPath        = filepath.Abs
+	pathSeparator  = string(filepath.Separator)
+	osRemoveAll    = os.RemoveAll
+	safeToDelete   = func(f scanner.FileInfo) (bool, error) {
+		info, err := os.Stat(f.Path)
+		if err != nil {
+			return false, err // file gone or inaccessible
+		}
+		if info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
+			return false, fmt.Errorf("file modified since scan")
+		}
+		return true, nil
 	}
-	if info.Size() != f.Size || !info.ModTime().Equal(f.ModTime) {
-		return false, fmt.Errorf("file modified since scan")
-	}
-	return true, nil
-}
+)
 
 func cleanSelected(state *AppState) {
 	stopPlayback(state)
@@ -657,10 +667,14 @@ func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInf
 			continue
 		}
 
-		// Always count the deletion, even if moveToTrash fails (e.g., in tests)
-		state.DeletedCount++
-		state.FreedBytes += f.Size
-		_ = moveToTrash(f.Path)
+		if err := moveToTrash(f.Path); err == nil {
+			state.DeletedCount++
+			state.FreedBytes += f.Size
+		} else {
+			log.Printf("[keepAndDeleteLocked] Failed to trash %s: %v", f.Path, err)
+			state.SkippedCount++
+			state.SkippedFiles = append(state.SkippedFiles, f.Name)
+		}
 	}
 
 	// Remove the resolved group from the list and sync selections
@@ -709,10 +723,6 @@ func SmartCleanAll(state *AppState) {
 	if state.RefreshResults != nil {
 		state.RefreshResults()
 	}
-}
-
-func moveToTrash(path string) error {
-	return trash.MoveToTrash(path)
 }
 
 func playFile(state *AppState, path string, onComplete func()) {
