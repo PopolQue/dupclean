@@ -11,11 +11,10 @@ import (
 
 // vars for testing to allow mocking OS behaviors
 var (
-	execCommand  = exec.Command
-	execLookPath = exec.LookPath
-	goos         = runtime.GOOS
-	userHomeDir  = os.UserHomeDir
-	absPath      = filepath.Abs
-	osRemoveAll  = os.RemoveAll
-	moveToTrash  = trash.MoveToTrash
+	execCommand = exec.Command
+	goos        = runtime.GOOS
+	userHomeDir = os.UserHomeDir
+	absPath     = filepath.Abs
+	osRemoveAll = os.RemoveAll
+	moveToTrash = trash.MoveToTrash
 )

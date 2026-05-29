@@ -21,7 +21,6 @@ func GetDeveloperTargets() []*CleanTarget {
 	}
 }
 
-
 func getDeveloperTargetsMacOS() []*CleanTarget {
 	home, _ := userHomeDir()
 

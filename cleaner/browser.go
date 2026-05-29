@@ -19,7 +19,6 @@ func GetBrowserTargets() []*CleanTarget {
 	}
 }
 
-
 func getBrowserTargetsMac() []*CleanTarget {
 	home, _ := userHomeDir()
 	lib := filepath.Join(home, "Library")

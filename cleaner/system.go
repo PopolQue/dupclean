@@ -19,7 +19,6 @@ func GetSystemTargets() []*CleanTarget {
 	}
 }
 
-
 func getMacOSTargets() []*CleanTarget {
 	home, _ := userHomeDir()
 	tmpDir := os.TempDir()

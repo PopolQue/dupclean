@@ -36,11 +36,6 @@ func mockSuccessCmd(name string, args ...string) *exec.Cmd {
 	return exec.Command("true")
 }
 
-// helper command that fails when run
-func mockFailCmd(name string, args ...string) *exec.Cmd {
-	return exec.Command("false")
-}
-
 // TestMoveToTrash_CrossPlatform tests all OS branches of MoveToTrash
 func TestMoveToTrash_CrossPlatform(t *testing.T) {
 	tmpDir := t.TempDir()

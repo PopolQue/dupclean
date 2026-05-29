@@ -290,7 +290,7 @@ func TestCleanSelected_BusinessLogic(t *testing.T) {
 		Selections: [][]bool{
 			{true, false}, // Keep first, delete second
 		},
-		ContentContainer: container.NewMax(),
+		ContentContainer: container.NewStack(),
 	}
 
 	cleanSelected(state)
@@ -359,7 +359,7 @@ func TestStartScan_BusinessLogic(t *testing.T) {
 			status: widget.NewLabel(""),
 			bar:    widget.NewProgressBar(),
 		},
-		ContentContainer: container.NewMax(),
+		ContentContainer: container.NewStack(),
 	}
 
 	startScan(state, nil, nil)

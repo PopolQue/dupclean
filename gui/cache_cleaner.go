@@ -444,6 +444,13 @@ func isProtectedPath(path string) bool {
 		}
 	}
 
+	// Also protect the home directory itself
+	if home, err := userHomeDir(); err == nil {
+		if abs == home {
+			return true
+		}
+	}
+
 	for _, p := range protected {
 		// Check if path matches or is within a protected path
 		// We use strings.HasPrefix but need to ensure it's a full path match or a bundle ID subpath
@@ -498,7 +505,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 		log.Printf("[CacheCleaner] Measured %s (%d files) in %s", fsutil.FormatBytes(measuredBytes), measuredCount, basePath)
 
 		// Now actually delete everything
-		if err := os.RemoveAll(basePath); err != nil {
+		if err := osRemoveAll(basePath); err != nil {
 			log.Printf("[CacheCleaner] Error deleting %s: %v", basePath, err)
 			return measuredCount, measuredBytes, err
 		}
@@ -543,7 +550,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 		}
 
 		// Delete the file/directory recursively
-		if err := os.RemoveAll(fullPath); err != nil {
+		if err := osRemoveAll(fullPath); err != nil {
 			// Try trash as fallback for single files
 			_ = moveToTrash(fullPath)
 		}

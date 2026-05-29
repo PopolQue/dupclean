@@ -3,6 +3,7 @@ package cleaner
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 )
@@ -10,13 +11,18 @@ import (
 func TestVerifyDeletionSafety_CrossPlatform(t *testing.T) {
 	oldOS := goos
 	oldHomeDir := userHomeDir
+	oldAbs := absPath
 	defer func() {
 		goos = oldOS
 		userHomeDir = oldHomeDir
+		absPath = oldAbs
 	}()
 
-	tmpDir := t.TempDir()
-	userHomeDir = func() (string, error) { return tmpDir, nil }
+	// Use a fixed mock home directory
+	mockHome := filepath.FromSlash("/mock/home")
+	userHomeDir = func() (string, error) { return mockHome, nil }
+	// Mock absPath to return path as-is for predictable testing
+	absPath = func(path string) (string, error) { return path, nil }
 
 	tests := []struct {
 		name    string
@@ -27,7 +33,7 @@ func TestVerifyDeletionSafety_CrossPlatform(t *testing.T) {
 		{"Unix root", "/", "linux", true},
 		{"Windows root", "C:\\", "windows", true},
 		{"Protected path", "/etc", "linux", true},
-		{"User home", tmpDir, "linux", true},
+		{"User home", mockHome, "linux", true},
 		{"Safe path", "/home/user/safe", "linux", false},
 	}
 

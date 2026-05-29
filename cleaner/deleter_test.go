@@ -53,7 +53,7 @@ func TestDeleteEntry_Exhaustive(t *testing.T) {
 			t.Errorf("Unexpected result: %d, %d, %v, %v", deleted, freed, skipped, err)
 		}
 	})
-	
+
 	t.Run("EmptyPath", func(t *testing.T) {
 		deleted, _, _, err := deleteEntry(EntryInfo{Path: ""}, true)
 		if err == nil || deleted != 0 {

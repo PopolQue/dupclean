@@ -504,6 +504,28 @@ var (
 	}
 )
 
+func verifyDeletionSafety(path string) error {
+	if path == "" {
+		return fmt.Errorf("empty path")
+	}
+	abs, err := absPath(path)
+	if err != nil {
+		return err
+	}
+
+	// Don't allow deleting root or home directory
+	if abs == "/" || abs == `\` {
+		return fmt.Errorf("cannot delete root directory")
+	}
+
+	home, err := userHomeDir()
+	if err == nil && abs == home {
+		return fmt.Errorf("cannot delete home directory")
+	}
+
+	return nil
+}
+
 func cleanSelected(state *AppState) {
 	stopPlayback(state)
 
@@ -525,6 +547,14 @@ func cleanSelected(state *AppState) {
 	for i, group := range groups {
 		for j, f := range group.Files {
 			if !selections[i][j] {
+				// Safety check before deletion
+				if err := verifyDeletionSafety(f.Path); err != nil {
+					log.Printf("[GUI] Skipping protected path: %s (%v)", f.Path, err)
+					skippedCount++
+					skippedFiles = append(skippedFiles, f.Name)
+					continue
+				}
+
 				if ok, err := safeToDelete(f); !ok {
 					log.Printf("[cleanSelected] Skipping %s: %v", f.Path, err)
 					skippedCount++

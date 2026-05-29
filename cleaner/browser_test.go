@@ -36,8 +36,9 @@ func TestGetBrowserTargets_CrossPlatform(t *testing.T) {
 
 func TestGetBrowserTargetsMac_Logic(t *testing.T) {
 	oldHomeDir := userHomeDir
-	tmpDir := t.TempDir()
-	userHomeDir = func() (string, error) { return tmpDir, nil }
+	// Use a fixed mock path to avoid Windows temp dir short-name aliases
+	mockHome := filepath.FromSlash("/mock/home")
+	userHomeDir = func() (string, error) { return mockHome, nil }
 	defer func() { userHomeDir = oldHomeDir }()
 
 	targets := getBrowserTargetsMac()
@@ -50,7 +51,7 @@ func TestGetBrowserTargetsMac_Logic(t *testing.T) {
 	for _, target := range targets {
 		if target.ID == "macos-safari-cache" {
 			safariFound = true
-			expectedPath := filepath.Join(tmpDir, "Library", "Caches", "com.apple.Safari")
+			expectedPath := filepath.Join(mockHome, "Library", "Caches", "com.apple.Safari")
 			if len(target.Paths) > 0 && target.Paths[0] != expectedPath {
 				t.Errorf("Safari path = %q, want %q", target.Paths[0], expectedPath)
 			}
@@ -63,8 +64,8 @@ func TestGetBrowserTargetsMac_Logic(t *testing.T) {
 
 func TestGetBrowserTargetsLinux_Logic(t *testing.T) {
 	oldHomeDir := userHomeDir
-	tmpDir := t.TempDir()
-	userHomeDir = func() (string, error) { return tmpDir, nil }
+	mockHome := filepath.FromSlash("/mock/home")
+	userHomeDir = func() (string, error) { return mockHome, nil }
 	defer func() { userHomeDir = oldHomeDir }()
 
 	targets := getBrowserTargetsLinux()
@@ -77,7 +78,7 @@ func TestGetBrowserTargetsLinux_Logic(t *testing.T) {
 	for _, target := range targets {
 		if target.ID == "linux-chrome-cache" {
 			chromeFound = true
-			expectedPath := filepath.Join(tmpDir, ".config", "google-chrome", "Default", "Cache")
+			expectedPath := filepath.Join(mockHome, ".config", "google-chrome", "Default", "Cache")
 			if len(target.Paths) > 0 && target.Paths[0] != expectedPath {
 				t.Errorf("Chrome path = %q, want %q", target.Paths[0], expectedPath)
 			}

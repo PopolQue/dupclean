@@ -130,7 +130,6 @@ func TestPrintControlsHelp_Business(t *testing.T) {
 	}
 }
 
-
 func TestFormatBytes_EdgeCases(t *testing.T) {
 	// Test zero
 	if fsutil.FormatBytes(0) != "0 B" {
