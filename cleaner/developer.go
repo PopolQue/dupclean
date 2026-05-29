@@ -23,7 +23,7 @@ func GetDeveloperTargets() []*CleanTarget {
 
 
 func getDeveloperTargetsMacOS() []*CleanTarget {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 
 	var targets []*CleanTarget
 
@@ -81,7 +81,7 @@ func getDeveloperTargetsMacOS() []*CleanTarget {
 }
 
 func getDeveloperTargetsLinux() []*CleanTarget {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	xdgCache := os.Getenv("XDG_CACHE_HOME")
 	if xdgCache == "" {
 		xdgCache = filepath.Join(home, ".cache")

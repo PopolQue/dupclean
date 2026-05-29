@@ -35,15 +35,10 @@ func TestGetBrowserTargets_CrossPlatform(t *testing.T) {
 }
 
 func TestGetBrowserTargetsMac_Logic(t *testing.T) {
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-		}
-	}()
-
+	oldHomeDir := userHomeDir
 	tmpDir := t.TempDir()
-	os.Setenv("HOME", tmpDir)
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	defer func() { userHomeDir = oldHomeDir }()
 
 	targets := getBrowserTargetsMac()
 
@@ -67,15 +62,10 @@ func TestGetBrowserTargetsMac_Logic(t *testing.T) {
 }
 
 func TestGetBrowserTargetsLinux_Logic(t *testing.T) {
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-		}
-	}()
-
+	oldHomeDir := userHomeDir
 	tmpDir := t.TempDir()
-	os.Setenv("HOME", tmpDir)
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	defer func() { userHomeDir = oldHomeDir }()
 
 	targets := getBrowserTargetsLinux()
 

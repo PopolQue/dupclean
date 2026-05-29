@@ -21,7 +21,7 @@ func GetLogsTargets() []*CleanTarget {
 
 
 func getLogsTargetsMac() []*CleanTarget {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	lib := filepath.Join(home, "Library")
 
 	return []*CleanTarget{

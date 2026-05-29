@@ -21,7 +21,7 @@ func GetBrowserTargets() []*CleanTarget {
 
 
 func getBrowserTargetsMac() []*CleanTarget {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	lib := filepath.Join(home, "Library")
 
 	return []*CleanTarget{
@@ -59,7 +59,7 @@ func getBrowserTargetsMac() []*CleanTarget {
 }
 
 func getBrowserTargetsLinux() []*CleanTarget {
-	home, _ := os.UserHomeDir()
+	home, _ := userHomeDir()
 	config := filepath.Join(home, ".config")
 
 	return []*CleanTarget{

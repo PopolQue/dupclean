@@ -34,15 +34,10 @@ func TestGetDeveloperTargets_CrossPlatform(t *testing.T) {
 }
 
 func TestGetDeveloperTargetsMacOS_Logic(t *testing.T) {
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-		}
-	}()
-
+	oldHomeDir := userHomeDir
 	tmpDir := t.TempDir()
-	os.Setenv("HOME", tmpDir)
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	defer func() { userHomeDir = oldHomeDir }()
 
 	targets := getDeveloperTargetsMacOS()
 
@@ -62,6 +57,11 @@ func TestGetDeveloperTargetsMacOS_Logic(t *testing.T) {
 }
 
 func TestGetDeveloperTargetsLinux_Logic(t *testing.T) {
+	oldHomeDir := userHomeDir
+	tmpDir := t.TempDir()
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	defer func() { userHomeDir = oldHomeDir }()
+
 	targets := getDeveloperTargetsLinux()
 
 	if len(targets) == 0 {

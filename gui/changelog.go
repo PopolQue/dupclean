@@ -21,6 +21,13 @@ type changelogEntry struct {
 
 var fullChangelog = []changelogEntry{
 	{
+		version: "v0.4.8.0",
+		highlights: `- **Massive Test Coverage**: Achieved 90%+ coverage across all safety-critical backend packages and significantly improved UI test logic.
+- **Improved Accuracy**: Fixed a bug where failed file trashing was still counted as successful in the completion screen.
+- **CI Stability**: Resolved cross-platform test failures on Windows runners by improving system-level mocking.
+- **Mocking Framework**: Introduced internal mockable variables for system paths and commands to ensure deterministic behavior across all OSs.`,
+	},
+	{
 		version: "v0.4.7.2",
 		highlights: `- **Safety Fix**: Prevented a rare TOCTOU (Time-Of-Check to Time-Of-Use) issue by verifying file existence and modification time immediately before deletion.
 - **Scanner Reliability**: Improved photo scanner test coverage and added new scanner utility tests to handle edge cases.`,

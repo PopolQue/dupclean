@@ -707,8 +707,8 @@ func SmartCleanAll(state *AppState) {
 
 		// Selection logic: prefer shallowest path, then oldest modification time
 		sort.Slice(files, func(i, j int) bool {
-			di := strings.Count(files[i].Path, string(filepath.Separator))
-			dj := strings.Count(files[j].Path, string(filepath.Separator))
+			di := strings.Count(files[i].Path, pathSeparator)
+			dj := strings.Count(files[j].Path, pathSeparator)
 			if di != dj {
 				return di < dj
 			}
