@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"dupclean/internal/fsutil"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -35,7 +36,7 @@ func RenderGUI(result *AnalysisResult) {
 			case 0:
 				label.SetText(node.Name)
 			case 1:
-				label.SetText(formatSize(node.TotalSize))
+				label.SetText(fsutil.FormatBytes(node.TotalSize))
 			case 2:
 				label.SetText(strconv.Itoa(len(node.Files)))
 			}
@@ -51,7 +52,7 @@ func RenderGUI(result *AnalysisResult) {
 		widget.NewRichTextFromMarkdown("**Disk Usage Analyzer**"),
 		widget.NewLabel(fmt.Sprintf("Root: %s | Total: %s | Files: %d",
 			result.Root.Path,
-			formatSize(result.TotalSize),
+			fsutil.FormatBytes(result.TotalSize),
 			result.FileCount,
 		)),
 	)

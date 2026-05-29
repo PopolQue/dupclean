@@ -40,6 +40,7 @@ func DefaultOptions() WalkOptions {
 		MaxDepth:       0,
 		ExcludePaths:   []string{},
 		Concurrency:    runtime.NumCPU(),
+		MaxEntries:     500000,
 	}
 }
 

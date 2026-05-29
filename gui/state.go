@@ -113,11 +113,7 @@ func setProcessRunning(running bool) {
 		if running {
 			btn.Disable()
 		} else {
-			// Button will be re-enabled by its own logic if ready (e.g. folder selected)
-			// But for now, let's just trigger a refresh of its state if we have a way.
-			// Actually, the individual tools should handle the "ready" part.
-			// If we disable here, we might enable it when it's not ready.
-			// So we need a more sophisticated way.
+			btn.Enable()
 		}
 	}
 }

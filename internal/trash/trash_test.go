@@ -320,25 +320,6 @@ func TestEscapeAppleScriptString(t *testing.T) {
 	}
 }
 
-// TestEscapePowerShellString tests PowerShell string escaping
-func TestEscapePowerShellString(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"simple", "simple"},
-		{"with'quote", "with''quote"},
-		{"with''double", "with''''double"},
-	}
-
-	for _, tt := range tests {
-		result := escapePowerShellString(tt.input)
-		if result != tt.expected {
-			t.Errorf("escapePowerShellString(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
 // TestValidatePath tests path validation
 func TestValidatePath(t *testing.T) {
 	tests := []struct {

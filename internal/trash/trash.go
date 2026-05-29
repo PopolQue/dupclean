@@ -114,9 +114,6 @@ func moveToTrashLinux(path string) error {
 
 // moveToTrashWindows moves a file to trash on Windows using PowerShell.
 func moveToTrashWindows(path string) error {
-	// Use PowerShell with proper escaping to prevent command injection.
-	// We use a base64 encoded command or pass the path via an environment variable
-	// to avoid any shell parsing issues.
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -124,9 +121,9 @@ func moveToTrashWindows(path string) error {
 
 	// Use the Shell.Application COM object which is the most reliable way
 	// to move to the Recycle Bin via script without third-party tools.
-	// We use -EncodedCommand to avoid all quoting issues.
-	script := fmt.Sprintf(`
-$path = [System.IO.Path]::GetFullPath("%s")
+	// Pass the path via environment variable to avoid shell escaping issues.
+	script := `
+$path = [System.IO.Path]::GetFullPath($env:DUPCLEAN_PATH)
 if (Test-Path $path) {
     $shell = New-Object -ComObject Shell.Application
     $folder = $shell.Namespace((Split-Path $path))
@@ -135,12 +132,9 @@ if (Test-Path $path) {
         $item.InvokeVerb("delete")
     }
 }
-`, strings.ReplaceAll(absPath, `"`, "`\""))
-
-	// Actually, the safest way is to use the Recycler API directly if possible,
-	// but via CLI, passing it as a variable is better.
-	cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", "-")
-	cmd.Stdin = strings.NewReader(script)
+`
+	cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.Env = append(os.Environ(), "DUPCLEAN_PATH="+absPath)
 	return cmd.Run()
 }
 
@@ -201,12 +195,5 @@ func escapeAppleScriptString(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "\"", "\\\"")
 	s = strings.ReplaceAll(s, "'", "\\'")
-	return s
-}
-
-// escapePowerShellString escapes special characters for PowerShell strings.
-func escapePowerShellString(s string) string {
-	// In single-quoted strings, only ' needs escaping (by doubling)
-	s = strings.ReplaceAll(s, "'", "''")
 	return s
 }

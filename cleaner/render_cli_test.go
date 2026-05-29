@@ -2,6 +2,8 @@ package cleaner
 
 import (
 	"testing"
+
+	"dupclean/internal/fsutil"
 )
 
 func TestRenderCLI(t *testing.T) {
@@ -232,7 +234,7 @@ func TestGetTotalSize_Empty(t *testing.T) {
 	}
 }
 
-func TestFormatSize(t *testing.T) {
+func TestFormatBytes(t *testing.T) {
 	tests := []struct {
 		size     int64
 		expected string
@@ -241,22 +243,22 @@ func TestFormatSize(t *testing.T) {
 		{1, "1 B"},
 		{512, "512 B"},
 		{1023, "1023 B"},
-		{1024, "1.00 KB"},
-		{1536, "1.50 KB"},
-		{10240, "10.00 KB"},
-		{1048576, "1.00 MB"},
-		{1572864, "1.50 MB"},
-		{104857600, "100.00 MB"},
-		{1073741824, "1.00 GB"},
-		{2147483648, "2.00 GB"},
-		{1099511627776, "1.00 TB"},
+		{1024, "1.0 KB"},
+		{1536, "1.5 KB"},
+		{10240, "10.0 KB"},
+		{1048576, "1.0 MB"},
+		{1572864, "1.5 MB"},
+		{104857600, "100.0 MB"},
+		{1073741824, "1.0 GB"},
+		{2147483648, "2.0 GB"},
+		{1099511627776, "1.0 TB"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			result := formatSize(tt.size)
+			result := fsutil.FormatBytes(tt.size)
 			if result != tt.expected {
-				t.Errorf("formatSize(%d) = %q, want %q", tt.size, result, tt.expected)
+				t.Errorf("fsutil.FormatBytes(%d) = %q, want %q", tt.size, result, tt.expected)
 			}
 		})
 	}

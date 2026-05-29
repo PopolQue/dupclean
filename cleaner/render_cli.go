@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"dupclean/internal/fsutil"
 )
 
 // CLIOptions configures the CLI renderer.
@@ -54,14 +56,14 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 				riskIcon = "✗"
 			}
 
-			sizeStr := formatSize(t.TotalSize)
+			sizeStr := fsutil.FormatBytes(t.TotalSize)
 			fmt.Printf("  %s  %-30s  %s\n", riskIcon, t.Label, sizeStr)
 		}
 		fmt.Println()
 	}
 
 	fmt.Printf("  %s\n", strings.Repeat("─", 60))
-	fmt.Printf("  Total reclaimable:  %s\n", formatSize(result.TotalSize))
+	fmt.Printf("  Total reclaimable:  %s\n", fsutil.FormatBytes(result.TotalSize))
 	fmt.Println()
 
 	// Stage 2: Review and select
@@ -114,7 +116,7 @@ stage3:
 	}
 
 	fmt.Println()
-	fmt.Printf("Ready to clean %s across %d targets.\n", formatSize(totalSize), len(selected))
+	fmt.Printf("Ready to clean %s across %d targets.\n", fsutil.FormatBytes(totalSize), len(selected))
 
 	if opts.DryRun {
 		fmt.Println("DRY RUN - No files will be deleted")
@@ -153,7 +155,7 @@ stage3:
 		DryRun:    opts.DryRun,
 		Permanent: opts.Permanent,
 		OnProgress: func(deleted int, freedBytes int64, current string) {
-			fmt.Printf("\r  Processed %d files, freed %s...", deleted, formatSize(freedBytes))
+			fmt.Printf("\r  Processed %d files, freed %s...", deleted, fsutil.FormatBytes(freedBytes))
 		},
 	}
 
@@ -167,7 +169,7 @@ stage3:
 	fmt.Println()
 	fmt.Println("Done!")
 	fmt.Printf("  Files deleted:  %d\n", deleteResult.Deleted)
-	fmt.Printf("  Space freed:    %s\n", formatSize(deleteResult.FreedBytes))
+	fmt.Printf("  Space freed:    %s\n", fsutil.FormatBytes(deleteResult.FreedBytes))
 	if deleteResult.Skipped > 0 {
 		fmt.Printf("  Skipped:        %d (files in use)\n", deleteResult.Skipped)
 	}
@@ -199,7 +201,7 @@ func printSelection(visibleTargets []*CleanTarget, totalReclaimable int64) {
 			if t.Selected {
 				checkbox = "[✓]"
 			}
-			sizeStr := formatSize(t.TotalSize)
+			sizeStr := fsutil.FormatBytes(t.TotalSize)
 			fmt.Printf("  %2d. %s  %-30s  %s\n", i, checkbox, t.Label, sizeStr)
 			i++
 		}
@@ -212,7 +214,7 @@ func printSelection(visibleTargets []*CleanTarget, totalReclaimable int64) {
 			selectedSize += t.TotalSize
 		}
 	}
-	fmt.Printf("  Selected: %s (out of %s total)\n", formatSize(selectedSize), formatSize(totalReclaimable))
+	fmt.Printf("  Selected: %s (out of %s total)\n", fsutil.FormatBytes(selectedSize), fsutil.FormatBytes(totalReclaimable))
 }
 
 func getVisibleTargets(result *ScanResult) []*CleanTarget {
@@ -265,33 +267,4 @@ func getTotalSize(targets []*CleanTarget) int64 {
 		total += t.TotalSize
 	}
 	return total
-}
-
-// formatSize returns a human-readable size string.
-func formatSize(n int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-		TB = GB * 1024
-		PB = TB * 1024
-		EB = PB * 1024
-	)
-
-	switch {
-	case n >= EB:
-		return fmt.Sprintf("%.2f EB", float64(n)/float64(EB))
-	case n >= PB:
-		return fmt.Sprintf("%.2f PB", float64(n)/float64(PB))
-	case n >= TB:
-		return fmt.Sprintf("%.2f TB", float64(n)/float64(TB))
-	case n >= GB:
-		return fmt.Sprintf("%.2f GB", float64(n)/float64(GB))
-	case n >= MB:
-		return fmt.Sprintf("%.2f MB", float64(n)/float64(MB))
-	case n >= KB:
-		return fmt.Sprintf("%.2f KB", float64(n)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", n)
-	}
 }

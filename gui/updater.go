@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -277,7 +279,7 @@ func restartApp() {
 }
 
 func performUpdate(url string, setProgress func(float64)) error {
-	// 1. Download to temp file
+	// 1. Download binary to temp file
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -303,7 +305,7 @@ func performUpdate(url string, setProgress func(float64)) error {
 			}
 			downloaded += int64(n)
 			if size > 0 {
-				setProgress(float64(downloaded) / float64(size) * 0.5) // Download is first 50%
+				setProgress(float64(downloaded) / float64(size) * 0.4) // Download is first 40%
 			}
 		}
 		if err == io.EOF {
@@ -315,7 +317,30 @@ func performUpdate(url string, setProgress func(float64)) error {
 	}
 	_ = tmpFile.Close()
 
-	// 2. Extract binary to a temporary location first
+	// 2. Download and verify checksum
+	setProgress(0.5)
+	checksumURL := url + ".sha256"
+	checksumResp, err := http.Get(checksumURL)
+	if err != nil {
+		return fmt.Errorf("failed to download checksum: %v", err)
+	}
+	defer func() { _ = checksumResp.Body.Close() }()
+
+	checksumBytes, err := io.ReadAll(checksumResp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read checksum: %v", err)
+	}
+	expectedHash := strings.TrimSpace(string(checksumBytes))
+
+	isValid, err := verifyHash(tmpFile.Name(), expectedHash)
+	if err != nil {
+		return fmt.Errorf("failed to verify hash: %v", err)
+	}
+	if !isValid {
+		return fmt.Errorf("checksum verification failed! The file may be tampered with.")
+	}
+
+	// 3. Extract binary to a temporary location first
 	setProgress(0.6)
 	executable, err := os.Executable()
 	if err != nil {
@@ -342,7 +367,7 @@ func performUpdate(url string, setProgress func(float64)) error {
 		return err
 	}
 
-	// 3. Replace current binary
+	// 4. Replace current binary
 	setProgress(0.9)
 
 	// Attempt the move. If it fails with permission denied on macOS, we might need elevation.
@@ -397,8 +422,22 @@ func performUpdate(url string, setProgress func(float64)) error {
 	return nil
 }
 
-// macOSInstallWithElevation uses osascript to request administrator privileges for the file move
+// macOSInstallWithElevation uses osascript to request administrator privileges for the file move.
+// It performs strict path validation to prevent privilege escalation.
 func macOSInstallWithElevation(src, dst string) error {
+	// Validate destination is in a trusted location
+	trustedPaths := []string{"/Applications/", "/usr/local/bin/"}
+	isTrusted := false
+	for _, p := range trustedPaths {
+		if strings.HasPrefix(dst, p) {
+			isTrusted = true
+			break
+		}
+	}
+	if !isTrusted {
+		return fmt.Errorf("refusing to elevate: destination path %s is not in a trusted location", dst)
+	}
+
 	// do shell script in AppleScript uses /bin/sh. We use AppleScript's 'quoted form of' to handle spaces safely.
 	// The AppleScript command looks like:
 	// do shell script "cp -f " & quoted form of "/src" & " " & quoted form of "/dst" & " && chmod 755 " & quoted form of "/dst" with administrator privileges
@@ -407,6 +446,23 @@ func macOSInstallWithElevation(src, dst string) error {
 
 	cmd := exec.Command("osascript", "-e", asCommand)
 	return cmd.Run()
+}
+
+// verifyHash calculates the SHA-256 hash of the file and compares it to the expected hash.
+func verifyHash(filePath string, expectedHash string) (bool, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = f.Close() }()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return false, err
+	}
+
+	actualHash := hex.EncodeToString(h.Sum(nil))
+	return strings.EqualFold(actualHash, expectedHash), nil
 }
 
 // copyFile is a fallback for os.Rename when moving across filesystems or when rename fails

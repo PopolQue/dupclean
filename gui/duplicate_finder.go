@@ -662,7 +662,6 @@ func playFile(state *AppState, path string, onComplete func()) {
 		return
 	}
 
-	// Create a new done channel for this playback session
 	state.mu.Lock()
 	state.playerDone = make(chan struct{}, 1)
 	state.CurrentPlayer = cmd
@@ -683,7 +682,23 @@ func playFile(state *AppState, path string, onComplete func()) {
 	state.mu.Unlock()
 
 	go func() {
-		_ = cmd.Run()
+		err := cmd.Start()
+		if err == nil {
+			// Wait for process to exit or be killed
+			done := make(chan error, 1)
+			go func() { done <- cmd.Wait() }()
+
+			select {
+			case <-done:
+				// Process finished normally
+			case <-time.After(30 * time.Minute):
+				// Timeout reached
+				if cmd.Process != nil {
+					_ = cmd.Process.Kill()
+				}
+			}
+		}
+
 		state.mu.Lock()
 		if state.CurrentPlayer == cmd {
 			state.CurrentPlayer = nil

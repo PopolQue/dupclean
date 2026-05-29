@@ -3,11 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"dupclean/cleaner"
+	"dupclean/internal/fsutil"
 
 	"github.com/spf13/cobra"
 )
@@ -55,7 +53,7 @@ func runClean() {
 	}
 
 	if cleanMinAge != "" {
-		duration, err := parseDuration(cleanMinAge)
+		duration, err := fsutil.ParseDuration(cleanMinAge)
 		if err != nil {
 			fmt.Printf("Error: invalid value for --min-age: %v\n", err)
 			os.Exit(1)
@@ -85,15 +83,3 @@ func runClean() {
 	cleaner.RenderCLI(result, cliOpts)
 }
 
-// parseDuration wraps time.ParseDuration to support days ('d')
-func parseDuration(s string) (time.Duration, error) {
-	if strings.HasSuffix(s, "d") {
-		daysStr := strings.TrimSuffix(s, "d")
-		days, err := strconv.Atoi(daysStr)
-		if err != nil {
-			return 0, err
-		}
-		return time.Duration(days) * 24 * time.Hour, nil
-	}
-	return time.ParseDuration(s)
-}
