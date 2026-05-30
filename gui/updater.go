@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"dupclean/internal/version"
 	"dupclean/gui/components"
+	"dupclean/internal/version"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -119,7 +119,12 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 }
 
 func checkForUpdates() (*GitHubRelease, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}
 	resp, err := client.Get(githubAPI)
 	if err != nil {
 		return nil, err
@@ -130,8 +135,11 @@ func checkForUpdates() (*GitHubRelease, error) {
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 	}
 
+	// Limit response size to prevent resource exhaustion
+	reader := io.LimitReader(resp.Body, 1*1024*1024) // 1MB limit for JSON release metadata
+
 	var release GitHubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	if err := json.NewDecoder(reader).Decode(&release); err != nil {
 		return nil, err
 	}
 
@@ -307,7 +315,7 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 	// Track download progress with LimitReader
 	size := resp.ContentLength
 	reader := io.LimitReader(resp.Body, 100*1024*1024) // 100MB limit
-	
+
 	var downloaded int64
 	buffer := make([]byte, 32*1024)
 	for {
@@ -332,14 +340,14 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 
 	// 2. Verify checksum
 	setProgress(0.5)
-	
+
 	expectedHash = strings.TrimPrefix(expectedHash, "sha256:")
 	isValid, err := verifyHash(tmpFile.Name(), expectedHash)
 	if err != nil {
 		return fmt.Errorf("failed to verify hash: %v", err)
 	}
 	if !isValid {
-		return fmt.Errorf("checksum verification failed! The file may be tampered with.")
+		return fmt.Errorf("checksum verification failed, the file may be tampered with")
 	}
 
 	// 3. Extract binary to a temporary location first
@@ -458,6 +466,7 @@ func isValidUpdateURL(rawURL string) bool {
 	}
 	return u.Host == "github.com" || strings.HasSuffix(u.Host, ".githubusercontent.com")
 }
+
 // verifyHash calculates the SHA-256 hash of the file and compares it to the expected hash.
 func verifyHash(filePath string, expectedHash string) (bool, error) {
 	f, err := os.Open(filePath)

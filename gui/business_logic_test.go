@@ -353,7 +353,8 @@ func TestStartScan_BusinessLogic(t *testing.T) {
 	defer func() { findDuplicates = oldFind }()
 
 	state := &AppState{
-		FolderPath: t.TempDir(),
+		FolderPath:     t.TempDir(),
+		ProcessManager: NewProcessManager(),
 		progressComponents: &progressComponents{
 			label:  widget.NewLabel(""),
 			status: widget.NewLabel(""),
@@ -362,7 +363,7 @@ func TestStartScan_BusinessLogic(t *testing.T) {
 		ContentContainer: container.NewStack(),
 	}
 
-	startScan(state, nil, nil)
+	startScan(state)
 
 	// Wait for goroutine to finish (heuristic)
 	time.Sleep(100 * time.Millisecond)

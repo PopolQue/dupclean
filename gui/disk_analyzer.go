@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -18,6 +19,7 @@ import (
 // DiskAnalyzerState holds the state for the disk analyzer widget
 type DiskAnalyzerState struct {
 	Window           fyne.Window
+	ProcessManager   *ProcessManager
 	FolderPath       string
 	IsAnalyzing      bool
 	Result           *diskanalyzer.AnalysisResult
@@ -59,7 +61,7 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 		startDiskAnalysis(state)
 	})
 	analyzeBtn.Importance = widget.HighImportance
-	registerStartButton(analyzeBtn)
+	state.ProcessManager.RegisterStartButton(analyzeBtn)
 
 	progressBar := widget.NewProgressBar()
 	progressBar.Hide()
@@ -89,7 +91,7 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 		return
 	}
 
-	setProcessRunning(true)
+	state.ProcessManager.SetProcessRunning(true)
 	state.IsAnalyzing = true
 	comp := state.components
 	comp.analyzeBtn.Disable()
@@ -100,11 +102,12 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 	go func() {
 		opts := diskanalyzer.DefaultOptions()
 		opts.MaxEntries = 500000 // Safety limit
+		opts.Context = context.Background()
 
 		result, errors, err := diskanalyzer.Walk(state.FolderPath, opts)
 
 		fyne.Do(func() {
-			setProcessRunning(false)
+			state.ProcessManager.SetProcessRunning(false)
 			state.IsAnalyzing = false
 			comp.analyzeBtn.Enable()
 			comp.progressBar.Hide()
@@ -180,8 +183,9 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	state.updateContent(components.ToolPageWithFooter("Scan Results", subtitle, tabs, footer))
 }
 
-func NewDiskAnalyzerState(window fyne.Window) *DiskAnalyzerState {
+func NewDiskAnalyzerState(window fyne.Window, pm *ProcessManager) *DiskAnalyzerState {
 	return &DiskAnalyzerState{
-		Window: window,
+		Window:         window,
+		ProcessManager: pm,
 	}
 }

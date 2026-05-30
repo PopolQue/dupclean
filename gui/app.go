@@ -37,8 +37,10 @@ func RunGUI() {
 	w.Resize(fyne.NewSize(1200, 800))
 
 	log.Println("RunGUI: creating states...")
+	pm := NewProcessManager()
 	dupState := &AppState{
 		Window:            w,
+		ProcessManager:    pm,
 		FolderPath:        "",
 		ScanAll:           false,
 		IsScanning:        false,
@@ -51,8 +53,8 @@ func RunGUI() {
 		playerDone:        make(chan struct{}, 1), // Buffered to prevent goroutine leak
 	}
 
-	cacheState := NewCacheCleanerState(w)
-	diskState := NewDiskAnalyzerState(w)
+	cacheState := NewCacheCleanerState(w, pm)
+	diskState := NewDiskAnalyzerState(w, pm)
 
 	log.Println("RunGUI: creating main layout with sidebar...")
 	w.SetContent(createMainLayoutWithSidebar(dupState, cacheState, diskState))

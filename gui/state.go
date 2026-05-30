@@ -63,8 +63,49 @@ func SetupLogging() error {
 	return nil
 }
 
+// ProcessManager handles global process state and button registration.
+type ProcessManager struct {
+	mu                     sync.Mutex
+	isAnyProcessRunning    bool
+	registeredStartButtons []*widget.Button
+}
+
+// NewProcessManager creates a new instance.
+func NewProcessManager() *ProcessManager {
+	return &ProcessManager{
+		registeredStartButtons: make([]*widget.Button, 0),
+	}
+}
+
+// SetProcessRunning updates the process state and synchronizes all registered buttons.
+func (pm *ProcessManager) SetProcessRunning(running bool) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.isAnyProcessRunning = running
+	for _, btn := range pm.registeredStartButtons {
+		if running {
+			btn.Disable()
+		} else {
+			btn.Enable()
+		}
+	}
+}
+
+// RegisterStartButton registers a button for process state management.
+func (pm *ProcessManager) RegisterStartButton(btn *widget.Button) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.registeredStartButtons = append(pm.registeredStartButtons, btn)
+	if pm.isAnyProcessRunning {
+		btn.Disable()
+	}
+}
+
 type AppState struct {
-	Window             fyne.Window
+	Window         fyne.Window
+	ProcessManager *ProcessManager // Injected manager
+	// ...
+
 	ContentContainer   *fyne.Container // Reference to content area (preserves sidebar)
 	FolderPath         string
 	ScanAll            bool
@@ -97,31 +138,4 @@ type progressComponents struct {
 	bar    *widget.ProgressBar
 }
 
-var (
-	globalMu              sync.Mutex
-	isAnyProcessRunning   bool
-	registeredStartButtons []*widget.Button
-)
-
-// setProcessRunning updates the global process state and synchronizes all registered start buttons
-func setProcessRunning(running bool) {
-	globalMu.Lock()
-	defer globalMu.Unlock()
-	isAnyProcessRunning = running
-	for _, btn := range registeredStartButtons {
-		if running {
-			btn.Disable()
-		} else {
-			btn.Enable()
-		}
-	}
-}
-
-func registerStartButton(btn *widget.Button) {
-	globalMu.Lock()
-	defer globalMu.Unlock()
-	registeredStartButtons = append(registeredStartButtons, btn)
-	if isAnyProcessRunning {
-		btn.Disable()
-	}
-}
+// ... (App State)

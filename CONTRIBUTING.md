@@ -99,7 +99,7 @@ Then open a pull request on GitHub.
 
 ### Project Structure
 
-```
+```filetree
 dupclean/
 ├── main.go              # Entry point
 ├── gui/

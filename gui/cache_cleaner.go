@@ -7,9 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	"dupclean/cleaner"
 	"dupclean/gui/components"
@@ -25,6 +23,7 @@ import (
 // CacheCleanerState holds the state for the cache cleaner widget
 type CacheCleanerState struct {
 	Window                 fyne.Window
+	ProcessManager         *ProcessManager
 	ContentContainer       *fyne.Container // Reference to content area
 	Targets                []*cleaner.CleanTarget
 	SelectedTargets        map[string]bool
@@ -43,7 +42,6 @@ type cacheCleanerComponents struct {
 	progressLabel *widget.Label
 	progressBar   *widget.ProgressBar
 	minAgeEntry   *widget.Entry
-	workersSelect *widget.Select
 }
 
 // updateContent updates the content container (preserves sidebar)
@@ -86,7 +84,7 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 		startCacheScan(state)
 	})
 	scanBtn.Importance = widget.HighImportance
-	registerStartButton(scanBtn)
+	state.ProcessManager.RegisterStartButton(scanBtn)
 
 	progressBar := widget.NewProgressBar()
 	progressBar.Hide()
@@ -116,7 +114,7 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 
 func startCacheScan(state *CacheCleanerState) {
 	state.IsScanning = true
-	setProcessRunning(true)
+	state.ProcessManager.SetProcessRunning(true)
 
 	comp := state.cacheCleanerComponents
 	comp.scanBtn.Disable()
@@ -128,10 +126,10 @@ func startCacheScan(state *CacheCleanerState) {
 
 	go func() {
 		// Parse min age
-		minAge, err := parseDuration(state.MinAgeStr)
+		minAge, err := fsutil.ParseDuration(state.MinAgeStr)
 		if err != nil {
 			fyne.Do(func() {
-				setProcessRunning(false)
+				state.ProcessManager.SetProcessRunning(false)
 				comp.progressLabel.SetText(fmt.Sprintf("Invalid Min Age: %v", err))
 				comp.scanBtn.Enable()
 				comp.minAgeEntry.Enable()
@@ -178,7 +176,7 @@ func startCacheScan(state *CacheCleanerState) {
 		result, err := cleaner.Scan(targets, opts)
 		if err != nil {
 			fyne.Do(func() {
-				setProcessRunning(false)
+				state.ProcessManager.SetProcessRunning(false)
 				comp.progressLabel.SetText(fmt.Sprintf("Error: %v", err))
 				comp.scanBtn.Enable()
 				comp.minAgeEntry.Enable()
@@ -189,7 +187,7 @@ func startCacheScan(state *CacheCleanerState) {
 		state.Targets = result.Targets
 		state.TotalSize = result.TotalSize
 		state.IsScanning = false
-		setProcessRunning(false)
+		state.ProcessManager.SetProcessRunning(false)
 
 		// Pre-select safe targets
 		state.SelectedTargets = make(map[string]bool)
@@ -570,26 +568,11 @@ func showCacheCleanComplete(state *CacheCleanerState) {
 }
 
 // NewCacheCleanerState creates a new cache cleaner state
-func NewCacheCleanerState(window fyne.Window) *CacheCleanerState {
+func NewCacheCleanerState(window fyne.Window, pm *ProcessManager) *CacheCleanerState {
 	return &CacheCleanerState{
 		Window:          window,
+		ProcessManager:  pm,
 		SelectedTargets: make(map[string]bool),
 		Concurrency:     4, // default
 	}
-}
-
-// parseDuration wraps time.ParseDuration to support days ('d')
-func parseDuration(s string) (time.Duration, error) {
-	if s == "" {
-		return 0, nil
-	}
-	if strings.HasSuffix(s, "d") {
-		daysStr := strings.TrimSuffix(s, "d")
-		days, err := strconv.Atoi(daysStr)
-		if err != nil {
-			return 0, err
-		}
-		return time.Duration(days) * 24 * time.Hour, nil
-	}
-	return time.ParseDuration(s)
 }

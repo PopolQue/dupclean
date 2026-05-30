@@ -1,6 +1,7 @@
 package diskanalyzer
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"log"
@@ -26,6 +27,7 @@ type WalkOptions struct {
 	ExcludePaths   []string // glob patterns, e.g. "node_modules", "*.git"
 	Concurrency    int      // worker pool size; 0 = runtime.NumCPU()
 	MaxEntries     int      // Maximum number of entries to collect (0 = unlimited, recommended: 100000)
+	Context        context.Context // Context for cancellation
 }
 
 // DefaultOptions returns WalkOptions with sensible defaults.
@@ -58,6 +60,9 @@ type statResult struct {
 // 2. Tree-build pass - constructs DirNode hierarchy
 // 3. Sort pass - orders by size for efficient queries
 func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
+	if opts.Context == nil {
+		opts.Context = context.Background()
+	}
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = runtime.NumCPU()
 	}
@@ -107,6 +112,9 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 // Memory Note: This function collects all file entries in memory.
 // For large directories (100k+ files), consider setting MaxEntries in WalkOptions.
 func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
+	if opts.Context == nil {
+		opts.Context = context.Background()
+	}
 	var entries []FileEntry
 	var errors []error
 	entryCount := 0
@@ -126,59 +134,67 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for p := range paths {
-				info, err := os.Lstat(p)
-				if err != nil {
-					results <- statResult{err: err}
-					continue
-				}
-
-				// Skip symlinks unless following them
-				if info.Mode()&os.ModeSymlink != 0 && !opts.FollowSymlinks {
-					continue
-				}
-
-				// Track inode to avoid hard link duplicates
-				if inode, ok := fsutil.GetInode(p, info); ok {
-					inodeMu.Lock()
-					if _, seen := visitedInodes[inode]; seen {
-						inodeMu.Unlock()
+			for {
+				select {
+				case <-opts.Context.Done():
+					return
+				case p, ok := <-paths:
+					if !ok {
+						return
+					}
+					info, err := os.Lstat(p)
+					if err != nil {
+						results <- statResult{err: err}
 						continue
 					}
-					visitedInodes[inode] = struct{}{}
-					inodeMu.Unlock()
-				}
 
-				// Skip hidden files
-				if !opts.IncludeHidden && strings.HasPrefix(info.Name(), ".") {
-					continue
-				}
-
-				// Skip files below min size
-				if info.Size() < opts.MinSize {
-					continue
-				}
-
-				// Check exclude patterns
-				excluded := false
-				for _, pattern := range opts.ExcludePaths {
-					if matched, _ := filepath.Match(pattern, info.Name()); matched {
-						excluded = true
-						break
+					// Skip symlinks unless following them
+					if info.Mode()&os.ModeSymlink != 0 && !opts.FollowSymlinks {
+						continue
 					}
-				}
-				if excluded {
-					continue
-				}
 
-				results <- statResult{
-					entry: FileEntry{
-						Name:    info.Name(),
-						Path:    p,
-						Size:    info.Size(),
-						ModTime: info.ModTime(),
-						Ext:     strings.ToLower(filepath.Ext(p)),
-					},
+					// Track inode to avoid hard link duplicates
+					if inode, ok := fsutil.GetInode(p, info); ok {
+						inodeMu.Lock()
+						if _, seen := visitedInodes[inode]; seen {
+							inodeMu.Unlock()
+							continue
+						}
+						visitedInodes[inode] = struct{}{}
+						inodeMu.Unlock()
+					}
+
+					// Skip hidden files
+					if !opts.IncludeHidden && strings.HasPrefix(info.Name(), ".") {
+						continue
+					}
+
+					// Skip files below min size
+					if info.Size() < opts.MinSize {
+						continue
+					}
+
+					// Check exclude patterns
+					excluded := false
+					for _, pattern := range opts.ExcludePaths {
+						if matched, _ := filepath.Match(pattern, info.Name()); matched {
+							excluded = true
+							break
+						}
+					}
+					if excluded {
+						continue
+					}
+
+					results <- statResult{
+						entry: FileEntry{
+							Name:    info.Name(),
+							Path:    p,
+							Size:    info.Size(),
+							ModTime: info.ModTime(),
+							Ext:     strings.ToLower(filepath.Ext(p)),
+						},
+					}
 				}
 			}
 		}()
@@ -188,6 +204,12 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 	go func() {
 		depth := getDepth(root)
 		if err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			select {
+			case <-opts.Context.Done():
+				return opts.Context.Err()
+			default:
+			}
+
 			if err != nil {
 				// Permission denied on directory - skip it
 				return nil

@@ -82,4 +82,3 @@ func runClean() {
 
 	cleaner.RenderCLI(result, cliOpts)
 }
-

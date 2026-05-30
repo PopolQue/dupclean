@@ -27,7 +27,7 @@ var analyzeCmd = &cobra.Command{
 	Short: "Analyze disk usage",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		runAnalyze(args[0])
+		runAnalyze(cmd, args[0])
 	},
 }
 
@@ -46,7 +46,7 @@ func init() {
 	analyzeCmd.Flags().IntVar(&analyzeWorkers, "workers", 0, "Number of concurrent stat workers")
 }
 
-func runAnalyze(root string) {
+func runAnalyze(cmd *cobra.Command, root string) {
 	opts := diskanalyzer.DefaultOptions()
 	cliOpts := diskanalyzer.CLIOptions{
 		Depth:     analyzeDepth,
@@ -75,6 +75,7 @@ func runAnalyze(root string) {
 	}
 
 	// Run analysis
+	opts.Context = cmd.Context()
 	result, errors, err := diskanalyzer.Walk(root, opts)
 	if err != nil {
 		fmt.Printf("Error: analysis failed: %v\n", err)

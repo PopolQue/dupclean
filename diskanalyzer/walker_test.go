@@ -1,8 +1,8 @@
 package diskanalyzer
 
 import (
-	"testing"
 	"dupclean/internal/fsutil"
+	"testing"
 )
 
 // ... existing tests

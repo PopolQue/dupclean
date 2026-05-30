@@ -6,7 +6,7 @@ dupclean.app
 dupclean
 .qwen/
 coverage.txt
-docs/
+internaldocs/
 **/.vscode/
 internal/.DS_Store
 .vscode

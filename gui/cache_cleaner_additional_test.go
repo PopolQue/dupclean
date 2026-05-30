@@ -111,6 +111,7 @@ func TestCacheCleanerWidget_ReturnsValid(t *testing.T) {
 	state := &CacheCleanerState{
 		Targets:         make([]*cleaner.CleanTarget, 0),
 		SelectedTargets: make(map[string]bool),
+		ProcessManager:  NewProcessManager(),
 	}
 
 	widget := CacheCleanerWidget(state)
@@ -132,7 +133,8 @@ func TestCacheCleanerWidget_WithSelectedTargets(t *testing.T) {
 		SelectedTargets: map[string]bool{
 			"target-1": true,
 		},
-		TotalSize: 1024 * 1024 * 100, // 100 MB
+		TotalSize:      1024 * 1024 * 100, // 100 MB
+		ProcessManager: NewProcessManager(),
 	}
 
 	widget := CacheCleanerWidget(state)
@@ -160,7 +162,8 @@ func TestCacheCleanerWidget_LargeTotalSize(t *testing.T) {
 			"target-1": true,
 			"target-2": true,
 		},
-		TotalSize: 1024 * 1024 * 1024 * 5, // 5 GB
+		TotalSize:      1024 * 1024 * 1024 * 5, // 5 GB
+		ProcessManager: NewProcessManager(),
 	}
 
 	widget := CacheCleanerWidget(state)
@@ -175,6 +178,7 @@ func TestCacheCleanerWidget_EmptyTargets(t *testing.T) {
 		Targets:         []*cleaner.CleanTarget{},
 		SelectedTargets: make(map[string]bool),
 		TotalSize:       0,
+		ProcessManager:  NewProcessManager(),
 	}
 
 	widget := CacheCleanerWidget(state)
@@ -189,6 +193,7 @@ func TestCacheCleanerWidget_NilTargets(t *testing.T) {
 		Targets:         nil,
 		SelectedTargets: make(map[string]bool),
 		TotalSize:       0,
+		ProcessManager:  NewProcessManager(),
 	}
 
 	widget := CacheCleanerWidget(state)

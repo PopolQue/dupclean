@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dupclean/cli/interactive"
 	"dupclean/internal/version"
 	"dupclean/scanner"
-	"dupclean/cli/interactive"
 
 	"github.com/spf13/cobra"
 )

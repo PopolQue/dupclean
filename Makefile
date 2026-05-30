@@ -43,7 +43,7 @@ fmt:
 	goimports -w -local dupclean .
 
 vet:
-	go vet ./...
+	go vet -shadow ./...
 
 clean:
 	rm -f $(BINARY)

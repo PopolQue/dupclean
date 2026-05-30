@@ -301,7 +301,7 @@ func TestSymlinkLoop_ByteScanner(t *testing.T) {
 	}
 }
 
-	// TestGetInode tests the getInode helper function
+// TestGetInode tests the getInode helper function
 func TestGetInode(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")

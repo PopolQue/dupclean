@@ -49,7 +49,7 @@ func StatusBadge(text string, importance widget.Importance) fyne.CanvasObject {
 	// Adjust background color based on importance if needed, but Fyne's Importance on Label
 	// already handles text color. For a true "pill" we might need a custom layout.
 	// For now, let's keep it simple with a themed label.
-	return container.NewMax(label)
+	return container.NewStack(label)
 }
 
 // StatsRow creates a consistent way to display summary metrics

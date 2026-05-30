@@ -57,8 +57,11 @@ func TypeBreakdown(result *AnalysisResult) []TypeStat {
 
 	// Sort by size descending
 	slices.SortFunc(stats, func(a, b TypeStat) int {
-		if b.TotalSize != a.TotalSize {
-			return int(b.TotalSize - a.TotalSize)
+		if b.TotalSize > a.TotalSize {
+			return 1
+		}
+		if b.TotalSize < a.TotalSize {
+			return -1
 		}
 		return 0
 	})
@@ -97,8 +100,11 @@ func LargestDirs(result *AnalysisResult, n int) []*DirNode {
 
 	// Sort by TotalSize descending
 	slices.SortFunc(all, func(a, b *DirNode) int {
-		if b.TotalSize != a.TotalSize {
-			return int(b.TotalSize - a.TotalSize)
+		if b.TotalSize > a.TotalSize {
+			return 1
+		}
+		if b.TotalSize < a.TotalSize {
+			return -1
 		}
 		return 0
 	})

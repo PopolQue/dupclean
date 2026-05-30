@@ -55,11 +55,11 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 
 	// Simple tree indentation
 	indent := strings.Repeat("  ", depth)
-	
+
 	// Collect children for sorting
 	type item struct {
-		name string
-		size int64
+		name  string
+		size  int64
 		isDir bool
 	}
 	var items []item
@@ -69,7 +69,7 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 	for _, d := range node.Children {
 		items = append(items, item{name: d.Name + "/", size: d.TotalSize, isDir: true})
 	}
-	
+
 	// Sort by size desc
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].size > items[j].size
@@ -78,11 +78,11 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 	for _, item := range items {
 		// Calculate percentage
 		pct := float64(item.size) / float64(totalSize) * 100
-		
+
 		// Bar chart
 		bar := makeBar(item.size, totalSize, 25)
 		suffix := ""
-		
+
 		fmt.Printf("%s  %-20s  %s  %7s  %5.1f%%\n",
 			indent,
 			item.name+suffix,

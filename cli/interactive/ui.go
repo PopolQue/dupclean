@@ -124,7 +124,7 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 				if err := moveToTrash(f.Path); err != nil {
 					_, _ = fmt.Fprintf(stdout, " %s Could not delete %s: %v%s\n", colorRed, f.Name, err, colorReset)
 				} else {
-					_, _ = fmt.Fprintf(stdout, " %s Deleted:%s %s%s%s\n", colorRed, colorReset, colorGray, f.Name, colorReset)
+					_, _ = fmt.Fprintf(stdout, " %s ⛌ Deleted:%s %s%s%s\n", colorRed, colorReset, colorGray, f.Name, colorReset)
 					deletedCount++
 					freedBytes += f.Size
 				}

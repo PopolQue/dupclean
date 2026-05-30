@@ -52,10 +52,11 @@ func DuplicateFinderWidget(state *AppState, mode string) fyne.CanvasObject {
 
 	title := "General Finder"
 	subtitle := "Find exact byte-for-byte duplicates"
-	if mode == "audio" {
+	switch mode {
+	case "audio":
 		title = "Audio Finder"
 		subtitle = "Find identical audio content regardless of file format"
-	} else if mode == "photo" {
+	case "photo":
 		title = "Photo Finder"
 		subtitle = "Find visually similar or identical images"
 	}
@@ -65,7 +66,8 @@ func DuplicateFinderWidget(state *AppState, mode string) fyne.CanvasObject {
 
 	// Mode-specific options
 	var modeOptions *widget.Form
-	if mode == "photo" {
+	switch mode {
+	case "photo":
 		similaritySlider := widget.NewSlider(50, 100)
 		similaritySlider.SetValue(90)
 		similarityLabel := widget.NewLabel("90%")
@@ -75,11 +77,11 @@ func DuplicateFinderWidget(state *AppState, mode string) fyne.CanvasObject {
 		modeOptions = widget.NewForm(
 			widget.NewFormItem("Similarity", container.NewBorder(nil, nil, nil, similarityLabel, similaritySlider)),
 		)
-	} else if mode == "audio" {
+	case "audio":
 		modeOptions = widget.NewForm(
 			widget.NewFormItem("Depth", widget.NewSelect([]string{"Fast", "Deep", "Exhaustive"}, func(s string) {})),
 		)
-	} else {
+	default:
 		modeOptions = widget.NewForm(
 			widget.NewFormItem("Method", widget.NewSelect([]string{"MD5", "SHA256", "XXHash"}, func(s string) {})),
 		)
@@ -109,8 +111,8 @@ func DuplicateFinderWidget(state *AppState, mode string) fyne.CanvasObject {
 		bar:    progressBar,
 	}
 
-	scanBtn := createScanButton(state, folderCard, nil)
-	registerStartButton(scanBtn)
+	scanBtn := createScanButton(state, folderCard)
+	state.ProcessManager.RegisterStartButton(scanBtn)
 
 	// Log/Action area
 	logArea := container.NewVBox(
@@ -278,34 +280,7 @@ func createOptionsCard(state *AppState) *widget.Card {
 	return widget.NewCard("Scan Options", "Configure filters and ignore rules", content)
 }
 
-func createProgressCard(state *AppState) *widget.Card {
-	progressLabel := widget.NewLabel("Ready to scan")
-	progressLabel.TextStyle = fyne.TextStyle{Bold: true}
-
-	statusLabel := widget.NewLabel("Select a folder and click Start Scan")
-	statusLabel.TextStyle = fyne.TextStyle{Italic: true}
-
-	progressBar := widget.NewProgressBar()
-	progressBar.Hide()
-
-	content := container.NewVBox(
-		container.NewHBox(progressLabel, layout.NewSpacer(), statusLabel),
-		progressBar,
-	)
-
-	card := widget.NewCard("Status", "Current operation progress", content)
-
-	// Store references in state for updates
-	state.progressComponents = &progressComponents{
-		label:  progressLabel,
-		status: statusLabel,
-		bar:    progressBar,
-	}
-
-	return card
-}
-
-func createScanButton(state *AppState, folderCard, progressCard *widget.Card) *widget.Button {
+func createScanButton(state *AppState, folderCard *widget.Card) *widget.Button {
 	scanBtn := widget.NewButtonWithIcon("Start Scan", theme.SearchIcon(), func() {
 		if state.FolderPath == "" {
 			dialog.ShowError(fmt.Errorf("please select a folder"), state.Window)
@@ -317,7 +292,7 @@ func createScanButton(state *AppState, folderCard, progressCard *widget.Card) *w
 			return
 		}
 		showIgnoreDialog(state, func() {
-			startScan(state, folderCard, progressCard)
+			startScan(state)
 		})
 	})
 	scanBtn.Importance = widget.HighImportance
@@ -340,10 +315,11 @@ func createScanButton(state *AppState, folderCard, progressCard *widget.Card) *w
 	return scanBtn
 }
 
-func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
+func startScan(state *AppState) {
 	state.mu.Lock()
 	state.IsScanning = true
 	state.mu.Unlock()
+	state.ProcessManager.SetProcessRunning(true)
 
 	prog := state.progressComponents
 	prog.label.SetText("Scanning...")
@@ -371,6 +347,7 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 			state.mu.Lock()
 			state.IsScanning = false
 			state.mu.Unlock()
+			state.ProcessManager.SetProcessRunning(false)
 			fyne.Do(func() {
 				prog.label.SetText("Error")
 				prog.status.SetText(fmt.Sprintf("Scan failed: %v", err))
@@ -379,6 +356,7 @@ func startScan(state *AppState, _ *widget.Card, progressCard *widget.Card) {
 		}
 
 		fyne.Do(func() {
+			state.ProcessManager.SetProcessRunning(false)
 			prog.label.SetText("Scan Complete!")
 			prog.status.SetText(fmt.Sprintf("Found %d duplicate groups", len(groups)))
 			prog.bar.SetValue(1)

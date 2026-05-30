@@ -79,6 +79,10 @@ type Options struct {
 	// IgnoreExtensions is a list of file extensions to skip
 	IgnoreExtensions []string
 
+	// MaxEntries limits the number of files collected during the initial scan phase.
+	// 0 = unlimited.
+	MaxEntries int
+
 	// OnProgress is called periodically during scanning
 	OnProgress func(ScanProgress)
 }

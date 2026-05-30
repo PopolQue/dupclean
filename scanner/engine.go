@@ -44,6 +44,9 @@ func detectDuplicatesEngine(root string, opts Options, filter func(path string, 
 		}
 		return true
 	}, func(path string, info fs.FileInfo) error {
+		if opts.MaxEntries > 0 && fileCount >= opts.MaxEntries {
+			return nil
+		}
 		bySize[info.Size()] = append(bySize[info.Size()], path)
 		fileCount++
 		stats.TotalScanned++
