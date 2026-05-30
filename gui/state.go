@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -41,27 +42,25 @@ func getLogFilePath() string {
 	}
 }
 
-func init() {
+// SetupLogging configures log output to a file and returns an error if setup fails.
+func SetupLogging() error {
 	logPath := getLogFilePath()
 
 	// Ensure directory exists
 	logDir := filepath.Dir(logPath)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
-		// Can't create log directory, skip logging to file
-		log.Println("DupClean starting (no file logging)...")
-		return
+		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		// Can't open log file, skip logging to file
-		log.Println("DupClean starting (no file logging)...")
-		return
+		return fmt.Errorf("failed to open log file: %w", err)
 	}
 
 	log.SetOutput(logFile)
 	log.Println("DupClean starting...")
 	log.Printf("Log file: %s", logPath)
+	return nil
 }
 
 type AppState struct {

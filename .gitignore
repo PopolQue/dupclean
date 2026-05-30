@@ -16,3 +16,4 @@ internal/.DS_Store
 **/fyne
 GEMINI.md
 dupclean_gui
+fyne/

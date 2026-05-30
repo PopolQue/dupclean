@@ -2,6 +2,7 @@ package diskanalyzer
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"dupclean/internal/fsutil"
@@ -70,13 +71,9 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 	}
 	
 	// Sort by size desc
-	for i := 0; i < len(items); i++ {
-		for j := i + 1; j < len(items); j++ {
-			if items[i].size < items[j].size {
-				items[i], items[j] = items[j], items[i]
-			}
-		}
-	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].size > items[j].size
+	})
 
 	for _, item := range items {
 		// Calculate percentage

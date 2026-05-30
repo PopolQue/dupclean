@@ -40,6 +40,7 @@ type GitHubRelease struct {
 	Assets  []struct {
 		Name               string `json:"name"`
 		BrowserDownloadURL string `json:"browser_download_url"`
+		Digest             string `json:"digest"`
 	} `json:"assets"`
 }
 
@@ -209,9 +210,11 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 
 	// Match asset name like: dupclean-darwin-arm64.tar.gz
 	pattern := fmt.Sprintf("dupclean-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext)
+	var assetDigest string
 	for _, asset := range release.Assets {
 		if asset.Name == pattern {
 			downloadURL = asset.BrowserDownloadURL
+			assetDigest = asset.Digest
 			break
 		}
 	}
@@ -230,7 +233,7 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 	progressDialog.Show()
 
 	go func() {
-		err := performUpdate(downloadURL, progressBar.SetValue)
+		err := performUpdate(downloadURL, assetDigest, progressBar.SetValue)
 
 		fyne.Do(func() {
 			progressDialog.Hide()
@@ -278,7 +281,7 @@ func restartApp() {
 	os.Exit(0)
 }
 
-func performUpdate(url string, setProgress func(float64)) error {
+func performUpdate(url string, expectedHash string, setProgress func(float64)) error {
 	// 1. Download binary to temp file
 	resp, err := http.Get(url)
 	if err != nil {
@@ -317,21 +320,10 @@ func performUpdate(url string, setProgress func(float64)) error {
 	}
 	_ = tmpFile.Close()
 
-	// 2. Download and verify checksum
+	// 2. Verify checksum
 	setProgress(0.5)
-	checksumURL := url + ".sha256"
-	checksumResp, err := http.Get(checksumURL)
-	if err != nil {
-		return fmt.Errorf("failed to download checksum: %v", err)
-	}
-	defer func() { _ = checksumResp.Body.Close() }()
-
-	checksumBytes, err := io.ReadAll(checksumResp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read checksum: %v", err)
-	}
-	expectedHash := strings.TrimSpace(string(checksumBytes))
-
+	
+	expectedHash = strings.TrimPrefix(expectedHash, "sha256:")
 	isValid, err := verifyHash(tmpFile.Name(), expectedHash)
 	if err != nil {
 		return fmt.Errorf("failed to verify hash: %v", err)

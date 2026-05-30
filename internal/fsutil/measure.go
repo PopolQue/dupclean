@@ -29,14 +29,13 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 		Entries: make([]EntryInfo, 0),
 	}
 
-	now := time.Now()
-	cutoff := now.Add(-minAge)
+	cutoff := time.Now().Add(-minAge)
 
-	// To handle directory sizes correctly in a single pass without N^2 complexity,
-	// we keep track of sizes for each directory level.
+	// Map to track size of directories and whether they match the pattern
 	dirSizes := make(map[string]int64)
+	dirMatched := make(map[string]bool)
 
-	// First pass: collect all files and their sizes, and build directory size map
+	// Single pass: collect files and sizes
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip inaccessible paths
@@ -52,12 +51,12 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 			return nil
 		}
 
-		// Skip files newer than minAge
+		// Skip items newer than minAge
 		if minAge > 0 && info.ModTime().After(cutoff) {
 			return nil
 		}
 
-		// Check patterns for the entry itself
+		// Check patterns
 		matched := false
 		if len(patterns) == 0 {
 			matched = true
@@ -72,6 +71,9 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 
 		if d.IsDir() {
 			result.DirCount++
+			if matched {
+				dirMatched[path] = true
+			}
 		} else {
 			if matched {
 				result.FileCount++
@@ -83,55 +85,31 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 					IsDir:   false,
 				})
 			}
+		}
 
-			// Always add file size to its parent directories for rollup
-			parent := filepath.Dir(path)
-			for {
-				dirSizes[parent] += info.Size()
-				if parent == root || parent == "." || parent == filepath.Dir(parent) {
-					break
-				}
-				parent = filepath.Dir(parent)
+		// Always update parent directory sizes for rollup
+		parent := filepath.Dir(path)
+		for {
+			dirSizes[parent] += info.Size()
+			if parent == root || parent == "." || parent == filepath.Dir(parent) {
+				break
 			}
+			parent = filepath.Dir(parent)
 		}
 
 		return nil
 	})
 
 	// Add directory entries that matched the patterns
-	if len(patterns) > 0 {
-		// Re-walk or filter to find matched directories and assign their rolled-up sizes
-		// Actually, we can just iterate over the entries we've seen if we tracked them.
-		// For simplicity and correctness with patterns, let's do a second pass over directories.
-		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil || path == root || !d.IsDir() {
-				return nil
-			}
-
-			matched := false
-			for _, pattern := range patterns {
-				if m, _ := filepath.Match(pattern, d.Name()); m {
-					matched = true
-					break
-				}
-			}
-
-			if matched {
-				size := dirSizes[path]
-				// We don't add directory size to result.TotalSize here because its files
-				// might have already been added if they matched.
-				// Actually, the cleaner's logic usually treats a directory as a single unit
-				// if it matches a pattern (like a cache folder).
-
-				result.Entries = append(result.Entries, EntryInfo{
-					Path:    path,
-					Size:    size,
-					ModTime: time.Now(), // ModTime for dir is less critical here
-					IsDir:   true,
-				})
-			}
-			return nil
-		})
+	for path, matched := range dirMatched {
+		if matched {
+			result.Entries = append(result.Entries, EntryInfo{
+				Path:    path,
+				Size:    dirSizes[path],
+				ModTime: time.Now(),
+				IsDir:   true,
+			})
+		}
 	}
 
 	return result, err

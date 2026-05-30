@@ -26,77 +26,24 @@ func detectDuplicatesEngine(root string, opts Options, filter func(path string, 
 		concurrency = runtime.NumCPU()
 	}
 
-	// Stage 1: Collect files and group by size
+	// Stage 1: Collect duplicate files
 	bySize := make(map[int64][]string)
 	visitedInodes := make(map[uint64]bool)
 	fileCount := 0
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		if err != nil {
-			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
-			return nil
-		}
-
-		// Security: Skip symlinks to prevent following malicious links
-		if d.Type()&os.ModeSymlink != 0 {
-			return nil
-		}
-
-		if !opts.IncludeHidden && strings.HasPrefix(d.Name(), ".") {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		// Check ignored folders
-		for _, ignored := range opts.IgnoreFolders {
-			if path == ignored || strings.HasPrefix(path, ignored+string(filepath.Separator)) {
-				return filepath.SkipDir
-			}
-		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		// Check ignored extensions
-		ext := strings.ToLower(filepath.Ext(d.Name()))
+	err := walkFs(ctx, root, opts, visitedInodes, &stats, func(path string, info fs.FileInfo) bool {
+		// Extension filtering
+		ext := strings.ToLower(filepath.Ext(path))
 		for _, ignoredExt := range opts.IgnoreExtensions {
 			if ext == ignoredExt {
-				return nil
+				return false
 			}
 		}
-
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-
-		// Apply minimum size filter
-		if info.Size() < opts.MinSize {
-			return nil
-		}
-
-		// Apply custom filter (audio mode, etc)
 		if filter != nil && !filter(path, info) {
-			return nil
+			return false
 		}
-
-		// Skip hard links using inode tracking
-		if inode, ok := getInode(path, info); ok {
-			if visitedInodes[inode] {
-				return nil
-			}
-			visitedInodes[inode] = true
-		}
-
+		return true
+	}, func(path string, info fs.FileInfo) error {
 		bySize[info.Size()] = append(bySize[info.Size()], path)
 		fileCount++
 		stats.TotalScanned++
@@ -108,7 +55,6 @@ func detectDuplicatesEngine(root string, opts Options, filter func(path string, 
 				FilesFound: fileCount,
 			})
 		}
-
 		return nil
 	})
 

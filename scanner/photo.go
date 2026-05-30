@@ -2,10 +2,12 @@ package scanner
 
 import (
 	"context"
+	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -69,66 +71,17 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	photos := make([]string, 0)
 	visitedInodes := make(map[uint64]bool)
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		if err != nil {
-			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
-			return nil
-		}
-
-		if d.Type()&os.ModeSymlink != 0 {
-			return nil
-		}
-
-		if !opts.IncludeHidden && strings.HasPrefix(d.Name(), ".") {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		for _, ignored := range opts.IgnoreFolders {
-			if path == ignored || strings.HasPrefix(path, ignored+string(filepath.Separator)) {
-				return filepath.SkipDir
-			}
-		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		ext := strings.ToLower(filepath.Ext(d.Name()))
+	err := walkFs(ctx, root, opts, visitedInodes, &stats, func(path string, info fs.FileInfo) bool {
+		ext := strings.ToLower(filepath.Ext(path))
+		// Check if extension is explicitly ignored in opts
 		for _, ignoredExt := range opts.IgnoreExtensions {
 			if ext == ignoredExt {
-				return nil
+				return false
 			}
 		}
-
-		if !photoExtensions[ext] {
-			return nil
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-
-		if info.Size() < opts.MinSize {
-			return nil
-		}
-
-		if inode, ok := getInode(path, info); ok {
-			if visitedInodes[inode] {
-				return nil
-			}
-			visitedInodes[inode] = true
-		}
-
+		// Then check if it's a photo extension
+		return photoExtensions[ext]
+	}, func(path string, info fs.FileInfo) error {
 		photos = append(photos, path)
 		stats.TotalScanned++
 
@@ -141,6 +94,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 		}
 		return nil
 	})
+
 	if err != nil && err != ctx.Err() {
 		return nil, stats, err
 	}
@@ -234,6 +188,20 @@ func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, er
 
 	info, err := f.Stat()
 	if err != nil {
+		return nil, nil, err
+	}
+
+	// Check dimensions before full decode to prevent OOM
+	cfg, _, err := image.DecodeConfig(f)
+	if err != nil {
+		return nil, nil, err
+	}
+	if cfg.Width > 20000 || cfg.Height > 20000 {
+		return nil, nil, fmt.Errorf("image dimensions too large: %dx%d", cfg.Width, cfg.Height)
+	}
+
+	// Seek back to start of file to fully decode
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return nil, nil, err
 	}
 
