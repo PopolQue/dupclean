@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
@@ -21,12 +20,14 @@ func SafePlayMedia(path string) (*exec.Cmd, error) {
 	case "linux":
 		return execCommand("aplay", absPathVal), nil
 	case "windows":
-		escapedPath := escapePowerShellString(absPathVal)
 		psScript := `
-$player = New-Object Media.SoundPlayer '` + escapedPath + `'
+$path = $env:DUPCLEAN_PATH
+$player = New-Object Media.SoundPlayer $path
 $player.PlaySync()
 `
-		return execCommand("powershell", "-Command", psScript), nil
+		cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
+		cmd.Env = append(os.Environ(), "DUPCLEAN_PATH="+absPathVal)
+		return cmd, nil
 	default:
 		return nil, fmt.Errorf("unsupported OS: %s", goos)
 	}
@@ -36,12 +37,6 @@ $player.PlaySync()
 // This is a wrapper for backwards compatibility.
 func SafeMoveToTrash(path string) error {
 	return moveToTrash(path)
-}
-
-// escapePowerShellString escapes special characters for PowerShell strings.
-func escapePowerShellString(s string) string {
-	// In single-quoted strings, only ' needs escaping (by doubling)
-	return strings.ReplaceAll(s, "'", "''")
 }
 
 // validateMediaPath validates that a path is a legitimate media file path.

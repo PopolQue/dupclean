@@ -11,8 +11,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -282,8 +284,14 @@ func restartApp() {
 }
 
 func performUpdate(url string, expectedHash string, setProgress func(float64)) error {
+	// Validate URL
+	if !isValidUpdateURL(url) {
+		return fmt.Errorf("invalid update URL: %s", url)
+	}
+
 	// 1. Download binary to temp file
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(url)
 	if err != nil {
 		return err
 	}
@@ -296,12 +304,14 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 	defer func() { _ = os.Remove(tmpFile.Name()) }()
 	defer func() { _ = tmpFile.Close() }()
 
-	// Track download progress
+	// Track download progress with LimitReader
 	size := resp.ContentLength
+	reader := io.LimitReader(resp.Body, 100*1024*1024) // 100MB limit
+	
 	var downloaded int64
 	buffer := make([]byte, 32*1024)
 	for {
-		n, err := resp.Body.Read(buffer)
+		n, err := reader.Read(buffer)
 		if n > 0 {
 			if _, werr := tmpFile.Write(buffer[:n]); werr != nil {
 				return werr
@@ -440,6 +450,14 @@ func macOSInstallWithElevation(src, dst string) error {
 	return cmd.Run()
 }
 
+// isValidUpdateURL validates that the update URL belongs to GitHub.
+func isValidUpdateURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return u.Host == "github.com" || strings.HasSuffix(u.Host, ".githubusercontent.com")
+}
 // verifyHash calculates the SHA-256 hash of the file and compares it to the expected hash.
 func verifyHash(filePath string, expectedHash string) (bool, error) {
 	f, err := os.Open(filePath)
@@ -501,6 +519,10 @@ func extractFromTarGz(tarGzPath, destPath string) error {
 
 		// Find the binary in the tarball (it's named dupclean-...)
 		if header.Typeflag == tar.TypeReg && strings.Contains(strings.ToLower(header.Name), "dupclean") {
+			// Path traversal check
+			if strings.Contains(header.Name, "..") || filepath.IsAbs(header.Name) {
+				return fmt.Errorf("invalid file path in archive: %s", header.Name)
+			}
 			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
 			if err != nil {
 				return err
@@ -525,6 +547,10 @@ func extractFromZip(zipPath, destPath string) error {
 
 	for _, f := range r.File {
 		if !f.FileInfo().IsDir() && strings.Contains(strings.ToLower(f.Name), "dupclean") {
+			// Path traversal check
+			if strings.Contains(f.Name, "..") || filepath.IsAbs(f.Name) {
+				return fmt.Errorf("invalid file path in archive: %s", f.Name)
+			}
 			rc, err := f.Open()
 			if err != nil {
 				return err

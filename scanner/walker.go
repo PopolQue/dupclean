@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dupclean/internal/fsutil"
 )
 
 // WalkFilter defines a custom filter function for the filesystem walk.
@@ -65,7 +67,7 @@ func walkFs(ctx context.Context, root string, opts Options, visitedInodes map[ui
 		}
 
 		// Skip hard links using inode tracking
-		if inode, ok := getInode(path, info); ok {
+		if inode, ok := fsutil.GetInode(path, info); ok {
 			if visitedInodes[inode] {
 				return nil
 			}

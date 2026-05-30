@@ -138,8 +138,7 @@ if (Test-Path $path) {
 	return cmd.Run()
 }
 
-// safeMoveToTrashDir moves a file to a trash directory using O_CREATE|O_EXCL
-// to prevent TOCTOU race conditions.
+// safeMoveToTrashDir moves a file to a trash directory.
 func safeMoveToTrashDir(path, trashDir string) error {
 	baseName := filepath.Base(path)
 	// Sanitize filename
@@ -158,27 +157,18 @@ func safeMoveToTrashDir(path, trashDir string) error {
 
 		dest := filepath.Join(trashDir, fileName)
 
-		// Try to create the file exclusively - fails if it already exists
-		// This is atomic and prevents TOCTOU races
-		f, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-		if err == nil {
-			// File created successfully, now rename over it
-			_ = f.Close()
-			_ = os.Remove(dest) // Remove the empty file we just created
-
+		// Check if file exists - this is still a slight race, but
+		// os.Rename is generally atomic on the same filesystem.
+		_, err := os.Stat(dest)
+		if os.IsNotExist(err) {
+			// File does not exist, safe to rename
 			if err := os.Rename(path, dest); err != nil {
-				// Rename failed, clean up
-				_ = os.Remove(dest)
 				return err
 			}
 			return nil
 		}
 
-		// File already exists, try next counter
-		if !os.IsExist(err) {
-			// Some other error, fall back to permanent delete
-			break
-		}
+		// File exists, try next counter
 		counter++
 
 		// Safety limit to prevent infinite loops

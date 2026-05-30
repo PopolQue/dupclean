@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"dupclean/internal/fsutil"
 )
 
 // MemoryWarningThreshold is the number of entries at which we warn about memory usage
@@ -137,7 +139,7 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 				}
 
 				// Track inode to avoid hard link duplicates
-				if inode, ok := getInode(p, info); ok {
+				if inode, ok := fsutil.GetInode(p, info); ok {
 					inodeMu.Lock()
 					if _, seen := visitedInodes[inode]; seen {
 						inodeMu.Unlock()

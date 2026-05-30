@@ -1,6 +1,7 @@
 package diskanalyzer
 
 import (
+	"dupclean/internal/fsutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -159,7 +160,7 @@ func TestGetInode(t *testing.T) {
 		t.Fatalf("Failed to stat file: %v", err)
 	}
 
-	inode, ok := getInode(tmpFile, info)
+	inode, ok := fsutil.GetInode(tmpFile, info)
 	if !ok {
 		t.Error("Expected inode to be retrieved")
 	}

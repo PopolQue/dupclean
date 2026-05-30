@@ -60,25 +60,8 @@ func TestSafeMoveToTrash(t *testing.T) {
 	_ = SafeMoveToTrash(testFile)
 }
 
-func TestEscapePowerShellString(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"simple", "simple"},
-		{"it's", "it''s"},
-		{"'quoted'", "''quoted''"},
-	}
-
-	for _, tt := range tests {
-		result := escapePowerShellString(tt.input)
-		if result != tt.expected {
-			t.Errorf("escapePowerShellString(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
 func TestValidateMediaPath(t *testing.T) {
+
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.wav")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {

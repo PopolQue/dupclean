@@ -5,9 +5,7 @@
 dupclean.app
 dupclean
 .qwen/
-coverage.out
 coverage.txt
-gui_coverage.out
 docs/
 **/.vscode/
 internal/.DS_Store

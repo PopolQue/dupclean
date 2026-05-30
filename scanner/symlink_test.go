@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"dupclean/internal/fsutil"
 )
 
 // TestSymlinkDetection_ByteScanner tests that symlinks are skipped
@@ -299,7 +301,7 @@ func TestSymlinkLoop_ByteScanner(t *testing.T) {
 	}
 }
 
-// TestGetInode tests the getInode helper function
+	// TestGetInode tests the getInode helper function
 func TestGetInode(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
@@ -312,12 +314,12 @@ func TestGetInode(t *testing.T) {
 		t.Fatalf("Stat failed: %v", err)
 	}
 
-	inode, ok := getInode(testFile, info)
+	inode, ok := fsutil.GetInode(testFile, info)
 
 	if !ok {
-		t.Errorf("getInode should return true (GOOS: %s)", runtime.GOOS)
+		t.Errorf("fsutil.GetInode should return true (GOOS: %s)", runtime.GOOS)
 	}
 	if inode == 0 {
-		t.Errorf("getInode should return non-zero inode (GOOS: %s)", runtime.GOOS)
+		t.Errorf("fsutil.GetInode should return non-zero inode (GOOS: %s)", runtime.GOOS)
 	}
 }

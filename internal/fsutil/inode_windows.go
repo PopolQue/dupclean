@@ -1,22 +1,21 @@
 //go:build windows
 
-package diskanalyzer
+package fsutil
 
 import (
 	"os"
 	"syscall"
 )
 
-// getInode returns the file index (inode equivalent) for a file on Windows.
-// This allows the analyzer to skip hard links on NTFS, matching Unix behavior.
-func getInode(path string, _ os.FileInfo) (uint64, bool) {
+// GetInode returns the file index (inode equivalent) for a file on Windows.
+// This allows the scanner to skip hard links on NTFS, matching Unix behavior.
+func GetInode(path string, _ os.FileInfo) (uint64, bool) {
 	pathPtr, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
 		return 0, false
 	}
 
 	// Open handle with minimal permissions (0 access) to get metadata
-	// FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE allows others to still access the file
 	// FILE_FLAG_BACKUP_SEMANTICS allows opening directories if needed
 	h, err := syscall.CreateFile(
 		pathPtr,
