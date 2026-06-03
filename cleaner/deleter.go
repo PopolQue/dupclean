@@ -3,6 +3,7 @@ package cleaner
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,6 +63,11 @@ func Delete(entries []EntryInfo, opts DeleteOptions) (*DeleteResult, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in deleter worker: %v\n", r)
+				}
+			}()
 			for entry := range jobs {
 				deleted, freed, skipped, err := deleteEntry(entry, opts.Permanent)
 				results <- deleteResult{

@@ -85,6 +85,11 @@ func Scan(targets []*CleanTarget, opts ScanOptions) (*ScanResult, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in cleaner scanner worker: %v\n", r)
+				}
+			}()
 			for target := range jobs {
 				// Check for cancellation
 				select {

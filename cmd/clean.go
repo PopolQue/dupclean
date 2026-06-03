@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/PopolQue/dupclean/cleaner"
 	"github.com/PopolQue/dupclean/internal/fsutil"
@@ -25,8 +24,8 @@ var (
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Cleanup cache & temp files",
-	Run: func(cmd *cobra.Command, args []string) {
-		runClean()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runClean()
 	},
 }
 
@@ -44,11 +43,10 @@ func init() {
 	cleanCmd.Flags().BoolVar(&cleanNoBrowser, "no-browser", false, "Exclude browser targets")
 }
 
-func runClean() {
+func runClean() error {
 	opts, cliOpts, err := prepareClean(cleanMinAge, cleanWorkers, cleanDryRun, cleanPermanent, cleanYes)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	targets := cleaner.Registry()
@@ -56,17 +54,17 @@ func runClean() {
 
 	if len(targets) == 0 {
 		fmt.Println("No cleanable targets found for the specified filters.")
-		return
+		return nil
 	}
 
 	fmt.Println("Scanning...")
 	result, err := cleaner.Scan(targets, opts)
 	if err != nil {
-		fmt.Printf("Error during scan: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error during scan: %w", err)
 	}
 
 	cleaner.RenderCLI(result, cliOpts)
+	return nil
 }
 
 func prepareClean(minAgeStr string, workers int, dryRun, permanent, yes bool) (cleaner.ScanOptions, cleaner.CLIOptions, error) {

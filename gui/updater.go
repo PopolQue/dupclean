@@ -276,7 +276,8 @@ func restartApp() {
 	executable, err := os.Executable()
 	if err != nil {
 		log.Printf("[Updater] Error getting executable path: %v", err)
-		os.Exit(0)
+		fyne.CurrentApp().Quit()
+		return
 	}
 
 	log.Printf("[Updater] Restarting application: %s", executable)
@@ -300,7 +301,7 @@ func restartApp() {
 		log.Printf("[Updater] Failed to restart application: %v", err)
 	}
 
-	os.Exit(0)
+	fyne.CurrentApp().Quit()
 }
 
 func performUpdate(url string, expectedHash string, setProgress func(float64)) error {
@@ -310,7 +311,15 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 	}
 
 	// 1. Download binary to temp file
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{
+		Timeout: 30 * time.Minute, // Large files might need more time, but timeout is essential
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       30 * time.Second,
+		},
+	}
 	resp, err := client.Get(url)
 	if err != nil {
 		return err

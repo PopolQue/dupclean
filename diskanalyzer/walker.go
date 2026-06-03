@@ -134,6 +134,11 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in diskanalyzer worker: %v\n", r)
+				}
+			}()
 			for {
 				select {
 				case <-opts.Context.Done():
@@ -202,6 +207,11 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 
 	// Feeder goroutine - walks directory and feeds paths to workers
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in diskanalyzer feeder: %v\n", r)
+			}
+		}()
 		depth := getDepth(root)
 		if err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			select {
@@ -249,6 +259,11 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 
 	// Collector goroutine - gathers results
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in diskanalyzer collector: %v\n", r)
+			}
+		}()
 		wg.Wait()
 		close(results)
 	}()

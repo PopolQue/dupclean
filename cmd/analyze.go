@@ -27,8 +27,8 @@ var analyzeCmd = &cobra.Command{
 	Use:   "analyze [folder]",
 	Short: "Analyze disk usage",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		runAnalyze(cmd, args[0])
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runAnalyze(cmd, args[0])
 	},
 }
 
@@ -47,11 +47,11 @@ func init() {
 	analyzeCmd.Flags().IntVar(&analyzeWorkers, "workers", 0, "Number of concurrent stat workers")
 }
 
-func runAnalyze(cmd *cobra.Command, root string) {
+func runAnalyze(cmd *cobra.Command, root string) error {
 	if err := executeAnalyze(cmd, root, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
+	return nil
 }
 
 func executeAnalyze(cmd *cobra.Command, root string, out io.Writer) error {

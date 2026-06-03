@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/PopolQue/dupclean/cleaner"
 	"github.com/PopolQue/dupclean/gui/components"
@@ -35,6 +36,7 @@ type CacheCleanerState struct {
 	MinAgeStr              string
 	Concurrency            int
 	cacheCleanerComponents *cacheCleanerComponents
+	mu                     sync.Mutex
 }
 
 type cacheCleanerComponents struct {
@@ -113,7 +115,9 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 }
 
 func startCacheScan(state *CacheCleanerState) {
+	state.mu.Lock()
 	state.IsScanning = true
+	state.mu.Unlock()
 	state.ProcessManager.SetProcessRunning(true)
 
 	comp := state.cacheCleanerComponents
@@ -146,6 +150,8 @@ func startCacheScan(state *CacheCleanerState) {
 }
 
 func updateStateAfterScan(state *CacheCleanerState, result *cleaner.ScanResult) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
 	state.Targets = result.Targets
 	state.TotalSize = result.TotalSize
 	state.IsScanning = false
@@ -371,7 +377,9 @@ func startCacheClean(state *CacheCleanerState) {
 				return
 			}
 
+			state.mu.Lock()
 			state.IsCleaning = true
+			state.mu.Unlock()
 
 			// Show progress view
 			progressLabel := widget.NewLabel("Cleaning...")
@@ -396,9 +404,11 @@ func startCacheClean(state *CacheCleanerState) {
 					})
 				})
 
+				state.mu.Lock()
 				state.CleanedCount = cleaned
 				state.CleanedBytes = cleanedBytes
 				state.IsCleaning = false
+				state.mu.Unlock()
 
 				log.Printf("[CacheCleaner] Total deleted: %d items, %s", cleaned, fsutil.FormatBytes(cleanedBytes))
 

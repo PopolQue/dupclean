@@ -26,31 +26,28 @@ var rootCmd = &cobra.Command{
 	Long:    `DupClean is a tool for finding duplicate files, analyzing disk space, and cleaning caches.`,
 	Version: version.Version,
 	Args:    cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if guiFlag {
 			if LaunchGUI != nil {
 				LaunchGUI()
-				return
+				return nil
 			}
-			fmt.Println("Error: GUI mode is not available in this build.")
-			fmt.Println("Please download the full version with GUI from:")
-			fmt.Println("https://github.com/PopolQue/github.com/PopolQue/dupclean/releases")
-			os.Exit(1)
+			return fmt.Errorf("GUI mode is not available in this build.\nPlease download the full version with GUI from:\nhttps://github.com/PopolQue/github.com/PopolQue/dupclean/releases")
 		}
 
 		if len(args) == 0 {
 			if LaunchGUI != nil {
 				LaunchGUI()
-				return
+				return nil
 			}
 			if err := cmd.Help(); err != nil {
-				fmt.Println(err)
+				return err
 			}
-			return
+			return nil
 		}
 
 		folder := args[0]
-		runDuplicateFinder(cmd, folder)
+		return runDuplicateFinder(cmd, folder)
 	},
 }
 
@@ -77,7 +74,7 @@ func init() {
 
 var interactiveRun = interactive.Run
 
-func runDuplicateFinder(cmd *cobra.Command, folder string) {
+func runDuplicateFinder(cmd *cobra.Command, folder string) error {
 	mode := modeFlag
 	if allFlag {
 		mode = "byte"
@@ -85,11 +82,11 @@ func runDuplicateFinder(cmd *cobra.Command, folder string) {
 
 	groups, stats, err := executeDuplicateFinder(cmd, folder, mode, similarityFlag)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	interactiveRun(groups, stats)
+	return nil
 }
 
 func executeDuplicateFinder(cmd *cobra.Command, folder string, mode string, similarity int) ([]scanner.DuplicateGroup, scanner.ScanStats, error) {

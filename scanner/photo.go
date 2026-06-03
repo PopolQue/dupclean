@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -135,6 +136,11 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	close(jobs)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in scanner photo collector: %v\n", r)
+			}
+		}()
 		wg.Wait()
 		close(results)
 	}()

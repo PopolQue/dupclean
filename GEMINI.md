@@ -20,6 +20,7 @@
   `dupclean.rb`, and `Casks/dupclean.rb`), commit, tag (`git tag v0.x.y.z`), and push both.
 - **CodeQL CI:** Uses `.github/workflows/codeql.yml` for CGO. Keep GitHub's "Default" Code
   Scanning setup disabled to prevent conflicts.
+- **Fully Implementing:** Do not make use of placeholders, always write out the full implementation with all requirements and specifications.
 
 ---
 

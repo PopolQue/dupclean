@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -169,6 +170,11 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in scanner engine worker: %v\n", r)
+				}
+			}()
 			for job := range jobs {
 				select {
 				case <-ctx.Done():
@@ -183,6 +189,11 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 	}
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in scanner engine collector: %v\n", r)
+			}
+		}()
 		wg.Wait()
 		close(results)
 	}()

@@ -378,10 +378,12 @@ func startScan(state *AppState) {
 		folderPath := state.FolderPath
 		ignoreFolders := state.IgnoreFolders
 		ignoreExtensions := state.IgnoreExtensions
+		mode := state.CurrentMode
+		includeHidden := state.IncludeHidden
+		similarityPct := state.SimilarityPct
 		state.mu.RUnlock()
 
 		// Get scanner based on mode
-		mode := state.CurrentMode
 		sc, ok := scanner.GetScanner(mode)
 		if !ok {
 			log.Printf("[startScan] Unknown mode: %s", mode)
@@ -389,9 +391,9 @@ func startScan(state *AppState) {
 		}
 
 		opts := scanner.Options{
-			IncludeHidden:    state.IncludeHidden,
+			IncludeHidden:    includeHidden,
 			MinSize:          0,
-			SimilarityPct:    state.SimilarityPct,
+			SimilarityPct:    similarityPct,
 			IgnoreFolders:    ignoreFolders,
 			IgnoreExtensions: ignoreExtensions,
 			OnProgress:       progressCallback,
@@ -461,7 +463,7 @@ func verifyDeletionSafety(path string, resolver func(string) (string, error), ho
 		"C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)", "C:\\Users",
 	}
 	for _, p := range protectedPaths {
-		if abs == p {
+		if abs == filepath.Clean(p) {
 			return fmt.Errorf("cannot delete protected path: %s", p)
 		}
 	}
