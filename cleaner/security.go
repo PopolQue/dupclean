@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
@@ -44,6 +45,20 @@ func validateMediaPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("empty path")
 	}
+
+	// Whitelist validation for filename to prevent injection via malicious filenames
+	baseName := filepath.Base(path)
+	for _, char := range baseName {
+		isAllowed := (char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			char == '.' || char == '_' || char == '-' || char == ' '
+
+		if !isAllowed {
+			return fmt.Errorf("filename contains invalid characters for media playback: %c", char)
+		}
+	}
+
 	absPathVal, err := absPath(path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err)

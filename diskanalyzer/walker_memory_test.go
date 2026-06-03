@@ -23,7 +23,10 @@ func TestMaxEntriesLimit(t *testing.T) {
 		MaxEntries:  20, // Limit to 20 entries
 	}
 
-	entries, _, err := statPass(tmpDir, opts)
+	var entries []FileEntry
+	err := statPass(tmpDir, opts, func(entry FileEntry) {
+		entries = append(entries, entry)
+	}, nil)
 	if err != nil {
 		t.Fatalf("statPass failed: %v", err)
 	}
@@ -53,7 +56,10 @@ func TestMaxEntriesZero(t *testing.T) {
 		MaxEntries:  0, // Unlimited
 	}
 
-	entries, _, err := statPass(tmpDir, opts)
+	var entries []FileEntry
+	err := statPass(tmpDir, opts, func(entry FileEntry) {
+		entries = append(entries, entry)
+	}, nil)
 	if err != nil {
 		t.Fatalf("statPass failed: %v", err)
 	}
@@ -99,7 +105,10 @@ func TestWalkOptions_MaxEntries(t *testing.T) {
 		MaxEntries:  25, // Should limit to 25
 	}
 
-	entries, _, err := statPass(tmpDir, opts)
+	var entries []FileEntry
+	err := statPass(tmpDir, opts, func(entry FileEntry) {
+		entries = append(entries, entry)
+	}, nil)
 	if err != nil {
 		t.Fatalf("statPass failed: %v", err)
 	}
@@ -152,7 +161,10 @@ func TestLargeScanWithFilters(t *testing.T) {
 		MaxEntries:  50,  // Limit total entries
 	}
 
-	entries, _, err := statPass(tmpDir, opts)
+	var entries []FileEntry
+	err := statPass(tmpDir, opts, func(entry FileEntry) {
+		entries = append(entries, entry)
+	}, nil)
 	if err != nil {
 		t.Fatalf("statPass failed: %v", err)
 	}

@@ -223,7 +223,17 @@ func DuplicateFinalWidget(state *AppState) fyne.CanvasObject {
 	}
 
 	if state.SkippedCount > 0 {
-		subMessage += fmt.Sprintf("\n⚠️ %d file(s) skipped (modified since scan)", state.SkippedCount)
+		subMessage += fmt.Sprintf("\n⚠️ %d file(s) skipped or failed", state.SkippedCount)
+		if len(state.SkippedFiles) > 0 {
+			showMax := 5
+			if len(state.SkippedFiles) < showMax {
+				showMax = len(state.SkippedFiles)
+			}
+			subMessage += "\nFiles: " + strings.Join(state.SkippedFiles[:showMax], ", ")
+			if len(state.SkippedFiles) > showMax {
+				subMessage += fmt.Sprintf("... and %d more", len(state.SkippedFiles)-showMax)
+			}
+		}
 	}
 
 	backBtn := widget.NewButtonWithIcon("Start New Scan", theme.ViewRefreshIcon(), func() {

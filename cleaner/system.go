@@ -109,7 +109,6 @@ func getLinuxTargets() []*CleanTarget {
 }
 
 func getWindowsTargets() []*CleanTarget {
-	_ = os.Getenv("USERPROFILE")
 	localAppData := os.Getenv("LOCALAPPDATA")
 	windir := os.Getenv("WINDIR")
 

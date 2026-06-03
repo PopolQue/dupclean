@@ -125,7 +125,11 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 				default:
 				}
 				hash, info, err := computePerceptualHash(job.path)
-				results <- photoHashResult{path: job.path, hash: hash, info: info, err: err}
+				select {
+				case results <- photoHashResult{path: job.path, hash: hash, info: info, err: err}:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}

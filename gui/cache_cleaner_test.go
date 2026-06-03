@@ -327,7 +327,7 @@ func TestPerformCacheClean_Logic(t *testing.T) {
 	}
 
 	progressCalled := false
-	cleaned, cleanedBytes := performCacheClean(targets, func(progress float64, currentLabel string) {
+	cleaned, cleanedBytes, _ := performCacheClean(targets, func(progress float64, currentLabel string) {
 		progressCalled = true
 	})
 
@@ -343,7 +343,7 @@ func TestPerformCacheClean_Logic(t *testing.T) {
 }
 
 func TestGetCleanCompleteSummary(t *testing.T) {
-	message, subMessage := getCleanCompleteSummary(5, 1024*1024)
+	message, subMessage := getCleanCompleteSummary(5, 1024*1024, nil)
 	if message != "Cleaned 5 cache locations" {
 		t.Errorf("Unexpected message: %s", message)
 	}

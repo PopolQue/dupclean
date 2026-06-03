@@ -183,7 +183,11 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 				}
 
 				hash, err := hashFn(job.path)
-				results <- hashResult{path: job.path, hash: hash, err: err}
+				select {
+				case results <- hashResult{path: job.path, hash: hash, err: err}:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}

@@ -71,11 +71,15 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 	var walkErrors []error
 
 	// Pass 1: Concurrent stat pass
-	entries, errs, err := statPass(root, opts)
+	var entries []FileEntry
+	err := statPass(root, opts, func(entry FileEntry) {
+		entries = append(entries, entry)
+	}, func(err error) {
+		walkErrors = append(walkErrors, err)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	walkErrors = append(walkErrors, errs...)
 
 	// Pass 2: Build tree and rollup sizes
 	result.Root, err = buildTree(entries, root)
@@ -111,12 +115,10 @@ func Walk(root string, opts WalkOptions) (*AnalysisResult, []error, error) {
 //
 // Memory Note: This function collects all file entries in memory.
 // For large directories (100k+ files), consider setting MaxEntries in WalkOptions.
-func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
+func statPass(root string, opts WalkOptions, onEntry func(FileEntry), onError func(error)) error {
 	if opts.Context == nil {
 		opts.Context = context.Background()
 	}
-	var entries []FileEntry
-	var errors []error
 	entryCount := 0
 
 	// Track visited inodes to avoid counting hard links multiple times
@@ -182,7 +184,10 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 					// Check exclude patterns
 					excluded := false
 					for _, pattern := range opts.ExcludePaths {
-						if matched, _ := filepath.Match(pattern, info.Name()); matched {
+						if pattern == "" {
+							continue
+						}
+						if matched, err := filepath.Match(pattern, info.Name()); err == nil && matched {
 							excluded = true
 							break
 						}
@@ -271,13 +276,17 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 	// Collect all results
 	for r := range results {
 		if r.err != nil {
-			errors = append(errors, r.err)
+			if onError != nil {
+				onError(r.err)
+			}
 		} else {
 			// Check MaxEntries limit
 			if opts.MaxEntries > 0 && entryCount >= opts.MaxEntries {
 				continue // Skip additional entries
 			}
-			entries = append(entries, r.entry)
+			if onEntry != nil {
+				onEntry(r.entry)
+			}
 			entryCount++
 		}
 	}
@@ -287,7 +296,7 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 		log.Printf("[DiskAnalyzer] Warning: Collected %d entries. Memory usage may be high. Consider setting MaxEntries or using filters.", entryCount)
 	}
 
-	return entries, errors, nil
+	return nil
 }
 
 // buildTree constructs a DirNode tree from a flat list of FileEntry.

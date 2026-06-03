@@ -37,6 +37,7 @@ type CacheCleanerState struct {
 	Concurrency            int
 	cacheCleanerComponents *cacheCleanerComponents
 	mu                     sync.Mutex
+	FailedCleanPaths       []string
 }
 
 type cacheCleanerComponents struct {
@@ -397,7 +398,7 @@ func startCacheClean(state *CacheCleanerState) {
 
 			go func() {
 				// Perform actual cleaning synchronously
-				cleaned, cleanedBytes := performCacheClean(selectedTargets, func(progress float64, currentLabel string) {
+				cleaned, cleanedBytes, failedPaths := performCacheClean(selectedTargets, func(progress float64, currentLabel string) {
 					fyne.Do(func() {
 						progressBar.SetValue(progress)
 						progressLabel.SetText(currentLabel)
@@ -407,6 +408,7 @@ func startCacheClean(state *CacheCleanerState) {
 				state.mu.Lock()
 				state.CleanedCount = cleaned
 				state.CleanedBytes = cleanedBytes
+				state.FailedCleanPaths = failedPaths
 				state.IsCleaning = false
 				state.mu.Unlock()
 
@@ -423,16 +425,20 @@ func startCacheClean(state *CacheCleanerState) {
 
 // performCacheClean executes the cleaning operation synchronously.
 // The onProgress callback allows updating UI or logging progress.
-func performCacheClean(selectedTargets []*cleaner.CleanTarget, onProgress func(progress float64, currentLabel string)) (int, int64) {
+func performCacheClean(selectedTargets []*cleaner.CleanTarget, onProgress func(progress float64, currentLabel string)) (int, int64, []string) {
 	cleaned := 0
 	var cleanedBytes int64
+	var failedPaths []string
 
 	for i, t := range selectedTargets {
 		// Clean each path for this target
 		for _, path := range t.Paths {
-			deleted, freed, _ := cleanPath(path, t.Patterns)
+			deleted, freed, err := cleanPath(path, t.Patterns)
 			cleaned += deleted
 			cleanedBytes += freed
+			if err != nil {
+				failedPaths = append(failedPaths, path)
+			}
 		}
 
 		if onProgress != nil {
@@ -440,7 +446,7 @@ func performCacheClean(selectedTargets []*cleaner.CleanTarget, onProgress func(p
 		}
 	}
 
-	return cleaned, cleanedBytes
+	return cleaned, cleanedBytes, failedPaths
 }
 
 // isProtectedPath returns true for system-protected directories
@@ -607,14 +613,34 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 	return deleted, freedBytes, nil
 }
 
-func getCleanCompleteSummary(cleanedCount int, cleanedBytes int64) (string, string) {
+func getCleanCompleteSummary(cleanedCount int, cleanedBytes int64, failedPaths []string) (string, string) {
 	message := fmt.Sprintf("Cleaned %d cache locations", cleanedCount)
 	subMessage := fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(cleanedBytes))
+
+	if len(failedPaths) > 0 {
+		subMessage += fmt.Sprintf("\n⚠️ %d location(s) had errors or were in use", len(failedPaths))
+
+		showMax := 3
+		if len(failedPaths) < showMax {
+			showMax = len(failedPaths)
+		}
+		subMessage += "\nFailed: " + strings.Join(failedPaths[:showMax], ", ")
+		if len(failedPaths) > showMax {
+			subMessage += fmt.Sprintf("... and %d more", len(failedPaths)-showMax)
+		}
+	}
+
 	return message, subMessage
 }
 
 func showCacheCleanComplete(state *CacheCleanerState) {
-	message, subMessage := getCleanCompleteSummary(state.CleanedCount, state.CleanedBytes)
+	state.mu.Lock()
+	cleanedCount := state.CleanedCount
+	cleanedBytes := state.CleanedBytes
+	failedPaths := state.FailedCleanPaths
+	state.mu.Unlock()
+
+	message, subMessage := getCleanCompleteSummary(cleanedCount, cleanedBytes, failedPaths)
 
 	backBtn := widget.NewButtonWithIcon("Scan Again", theme.ViewRefreshIcon(), func() {
 		state.updateContent(CacheCleanerWidget(state))
