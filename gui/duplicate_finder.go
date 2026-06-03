@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	goos           = runtime.GOOS
-	userHomeDir    = os.UserHomeDir
+	goos        = runtime.GOOS
+	userHomeDir = os.UserHomeDir
 
 	absPath       = filepath.Abs
 	pathSeparator = string(filepath.Separator)

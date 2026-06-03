@@ -1,8 +1,9 @@
 package diskanalyzer
 
 import (
-	"github.com/PopolQue/dupclean/internal/fsutil"
 	"testing"
+
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // ... existing tests

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/PopolQue/dupclean/scanner"
 	"github.com/PopolQue/dupclean/internal/trash"
+	"github.com/PopolQue/dupclean/scanner"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"

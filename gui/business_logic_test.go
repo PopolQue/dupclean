@@ -153,7 +153,7 @@ func TestKeepAndDelete_SingleGroup(t *testing.T) {
 	oldTrash := moveToTrash
 	moveToTrash = func(path string) error { return nil }
 	defer func() { moveToTrash = oldTrash }()
-	
+
 	tmpDir := t.TempDir()
 	file1 := filepath.Join(tmpDir, "file1.txt")
 	file2 := filepath.Join(tmpDir, "file2.txt")

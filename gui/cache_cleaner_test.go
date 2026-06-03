@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/PopolQue/dupclean/cleaner"
 	"fyne.io/fyne/v2/widget"
+	"github.com/PopolQue/dupclean/cleaner"
 )
 
 func TestIsProtectedPath(t *testing.T) {
