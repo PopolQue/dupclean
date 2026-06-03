@@ -56,6 +56,8 @@ jobs:
         uses: tj-actions/coverage-badge-go@v3
         with:
           filename: coverage.out
+          text: "Coverage"
+          pattern: '!\[Coverage\]\(https://img\.shields\.io/badge/Coverage-([0-9.]+)%25-([a-z]+)\)'
 
 
       - name: Go Coverage Badge (No GUI)

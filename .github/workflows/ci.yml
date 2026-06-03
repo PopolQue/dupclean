@@ -30,12 +30,6 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
-    - name: Install govulncheck
-      run: go install golang.org/x/vuln/cmd/govulncheck@latest
-
-    - name: Run govulncheck
-      run: govulncheck ./...
-
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -60,6 +54,12 @@ jobs:
           }
         done
 
+    - name: Install govulncheck
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+    - name: Run govulncheck
+      run: govulncheck ./...
+
     - name: Build
       run: go build -v ./...
 
@@ -69,7 +69,7 @@ jobs:
 
     - name: Test (Windows - exclude GUI packages)
       if: matrix.os == 'windows-latest'
-      run: go test -v -race ./cleaner/... ./scanner/... ./ui/... ./diskanalyzer/... ./internal/...
+      run: go test -v -race ./cleaner/... ./scanner/... ./cli/... ./diskanalyzer/... ./internal/...
 
     - name: Vet
       run: go vet ./...
