@@ -60,15 +60,14 @@ func validatePath(path string) error {
 		return fmt.Errorf("cannot delete root directory")
 	}
 
-	// Check for path traversal in original path BEFORE resolving
-	// This catches attempts like "../../../etc/passwd"
-	if strings.HasPrefix(path, "..") || strings.HasPrefix(path, "../") || strings.HasPrefix(path, "..\\") {
-		return fmt.Errorf("path traversal detected")
-	}
-
-	// Also check for /.. or \.. anywhere in the path
-	if strings.Contains(path, "/..") || strings.Contains(path, "\\..") {
-		return fmt.Errorf("path traversal detected")
+	// Check for path traversal by splitting into components
+	parts := strings.FieldsFunc(path, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+	for _, part := range parts {
+		if part == ".." {
+			return fmt.Errorf("path traversal detected: %s", path)
+		}
 	}
 
 	return nil

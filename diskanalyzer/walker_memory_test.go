@@ -122,9 +122,9 @@ func TestWalkOptions_MaxEntries(t *testing.T) {
 func TestDefaultOptions_Documentation(t *testing.T) {
 	opts := DefaultOptions()
 
-	// MaxEntries should be 500000 by default for safety
-	if opts.MaxEntries != 500000 {
-		t.Errorf("Default MaxEntries should be 500000, got %d", opts.MaxEntries)
+	// MaxEntries should be 100000 by default for safety
+	if opts.MaxEntries != 100000 {
+		t.Errorf("Default MaxEntries should be 100000, got %d", opts.MaxEntries)
 	}
 
 	// Concurrency should be reasonable

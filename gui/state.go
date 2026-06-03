@@ -40,7 +40,11 @@ func getLogFilePath(getEnv func(string) string, pathSeparator rune) string {
 		return filepath.Join(getEnv("USERPROFILE"), "AppData", "Local", "Temp", "dupclean.log")
 	default:
 		// Unix-like default
-		return "/tmp/dupclean.log"
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			return "/tmp/dupclean.log"
+		}
+		return filepath.Join(cacheDir, "dupclean.log")
 	}
 }
 

@@ -148,7 +148,7 @@ var diskWalker = diskanalyzer.Walk
 
 func performDiskAnalysis(state *DiskAnalyzerState) (*diskanalyzer.AnalysisResult, error) {
 	opts := diskanalyzer.DefaultOptions()
-	opts.MaxEntries = 500000 // Safety limit
+	opts.MaxEntries = 100000 // Safety limit
 	opts.Context = context.Background()
 
 	result, _, err := diskWalker(state.FolderPath, opts)

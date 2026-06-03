@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/PopolQue/dupclean/cli/interactive"
 	"github.com/PopolQue/dupclean/internal/version"
@@ -55,11 +58,11 @@ var rootCmd = &cobra.Command{
 // It is set by the gui-enabled build.
 var LaunchGUI func()
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+func Execute() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {

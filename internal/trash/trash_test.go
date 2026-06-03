@@ -334,6 +334,7 @@ func TestValidatePath(t *testing.T) {
 		{"/home/user/../../../etc/passwd", true}, // path traversal
 		{"/home/user/file.txt", false},           // valid
 		{"/tmp/test.txt", false},                 // valid
+		{"foo/bar/../../etc/passwd", true},       // path traversal
 	}
 
 	for _, tt := range tests {

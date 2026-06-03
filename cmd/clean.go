@@ -58,7 +58,11 @@ func runClean() error {
 	}
 
 	fmt.Println("Scanning...")
+	opts.OnProgress = func(p cleaner.Progress) {
+		fmt.Printf("\rScanning... %d/%d (%s)              ", p.Done, p.Total, p.Current)
+	}
 	result, err := cleaner.Scan(targets, opts)
+	fmt.Println() // Clear the progress line
 	if err != nil {
 		return fmt.Errorf("error during scan: %w", err)
 	}
