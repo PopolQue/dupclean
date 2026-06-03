@@ -33,7 +33,21 @@ import (
 
 const (
 	githubRepo = "PopolQue/dupclean"
-	githubAPI  = "https://api.github.com/repos/" + githubRepo + "/releases/latest"
+)
+
+// HTTPClient interface for mocking network requests.
+type HTTPClient interface {
+	Get(url string) (*http.Response, error)
+}
+
+var (
+	githubAPI                = "https://api.github.com/repos/" + githubRepo + "/releases/latest"
+	defaultClient HTTPClient = &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}
 )
 
 type GitHubRelease struct {
@@ -119,13 +133,7 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 }
 
 func checkForUpdates() (*GitHubRelease, error) {
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}
-	resp, err := client.Get(githubAPI)
+	resp, err := defaultClient.Get(githubAPI)
 	if err != nil {
 		return nil, err
 	}

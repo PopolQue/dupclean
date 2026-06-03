@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/PopolQue/dupclean/diskanalyzer"
@@ -47,6 +48,13 @@ func init() {
 }
 
 func runAnalyze(cmd *cobra.Command, root string) {
+	if err := executeAnalyze(cmd, root, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func executeAnalyze(cmd *cobra.Command, root string, out io.Writer) error {
 	opts := diskanalyzer.DefaultOptions()
 	cliOpts := diskanalyzer.CLIOptions{
 		Depth:     analyzeDepth,
@@ -66,20 +74,17 @@ func runAnalyze(cmd *cobra.Command, root string) {
 	// Validate path
 	info, err := os.Stat(root)
 	if err != nil {
-		fmt.Printf("Error: cannot access '%s': %v\n", root, err)
-		os.Exit(1)
+		return fmt.Errorf("cannot access '%s': %w", root, err)
 	}
 	if !info.IsDir() {
-		fmt.Printf("Error: '%s' is not a valid directory\n", root)
-		os.Exit(1)
+		return fmt.Errorf("'%s' is not a valid directory", root)
 	}
 
 	// Run analysis
 	opts.Context = cmd.Context()
 	result, errors, err := diskanalyzer.Walk(root, opts)
 	if err != nil {
-		fmt.Printf("Error: analysis failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("analysis failed: %w", err)
 	}
 
 	// Print non-fatal errors to stderr
@@ -89,11 +94,11 @@ func runAnalyze(cmd *cobra.Command, root string) {
 
 	// Output
 	if analyzeJSON {
-		if err := diskanalyzer.ExportJSON(result, os.Stdout); err != nil {
-			fmt.Printf("Error: JSON export failed: %v\n", err)
-			os.Exit(1)
+		if err := diskanalyzer.ExportJSON(result, out); err != nil {
+			return fmt.Errorf("JSON export failed: %w", err)
 		}
 	} else {
-		diskanalyzer.RenderCLI(result, cliOpts)
+		diskanalyzer.RenderCLI(out, result, cliOpts)
 	}
+	return nil
 }

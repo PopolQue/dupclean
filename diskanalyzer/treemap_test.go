@@ -35,16 +35,30 @@ func TestSquarify_Empty(t *testing.T) {
 	}
 }
 
-func TestSquarify_SingleNode(t *testing.T) {
+func TestSquarify_AspectRatios(t *testing.T) {
+	// Create nodes with various sizes to force different row building behaviors
 	nodes := []*DirNode{
-		{TotalSize: 100},
+		{Name: "n1", TotalSize: 600},
+		{Name: "n2", TotalSize: 400},
+		{Name: "n3", TotalSize: 300},
+		{Name: "n4", TotalSize: 200},
+		{Name: "n5", TotalSize: 100},
 	}
-	bounds := Rect{X: 0, Y: 0, W: 100, H: 100}
 
-	result := Squarify(nodes, bounds)
+	// Wide bounds (W > H) forces horizontal slicing
+	wideBounds := Rect{X: 0, Y: 0, W: 1000, H: 100}
+	wideResult := Squarify(nodes, wideBounds)
+	
+	if len(wideResult) != 5 {
+		t.Errorf("Squarify(wide) got %d nodes, want 5", len(wideResult))
+	}
 
-	if len(result) != 1 {
-		t.Errorf("Expected 1 result, got %d", len(result))
+	// Tall bounds (H > W) forces vertical slicing
+	tallBounds := Rect{X: 0, Y: 0, W: 100, H: 1000}
+	tallResult := Squarify(nodes, tallBounds)
+
+	if len(tallResult) != 5 {
+		t.Errorf("Squarify(tall) got %d nodes, want 5", len(tallResult))
 	}
 }
 

@@ -7,7 +7,7 @@ follow.
 
 ### Prerequisites
 
-- Go 1.22 or later
+- Go 1.25.0 or later
 - Git
 - Make (optional, but recommended)
 

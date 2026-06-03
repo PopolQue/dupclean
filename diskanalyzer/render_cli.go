@@ -2,6 +2,7 @@ package diskanalyzer
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -17,38 +18,38 @@ type CLIOptions struct {
 	Depth     int   // Tree depth (default: 2)
 }
 
-// RenderCLI renders the AnalysisResult to stdout.
-func RenderCLI(result *AnalysisResult, opts CLIOptions) {
+// RenderCLI renders the AnalysisResult to the provided writer.
+func RenderCLI(w io.Writer, result *AnalysisResult, opts CLIOptions) {
 	if opts.Depth <= 0 {
 		opts.Depth = 2
 	}
 
 	// Print header
-	fmt.Printf("%s  —  %s\n", result.Root.Path, fsutil.FormatBytes(result.TotalSize))
-	fmt.Println(strings.Repeat("━", 60))
-	fmt.Println()
+	_, _ = fmt.Fprintf(w, "%s  —  %s\n", result.Root.Path, fsutil.FormatBytes(result.TotalSize))
+	_, _ = fmt.Fprintln(w, strings.Repeat("━", 60))
+	_, _ = fmt.Fprintln(w)
 
 	if opts.ByType {
-		renderByType(result)
+		renderByType(w, result)
 		return
 	}
 
 	if opts.TopN > 0 {
-		renderTopFiles(result, opts.TopN)
-		fmt.Println()
+		renderTopFiles(w, result, opts.TopN)
+		_, _ = fmt.Fprintln(w)
 	}
 
 	if opts.OlderThan > 0 {
-		renderOldFiles(result, opts.OlderThan, opts.MinSize)
-		fmt.Println()
+		renderOldFiles(w, result, opts.OlderThan, opts.MinSize)
+		_, _ = fmt.Fprintln(w)
 	}
 
 	// Render tree
-	renderTree(result.Root, 0, opts.Depth, result.TotalSize)
+	renderTree(w, result.Root, 0, opts.Depth, result.TotalSize)
 }
 
 // renderTree prints a directory tree with bar charts.
-func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
+func renderTree(w io.Writer, node *DirNode, depth, maxDepth int, totalSize int64) {
 	if depth > maxDepth {
 		return
 	}
@@ -83,7 +84,7 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 		bar := makeBar(item.size, totalSize, 25)
 		suffix := ""
 
-		fmt.Printf("%s  %-20s  %s  %7s  %5.1f%%\n",
+		_, _ = fmt.Fprintf(w, "%s  %-20s  %s  %7s  %5.1f%%\n",
 			indent,
 			item.name+suffix,
 			bar,
@@ -94,7 +95,7 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 		if item.isDir {
 			for _, d := range node.Children {
 				if d.Name+"/" == item.name {
-					renderTree(d, depth+1, maxDepth, totalSize)
+					renderTree(w, d, depth+1, maxDepth, totalSize)
 					break
 				}
 			}
@@ -103,48 +104,48 @@ func renderTree(node *DirNode, depth, maxDepth int, totalSize int64) {
 }
 
 // renderTopFiles prints the N largest files.
-func renderTopFiles(result *AnalysisResult, n int) {
+func renderTopFiles(w io.Writer, result *AnalysisResult, n int) {
 	files := TopFiles(result, n)
 
-	fmt.Println("Top largest files")
-	fmt.Println(strings.Repeat("━", 60))
+	_, _ = fmt.Fprintln(w, "Top largest files")
+	_, _ = fmt.Fprintln(w, strings.Repeat("━", 60))
 
 	for i, f := range files {
-		fmt.Printf("   %2d   %8s   %s\n", i+1, fsutil.FormatBytes(f.Size), f.Path)
+		_, _ = fmt.Fprintf(w, "   %2d   %8s   %s\n", i+1, fsutil.FormatBytes(f.Size), f.Path)
 	}
 }
 
 // renderByType prints the type breakdown.
-func renderByType(result *AnalysisResult) {
+func renderByType(w io.Writer, result *AnalysisResult) {
 	stats := TypeBreakdown(result)
-	fmt.Println("By file type")
-	fmt.Println(strings.Repeat("━", 60))
+	_, _ = fmt.Fprintln(w, "By file type")
+	_, _ = fmt.Fprintln(w, strings.Repeat("━", 60))
 
 	for _, s := range stats {
 		bar := makeBar(s.TotalSize, result.TotalSize, 25)
-		fmt.Printf("  %-8s  %s  %7s  %5.1f%%  (%d files)\n",
+		_, _ = fmt.Fprintf(w, "  %-8s  %s  %7s  %5.1f%%  (%d files)\n",
 			s.Ext, bar, fsutil.FormatBytes(s.TotalSize), s.PctOfDisk, s.Count)
 	}
 }
 
 // renderOldFiles prints files older than N days.
-func renderOldFiles(result *AnalysisResult, days int, minSize int64) {
+func renderOldFiles(w io.Writer, result *AnalysisResult, days int, minSize int64) {
 	files := OldFiles(result, days, minSize)
 
 	if len(files) == 0 {
-		fmt.Printf("No files older than %d days (min size: %s)\n", days, fsutil.FormatBytes(minSize))
+		_, _ = fmt.Fprintf(w, "No files older than %d days (min size: %s)\n", days, fsutil.FormatBytes(minSize))
 		return
 	}
 
-	fmt.Printf("Files older than %d days (min size: %s)\n", days, fsutil.FormatBytes(minSize))
-	fmt.Println(strings.Repeat("━", 60))
+	_, _ = fmt.Fprintf(w, "Files older than %d days (min size: %s)\n", days, fsutil.FormatBytes(minSize))
+	_, _ = fmt.Fprintln(w, strings.Repeat("━", 60))
 
 	for i, f := range files {
 		if i >= 20 {
-			fmt.Printf("   ... and %d more\n", len(files)-i)
+			_, _ = fmt.Fprintf(w, "   ... and %d more\n", len(files)-i)
 			break
 		}
-		fmt.Printf("   %2d   %8s   %s\n", i+1, fsutil.FormatBytes(f.Size), f.Path)
+		_, _ = fmt.Fprintf(w, "   %2d   %8s   %s\n", i+1, fsutil.FormatBytes(f.Size), f.Path)
 	}
 }
 

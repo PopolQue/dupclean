@@ -45,24 +45,10 @@ func init() {
 }
 
 func runClean() {
-	opts := cleaner.ScanOptions{}
-	cliOpts := cleaner.CLIOptions{
-		DryRun:    cleanDryRun,
-		Permanent: cleanPermanent,
-		Yes:       cleanYes,
-	}
-
-	if cleanMinAge != "" {
-		duration, err := fsutil.ParseDuration(cleanMinAge)
-		if err != nil {
-			fmt.Printf("Error: invalid value for --min-age: %v\n", err)
-			os.Exit(1)
-		}
-		opts.MinAge = duration
-	}
-
-	if cleanWorkers > 0 {
-		opts.Concurrency = cleanWorkers
+	opts, cliOpts, err := prepareClean(cleanMinAge, cleanWorkers, cleanDryRun, cleanPermanent, cleanYes)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	targets := cleaner.Registry()
@@ -81,4 +67,26 @@ func runClean() {
 	}
 
 	cleaner.RenderCLI(result, cliOpts)
+}
+
+func prepareClean(minAgeStr string, workers int, dryRun, permanent, yes bool) (cleaner.ScanOptions, cleaner.CLIOptions, error) {
+	opts := cleaner.ScanOptions{}
+	cliOpts := cleaner.CLIOptions{
+		DryRun:    dryRun,
+		Permanent: permanent,
+		Yes:       yes,
+	}
+
+	if minAgeStr != "" {
+		duration, err := fsutil.ParseDuration(minAgeStr)
+		if err != nil {
+			return opts, cliOpts, fmt.Errorf("invalid value for --min-age: %w", err)
+		}
+		opts.MinAge = duration
+	}
+
+	if workers > 0 {
+		opts.Concurrency = workers
+	}
+	return opts, cliOpts, nil
 }

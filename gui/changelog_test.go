@@ -3,31 +3,33 @@ package gui
 import (
 	"testing"
 
-	"github.com/PopolQue/dupclean/internal/version"
-
 	"fyne.io/fyne/v2/test"
+	"github.com/PopolQue/dupclean/internal/version"
 )
 
-func TestChangelogLogic(t *testing.T) {
-	a := test.NewApp()
-	defer test.NewApp() // cleanup
+func TestShowChangelogIfNeeded(t *testing.T) {
+	app := test.NewApp()
+	w := test.NewWindow(nil)
+	p := app.Preferences()
 
-	p := a.Preferences()
-	p.RemoveValue(lastSeenVersionKey)
+	// Initial run: version is empty, should trigger showChangelog (simulated)
+	// We check if it sets the preference
+	p.SetString(lastSeenVersionKey, "")
 
-	// First run: should show changelog (we can't easily check the dialog, but we check if preferences are updated)
-	// We call a modified version of the function that doesn't require a window for testing logic
+	ShowChangelogIfNeeded(w)
 
-	lastSeen := p.String(lastSeenVersionKey)
-	if lastSeen != "" {
-		t.Errorf("Expected empty lastSeen on first run, got %s", lastSeen)
+	if p.String(lastSeenVersionKey) != version.Version {
+		t.Errorf("Expected lastSeenVersion to be updated to %s, got %s", version.Version, p.String(lastSeenVersionKey))
 	}
+}
 
-	// Update last seen
-	p.SetString(lastSeenVersionKey, version.Version)
-
-	lastSeen = p.String(lastSeenVersionKey)
-	if lastSeen != version.Version {
-		t.Errorf("Expected lastSeen to be %s, got %s", version.Version, lastSeen)
-	}
+func TestShowFullChangelog(t *testing.T) {
+	w := test.NewWindow(nil)
+	// Just check it doesn't panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("ShowFullChangelog panicked: %v", r)
+		}
+	}()
+	ShowFullChangelog(w)
 }

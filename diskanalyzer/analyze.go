@@ -15,7 +15,10 @@ type TypeStat struct {
 
 // TopFiles returns the N largest files across the entire tree.
 func TopFiles(result *AnalysisResult, n int) []FileEntry {
-	if n <= 0 || n > len(result.AllFiles) {
+	if n <= 0 {
+		return []FileEntry{}
+	}
+	if n > len(result.AllFiles) {
 		n = len(result.AllFiles)
 	}
 	return result.AllFiles[:n]

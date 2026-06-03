@@ -75,36 +75,42 @@ func init() {
 	rootCmd.SetVersionTemplate("DupClean {{.Version}}\n")
 }
 
+var interactiveRun = interactive.Run
+
 func runDuplicateFinder(cmd *cobra.Command, folder string) {
 	mode := modeFlag
 	if allFlag {
 		mode = "byte"
 	}
-	similarity := similarityFlag
 
+	groups, stats, err := executeDuplicateFinder(cmd, folder, mode, similarityFlag)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	interactiveRun(groups, stats)
+}
+
+func executeDuplicateFinder(cmd *cobra.Command, folder string, mode string, similarity int) ([]scanner.DuplicateGroup, scanner.ScanStats, error) {
 	folder = filepath.Clean(folder)
 	absPath, err := filepath.Abs(folder)
 	if err != nil {
-		fmt.Printf("Error: invalid path '%s': %v\n", folder, err)
-		os.Exit(1)
+		return nil, scanner.ScanStats{}, fmt.Errorf("invalid path '%s': %w", folder, err)
 	}
 
 	info, err := os.Stat(absPath)
 	if err != nil {
-		fmt.Printf("Error: cannot access '%s': %v\n", folder, err)
-		os.Exit(1)
+		return nil, scanner.ScanStats{}, fmt.Errorf("cannot access '%s': %w", folder, err)
 	}
 
 	if !info.IsDir() {
-		fmt.Printf("Error: '%s' is not a valid directory\n", folder)
-		os.Exit(1)
+		return nil, scanner.ScanStats{}, fmt.Errorf("'%s' is not a valid directory", folder)
 	}
 
 	sc, ok := scanner.GetScanner(mode)
 	if !ok {
-		fmt.Printf("Error: unknown mode '%s'\n", mode)
-		fmt.Printf("Available modes: %s\n", strings.Join(scanner.AvailableModes(), ", "))
-		os.Exit(1)
+		return nil, scanner.ScanStats{}, fmt.Errorf("unknown mode '%s'. Available modes: %s", mode, strings.Join(scanner.AvailableModes(), ", "))
 	}
 
 	opts := scanner.Options{
@@ -114,11 +120,5 @@ func runDuplicateFinder(cmd *cobra.Command, folder string) {
 		Context:       cmd.Context(),
 	}
 
-	groups, stats, err := sc.Scan(absPath, opts)
-	if err != nil {
-		fmt.Printf("Error: scan failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	interactive.Run(groups, stats)
+	return sc.Scan(absPath, opts)
 }

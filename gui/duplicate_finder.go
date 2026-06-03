@@ -289,6 +289,15 @@ func createOptionsCard(state *AppState) *widget.Card {
 	return widget.NewCard("Scan Options", "Configure filters and ignore rules", content)
 }
 
+func updateScanButtonState(state *AppState, text string, scanBtn *widget.Button) {
+	state.FolderPath = text
+	if text != "" {
+		scanBtn.Enable()
+	} else {
+		scanBtn.Disable()
+	}
+}
+
 func createScanButton(state *AppState, folderCard *widget.Card) *widget.Button {
 	scanBtn := widget.NewButtonWithIcon("Start Scan", theme.SearchIcon(), func() {
 		if state.FolderPath == "" {
@@ -313,15 +322,36 @@ func createScanButton(state *AppState, folderCard *widget.Card) *widget.Button {
 	// The entry is the first object (center)
 	folderEntry := picker.(*fyne.Container).Objects[0].(*widget.Entry)
 	folderEntry.OnChanged = func(text string) {
-		state.FolderPath = text
-		if text != "" {
-			scanBtn.Enable()
-		} else {
-			scanBtn.Disable()
-		}
+		updateScanButtonState(state, text, scanBtn)
 	}
 
 	return scanBtn
+}
+
+func prepareScanResults(groups []scanner.DuplicateGroup) ([]scanner.DuplicateGroup, [][]bool) {
+	// Sort groups by size (largest first)
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Files[0].Size > groups[j].Files[0].Size
+	})
+
+	selections := make([][]bool, len(groups))
+	for i := range groups {
+		// Sort files within group: prefer shallowest path
+		sort.Slice(groups[i].Files, func(a, b int) bool {
+			da := strings.Count(groups[i].Files[a].Path, string(filepath.Separator))
+			db := strings.Count(groups[i].Files[b].Path, string(filepath.Separator))
+			if da != db {
+				return da < db
+			}
+			return groups[i].Files[a].ModTime.Before(groups[i].Files[b].ModTime)
+		})
+
+		selections[i] = make([]bool, len(groups[i].Files))
+		if len(groups[i].Files) > 0 {
+			selections[i][0] = true
+		}
+	}
+	return groups, selections
 }
 
 func startScan(state *AppState) {
@@ -380,6 +410,15 @@ func startScan(state *AppState) {
 			return
 		}
 
+		groups, selections := prepareScanResults(groups)
+
+		state.mu.Lock()
+		state.Groups = groups
+		state.Stats = stats
+		state.Selections = selections
+		state.IsScanning = false
+		state.mu.Unlock()
+
 		fyne.Do(func() {
 			state.ProcessManager.SetProcessRunning(false)
 			prog.label.SetText("Scan Complete!")
@@ -387,46 +426,17 @@ func startScan(state *AppState) {
 			prog.bar.SetValue(1)
 		})
 
-		// Sort groups by size (largest first)
-		sort.Slice(groups, func(i, j int) bool {
-			return groups[i].Files[0].Size > groups[j].Files[0].Size
-		})
-
-		// Initialize selections: keep first file by default after sorting
-		state.mu.Lock()
-		state.Groups = groups
-		state.Stats = stats
-		state.IsScanning = false
-
-		state.Selections = make([][]bool, len(groups))
-		for i := range groups {
-			// Sort files within group: prefer shallowest path
-			sort.Slice(groups[i].Files, func(a, b int) bool {
-				da := strings.Count(groups[i].Files[a].Path, string(filepath.Separator))
-				db := strings.Count(groups[i].Files[b].Path, string(filepath.Separator))
-				if da != db {
-					return da < db
-				}
-				return groups[i].Files[a].ModTime.Before(groups[i].Files[b].ModTime)
-			})
-
-			state.Selections[i] = make([]bool, len(groups[i].Files))
-			if len(groups[i].Files) > 0 {
-				state.Selections[i][0] = true
-			}
-		}
-		state.mu.Unlock()
-
 		ShowDuplicateResults(state)
 	}()
 }
 
-func verifyDeletionSafety(path string) error {
+// verifyDeletionSafety checks if the path is safe to delete, using provided dependencies for testing.
+func verifyDeletionSafety(path string, resolver func(string) (string, error), homeGetter func() (string, error)) error {
 	if path == "" {
 		return fmt.Errorf("empty path")
 	}
 
-	abs, err := absPath(path)
+	abs, err := resolver(path)
 	if err != nil {
 		return err
 	}
@@ -438,7 +448,7 @@ func verifyDeletionSafety(path string) error {
 	}
 
 	// Don't allow deleting home directory
-	home, err := userHomeDir()
+	home, err := homeGetter()
 	if err == nil && abs == filepath.Clean(home) {
 		return fmt.Errorf("cannot delete home directory")
 	}
@@ -481,7 +491,7 @@ func cleanSelected(state *AppState) {
 		for j, f := range group.Files {
 			if !selections[i][j] {
 				// Safety check before deletion
-				if err := verifyDeletionSafety(f.Path); err != nil {
+				if err := verifyDeletionSafety(f.Path, absPath, userHomeDir); err != nil {
 					log.Printf("[GUI] Skipping protected path: %s (%v)", f.Path, err)
 					skippedCount++
 					skippedFiles = append(skippedFiles, f.Name)

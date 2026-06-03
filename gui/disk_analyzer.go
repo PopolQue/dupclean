@@ -93,12 +93,31 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 	)
 }
 
-func startDiskAnalysis(state *DiskAnalyzerState) {
+func validateAnalysisPath(state *DiskAnalyzerState) error {
 	if state.FolderPath == "" {
-		dialog.ShowError(fmt.Errorf("please select a folder"), state.Window)
+		return fmt.Errorf("please select a folder")
+	}
+	return nil
+}
+
+func handleAnalysisResult(state *DiskAnalyzerState, result *diskanalyzer.AnalysisResult, err error) {
+	comp := state.components
+	state.ProcessManager.SetProcessRunning(false)
+	state.IsAnalyzing = false
+	comp.analyzeBtn.Enable()
+	comp.progressBar.Hide()
+
+	if err != nil {
+		comp.progressLabel.SetText(fmt.Sprintf("Error: %v", err))
+		dialog.ShowError(err, state.Window)
 		return
 	}
 
+	state.Result = result
+	displayAnalysisResults(state)
+}
+
+func prepareDiskAnalysisUI(state *DiskAnalyzerState) {
 	state.ProcessManager.SetProcessRunning(true)
 	state.IsAnalyzing = true
 	comp := state.components
@@ -106,34 +125,46 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 	comp.progressLabel.SetText("Analyzing filesystem...")
 	comp.progressBar.Show()
 	comp.progressBar.SetValue(0.5) // Indeterminate for now since Walker doesn't have granular progress
+}
+
+func startDiskAnalysis(state *DiskAnalyzerState) {
+	if err := validateAnalysisPath(state); err != nil {
+		dialog.ShowError(err, state.Window)
+		return
+	}
+
+	prepareDiskAnalysisUI(state)
 
 	go func() {
-		opts := diskanalyzer.DefaultOptions()
-		opts.MaxEntries = 500000 // Safety limit
-		opts.Context = context.Background()
-
-		result, errors, err := diskanalyzer.Walk(state.FolderPath, opts)
+		result, err := performDiskAnalysis(state)
 
 		fyne.Do(func() {
-			state.ProcessManager.SetProcessRunning(false)
-			state.IsAnalyzing = false
-			comp.analyzeBtn.Enable()
-			comp.progressBar.Hide()
-
-			if err != nil {
-				comp.progressLabel.SetText(fmt.Sprintf("Error: %v", err))
-				dialog.ShowError(err, state.Window)
-				return
-			}
-
-			if len(errors) > 0 {
-				log.Printf("Analysis warnings: %d errors encountered", len(errors))
-			}
-
-			state.Result = result
-			displayAnalysisResults(state)
+			handleAnalysisResult(state, result, err)
 		})
 	}()
+}
+
+var diskWalker = diskanalyzer.Walk
+
+func performDiskAnalysis(state *DiskAnalyzerState) (*diskanalyzer.AnalysisResult, error) {
+	opts := diskanalyzer.DefaultOptions()
+	opts.MaxEntries = 500000 // Safety limit
+	opts.Context = context.Background()
+
+	result, _, err := diskWalker(state.FolderPath, opts)
+	return result, err
+}
+
+type AnalysisViewData struct {
+	LargestDirs   []*diskanalyzer.DirNode
+	TypeBreakdown []diskanalyzer.TypeStat
+}
+
+func prepareAnalysisViewData(result *diskanalyzer.AnalysisResult) AnalysisViewData {
+	return AnalysisViewData{
+		LargestDirs:   diskanalyzer.LargestDirs(result, 20),
+		TypeBreakdown: diskanalyzer.TypeBreakdown(result),
+	}
 }
 
 func displayAnalysisResults(state *DiskAnalyzerState) {
@@ -142,12 +173,11 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 		return
 	}
 
-	// Get largest directories
-	largestDirs := diskanalyzer.LargestDirs(result, 20)
+	data := prepareAnalysisViewData(result)
 
 	// Top offenders cards
 	offenders := container.NewVBox()
-	for i, node := range largestDirs {
+	for i, node := range data.LargestDirs {
 		if i >= 10 {
 			break
 		}
@@ -161,9 +191,8 @@ func displayAnalysisResults(state *DiskAnalyzerState) {
 	}
 
 	// Type breakdown
-	typeBreakdown := diskanalyzer.TypeBreakdown(result)
 	typeList := container.NewVBox()
-	for i, stat := range typeBreakdown {
+	for i, stat := range data.TypeBreakdown {
 		if i >= 10 {
 			break
 		}
