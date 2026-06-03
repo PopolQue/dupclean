@@ -48,7 +48,7 @@ func TestSquarify_AspectRatios(t *testing.T) {
 	// Wide bounds (W > H) forces horizontal slicing
 	wideBounds := Rect{X: 0, Y: 0, W: 1000, H: 100}
 	wideResult := Squarify(nodes, wideBounds)
-	
+
 	if len(wideResult) != 5 {
 		t.Errorf("Squarify(wide) got %d nodes, want 5", len(wideResult))
 	}
