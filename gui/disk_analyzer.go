@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"dupclean/diskanalyzer"
-	"dupclean/gui/components"
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/diskanalyzer"
+	"github.com/PopolQue/dupclean/gui/components"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -50,8 +50,16 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 	targetCard := widget.NewCard("Target Folder", "Select the directory you want to analyze", picker)
 
 	// Scan Settings
-	scanHiddenCheck := widget.NewCheck("Scan hidden files", func(b bool) {})
-	followSymlinksCheck := widget.NewCheck("Follow symlinks", func(b bool) {})
+	scanHiddenCheck := widget.NewCheck("Scan hidden files", func(b bool) {
+		// Clearing the state here would be ideal, but disk analyzer currently
+		// doesn't maintain a running config object; these are placeholders
+		// for when that architecture is added.
+	})
+	followSymlinksCheck := widget.NewCheck("Follow symlinks", func(b bool) {
+		if b {
+			log.Println("Warning: Symlinks may cause infinite loops in analysis")
+		}
+	})
 	scanSettings := container.NewHBox(scanHiddenCheck, followSymlinksCheck)
 
 	optionsCard := widget.NewCard("Scan Settings", "Configure how we identify large files", scanSettings)

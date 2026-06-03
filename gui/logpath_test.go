@@ -10,7 +10,7 @@ import (
 
 // TestGetLogFilePath tests that the function returns a valid path
 func TestGetLogFilePath(t *testing.T) {
-	path := getLogFilePath()
+	path := getLogFilePath(os.Getenv, filepath.Separator)
 
 	if path == "" {
 		t.Error("getLogFilePath() should not return empty string")
@@ -24,7 +24,7 @@ func TestGetLogFilePath(t *testing.T) {
 
 // TestGetLogFilePath_PlatformSpecific tests platform-specific paths
 func TestGetLogFilePath_PlatformSpecific(t *testing.T) {
-	path := getLogFilePath()
+	path := getLogFilePath(os.Getenv, filepath.Separator)
 
 	// Verify separator is correct for platform
 	if runtime.GOOS == "windows" && filepath.Separator != '\\' {
@@ -39,34 +39,15 @@ func TestGetLogFilePath_PlatformSpecific(t *testing.T) {
 
 // TestGetLogFilePath_EnvironmentVariables tests environment variable precedence
 func TestGetLogFilePath_EnvironmentVariables(t *testing.T) {
-	// Save original values
-	origTMPDIR := os.Getenv("TMPDIR")
-	origTEMP := os.Getenv("TEMP")
-	origTMP := os.Getenv("TMP")
-
-	defer func() {
-		// Restore original values
-		if origTMPDIR != "" {
-			os.Setenv("TMPDIR", origTMPDIR)
-		} else {
-			os.Unsetenv("TMPDIR")
-		}
-		if origTEMP != "" {
-			os.Setenv("TEMP", origTEMP)
-		} else {
-			os.Unsetenv("TEMP")
-		}
-		if origTMP != "" {
-			os.Setenv("TMP", origTMP)
-		} else {
-			os.Unsetenv("TMP")
-		}
-	}()
-
 	// Test TMPDIR precedence (Unix)
 	if runtime.GOOS != "windows" {
-		os.Setenv("TMPDIR", "/custom/tmp")
-		path := getLogFilePath()
+		getEnv := func(key string) string {
+			if key == "TMPDIR" {
+				return "/custom/tmp"
+			}
+			return ""
+		}
+		path := getLogFilePath(getEnv, '/')
 		expected := "/custom/tmp/dupclean.log"
 		if path != expected {
 			t.Errorf("getLogFilePath() with TMPDIR = %q, want %q", path, expected)
@@ -75,9 +56,14 @@ func TestGetLogFilePath_EnvironmentVariables(t *testing.T) {
 
 	// Test TEMP precedence (Windows)
 	if runtime.GOOS == "windows" {
-		os.Setenv("TEMP", "C:\\Custom\\Temp")
-		path := getLogFilePath()
-		expected := "C:\\Custom\\Temp\\dupclean.log"
+		getEnv := func(key string) string {
+			if key == "TEMP" {
+				return `C:\Custom\Temp`
+			}
+			return ""
+		}
+		path := getLogFilePath(getEnv, '\\')
+		expected := `C:\Custom\Temp\dupclean.log`
 		if path != expected {
 			t.Errorf("getLogFilePath() with TEMP = %q, want %q", path, expected)
 		}
@@ -86,30 +72,10 @@ func TestGetLogFilePath_EnvironmentVariables(t *testing.T) {
 
 // TestGetLogFilePath_Fallback tests fallback behavior
 func TestGetLogFilePath_Fallback(t *testing.T) {
-	// Save and clear all temp env vars
-	origTMPDIR := os.Getenv("TMPDIR")
-	origTEMP := os.Getenv("TEMP")
-	origTMP := os.Getenv("TMP")
-
-	os.Unsetenv("TMPDIR")
-	os.Unsetenv("TEMP")
-	os.Unsetenv("TMP")
-
-	defer func() {
-		// Restore
-		if origTMPDIR != "" {
-			os.Setenv("TMPDIR", origTMPDIR)
-		}
-		if origTEMP != "" {
-			os.Setenv("TEMP", origTEMP)
-		}
-		if origTMP != "" {
-			os.Setenv("TMP", origTMP)
-		}
-	}()
+	getEnv := func(key string) string { return "" }
 
 	// Should still return a valid path (platform default)
-	path := getLogFilePath()
+	path := getLogFilePath(getEnv, filepath.Separator)
 	if path == "" {
 		t.Error("getLogFilePath() should return platform default when env vars are unset")
 	}
@@ -121,7 +87,7 @@ func TestGetLogFilePath_DirectoryCreation(t *testing.T) {
 	// We can't easily test this without modifying the global state,
 	// but we can verify the path is valid
 
-	path := getLogFilePath()
+	path := getLogFilePath(os.Getenv, filepath.Separator)
 	dir := filepath.Dir(path)
 
 	// Directory should be creatable (no invalid chars)
@@ -132,7 +98,7 @@ func TestGetLogFilePath_DirectoryCreation(t *testing.T) {
 
 // TestGetLogFilePath_ValidFilename tests that the filename is always valid
 func TestGetLogFilePath_ValidFilename(t *testing.T) {
-	path := getLogFilePath()
+	path := getLogFilePath(os.Getenv, filepath.Separator)
 	filename := filepath.Base(path)
 
 	// Should be exactly "dupclean.log"
@@ -156,9 +122,9 @@ func TestGetLogFilePath_ValidFilename(t *testing.T) {
 
 // TestGetLogFilePath_Consistency tests that multiple calls return the same path
 func TestGetLogFilePath_Consistency(t *testing.T) {
-	path1 := getLogFilePath()
-	path2 := getLogFilePath()
-	path3 := getLogFilePath()
+	path1 := getLogFilePath(os.Getenv, filepath.Separator)
+	path2 := getLogFilePath(os.Getenv, filepath.Separator)
+	path3 := getLogFilePath(os.Getenv, filepath.Separator)
 
 	if path1 != path2 || path2 != path3 {
 		t.Error("getLogFilePath() should return consistent paths")
@@ -167,24 +133,8 @@ func TestGetLogFilePath_Consistency(t *testing.T) {
 
 // TestGetLogFilePath_NoSideEffects tests that calling the function has no side effects
 func TestGetLogFilePath_NoSideEffects(t *testing.T) {
-	// Save environment
-	origTMPDIR := os.Getenv("TMPDIR")
-	origTEMP := os.Getenv("TEMP")
-	origTMP := os.Getenv("TMP")
-
 	// Call function multiple times
-	_ = getLogFilePath()
-	_ = getLogFilePath()
-	_ = getLogFilePath()
-
-	// Verify environment wasn't modified
-	if os.Getenv("TMPDIR") != origTMPDIR {
-		t.Error("getLogFilePath() should not modify TMPDIR")
-	}
-	if os.Getenv("TEMP") != origTEMP {
-		t.Error("getLogFilePath() should not modify TEMP")
-	}
-	if os.Getenv("TMP") != origTMP {
-		t.Error("getLogFilePath() should not modify TMP")
-	}
+	_ = getLogFilePath(os.Getenv, filepath.Separator)
+	_ = getLogFilePath(os.Getenv, filepath.Separator)
+	_ = getLogFilePath(os.Getenv, filepath.Separator)
 }

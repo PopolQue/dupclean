@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"dupclean/cleaner"
-	"dupclean/gui/components"
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/cleaner"
+	"github.com/PopolQue/dupclean/gui/components"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -125,55 +125,7 @@ func startCacheScan(state *CacheCleanerState) {
 	comp.progressBar.SetValue(0)
 
 	go func() {
-		// Parse min age
-		minAge, err := fsutil.ParseDuration(state.MinAgeStr)
-		if err != nil {
-			fyne.Do(func() {
-				state.ProcessManager.SetProcessRunning(false)
-				comp.progressLabel.SetText(fmt.Sprintf("Invalid Min Age: %v", err))
-				comp.scanBtn.Enable()
-				comp.minAgeEntry.Enable()
-			})
-			return
-		}
-
-		// Get all cache targets
-		targets := cleaner.Registry()
-
-		// Filter out protected system directories
-		filteredTargets := make([]*cleaner.CleanTarget, 0)
-		for _, t := range targets {
-			// Filter paths for this target
-			cleanPaths := make([]string, 0)
-			for _, path := range t.Paths {
-				if !isProtectedPath(path) {
-					cleanPaths = append(cleanPaths, path)
-				}
-			}
-
-			// Only include target if it has cleanable paths
-			if len(cleanPaths) > 0 {
-				t.Paths = cleanPaths
-				filteredTargets = append(filteredTargets, t)
-			}
-		}
-		targets = filteredTargets
-
-		// Scan each target
-		opts := cleaner.ScanOptions{
-			Concurrency: state.Concurrency,
-			MinAge:      minAge,
-			OnProgress: func(progress cleaner.Progress) {
-				fyne.Do(func() {
-					if progress.Total > 0 {
-						comp.progressBar.SetValue(float64(progress.Done) / float64(progress.Total))
-					}
-					comp.progressLabel.SetText(fmt.Sprintf("Scanning: %s", progress.Current))
-				})
-			},
-		}
-
-		result, err := cleaner.Scan(targets, opts)
+		result, err := performCacheScan(state)
 		if err != nil {
 			fyne.Do(func() {
 				state.ProcessManager.SetProcessRunning(false)
@@ -184,18 +136,8 @@ func startCacheScan(state *CacheCleanerState) {
 			return
 		}
 
-		state.Targets = result.Targets
-		state.TotalSize = result.TotalSize
-		state.IsScanning = false
+		updateStateAfterScan(state, result)
 		state.ProcessManager.SetProcessRunning(false)
-
-		// Pre-select safe targets
-		state.SelectedTargets = make(map[string]bool)
-		for _, t := range result.Targets {
-			if t.TotalSize > 0 && (t.Risk == cleaner.RiskSafe || t.Risk == cleaner.RiskLow) {
-				state.SelectedTargets[t.ID] = true
-			}
-		}
 
 		fyne.Do(func() {
 			displayCacheResults(state)
@@ -203,24 +145,97 @@ func startCacheScan(state *CacheCleanerState) {
 	}()
 }
 
-func displayCacheResults(state *CacheCleanerState) {
-	// Accordion for categories
-	accordion := widget.NewAccordion()
+func updateStateAfterScan(state *CacheCleanerState, result *cleaner.ScanResult) {
+	state.Targets = result.Targets
+	state.TotalSize = result.TotalSize
+	state.IsScanning = false
 
-	// Group by category
+	// Pre-select safe targets
+	state.SelectedTargets = make(map[string]bool)
+	for _, t := range result.Targets {
+		if t.TotalSize > 0 && (t.Risk == cleaner.RiskSafe || t.Risk == cleaner.RiskLow) {
+			state.SelectedTargets[t.ID] = true
+		}
+	}
+}
+
+func performCacheScan(state *CacheCleanerState) (*cleaner.ScanResult, error) {
+	// Parse min age
+	minAge, err := fsutil.ParseDuration(state.MinAgeStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all cache targets
+	targets := cleaner.Registry()
+
+	// Filter out protected system directories
+	filteredTargets := make([]*cleaner.CleanTarget, 0)
+	for _, t := range targets {
+		// Filter paths for this target
+		cleanPaths := make([]string, 0)
+		for _, path := range t.Paths {
+			if !isProtectedPath(path) {
+				cleanPaths = append(cleanPaths, path)
+			}
+		}
+
+		// Only include target if it has cleanable paths
+		if len(cleanPaths) > 0 {
+			t.Paths = cleanPaths
+			filteredTargets = append(filteredTargets, t)
+		}
+	}
+	targets = filteredTargets
+
+	// Scan each target
+	comp := state.cacheCleanerComponents
+	opts := cleaner.ScanOptions{
+		Concurrency: state.Concurrency,
+		MinAge:      minAge,
+		OnProgress: func(progress cleaner.Progress) {
+			if comp != nil {
+				fyne.Do(func() {
+					if progress.Total > 0 {
+						comp.progressBar.SetValue(float64(progress.Done) / float64(progress.Total))
+					}
+					comp.progressLabel.SetText(fmt.Sprintf("Scanning: %s", progress.Current))
+				})
+			}
+		},
+	}
+
+	return cleaner.Scan(targets, opts)
+}
+
+func groupTargetsByCategory(targets []*cleaner.CleanTarget) map[string][]*cleaner.CleanTarget {
 	categories := make(map[string][]*cleaner.CleanTarget)
-	for _, t := range state.Targets {
+	for _, t := range targets {
 		if t.TotalSize > 0 {
 			categories[t.Category] = append(categories[t.Category], t)
 		}
 	}
+	return categories
+}
 
-	// Sort categories
+func getSortedCategoryNames(categories map[string][]*cleaner.CleanTarget) []string {
 	catNames := make([]string, 0, len(categories))
 	for cat := range categories {
 		catNames = append(catNames, cat)
 	}
 	sort.Strings(catNames)
+	return catNames
+}
+
+func displayCacheResults(state *CacheCleanerState) {
+	// Accordion for categories
+	accordion := widget.NewAccordion()
+
+	// Group by category
+	categories := groupTargetsByCategory(state.Targets)
+
+	// Sort categories
+	catNames := getSortedCategoryNames(categories)
 
 	// Action buttons
 	cleanBtn := widget.NewButtonWithIcon("Clean Selected", theme.ConfirmIcon(), func() {
@@ -259,28 +274,31 @@ func displayCacheResults(state *CacheCleanerState) {
 	state.updateContent(components.ToolPageWithFooter("Scan Results", subtitle, accordion, buttonRow))
 }
 
+func getRiskInfo(risk cleaner.Risk) (string, widget.Importance, fyne.Resource) {
+	switch risk {
+	case cleaner.RiskModerate:
+		return "Moderate", widget.WarningImportance, theme.WarningIcon()
+	case cleaner.RiskHigh:
+		return "High Risk", widget.DangerImportance, theme.ErrorIcon()
+	default:
+		return "Safe", widget.SuccessImportance, theme.ConfirmIcon()
+	}
+}
+
+func toggleTargetSelection(state *CacheCleanerState, targetID string, checked bool, totalLabel *widget.Label, cleanBtn *widget.Button) {
+	state.SelectedTargets[targetID] = checked
+	updateCacheTotal(state, totalLabel, cleanBtn)
+}
+
 // createCacheTargetCard creates a card for a cache target
 func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget, totalLabel *widget.Label, cleanBtn *widget.Button) *widget.Card {
 	// Risk icon and badge
-	riskIcon := theme.ConfirmIcon()
-	riskText := "Safe"
-	riskImportance := widget.SuccessImportance
-	switch target.Risk {
-	case cleaner.RiskModerate:
-		riskIcon = theme.WarningIcon()
-		riskText = "Moderate"
-		riskImportance = widget.WarningImportance
-	case cleaner.RiskHigh:
-		riskIcon = theme.ErrorIcon()
-		riskText = "High Risk"
-		riskImportance = widget.DangerImportance
-	}
+	riskText, riskImportance, riskIcon := getRiskInfo(target.Risk)
 	riskBadge := components.StatusBadge(riskText, riskImportance)
 
 	// Target checkbox
 	targetCheck := widget.NewCheck(fmt.Sprintf("%s (%s)", target.Label, fsutil.FormatBytes(target.TotalSize)), func(checked bool) {
-		state.SelectedTargets[target.ID] = checked
-		updateCacheTotal(state, totalLabel, cleanBtn)
+		toggleTargetSelection(state, target.ID, checked, totalLabel, cleanBtn)
 	})
 	targetCheck.SetChecked(state.SelectedTargets[target.ID])
 
@@ -295,24 +313,35 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 	return components.ResultCard("", descLabel, metadata, targetCheck, actions)
 }
 
-func updateCacheTotal(state *CacheCleanerState, totalLabel *widget.Label, cleanBtn *widget.Button) {
+func calculateSelectedSize(state *CacheCleanerState) int64 {
 	var selectedSize int64
 	for _, t := range state.Targets {
 		if state.SelectedTargets[t.ID] {
 			selectedSize += t.TotalSize
 		}
 	}
-	totalLabel.SetText(fmt.Sprintf("Selected: %s", fsutil.FormatBytes(selectedSize)))
+	return selectedSize
+}
 
-	if selectedSize > 0 {
+func getUpdateCacheTotalState(state *CacheCleanerState) (string, bool) {
+	selectedSize := calculateSelectedSize(state)
+	text := fmt.Sprintf("Selected: %s", fsutil.FormatBytes(selectedSize))
+	enabled := selectedSize > 0
+	return text, enabled
+}
+
+func updateCacheTotal(state *CacheCleanerState, totalLabel *widget.Label, cleanBtn *widget.Button) {
+	text, enabled := getUpdateCacheTotalState(state)
+	totalLabel.SetText(text)
+
+	if enabled {
 		cleanBtn.Enable()
 	} else {
 		cleanBtn.Disable()
 	}
 }
 
-func startCacheClean(state *CacheCleanerState) {
-	// Calculate selected size
+func getSelectedTargets(state *CacheCleanerState) ([]*cleaner.CleanTarget, int64) {
 	var selectedSize int64
 	var selectedTargets []*cleaner.CleanTarget
 	for _, t := range state.Targets {
@@ -321,6 +350,12 @@ func startCacheClean(state *CacheCleanerState) {
 			selectedTargets = append(selectedTargets, t)
 		}
 	}
+	return selectedTargets, selectedSize
+}
+
+func startCacheClean(state *CacheCleanerState) {
+	// Calculate selected size
+	selectedTargets, selectedSize := getSelectedTargets(state)
 
 	if selectedSize == 0 {
 		dialog.ShowInformation("Nothing to clean", "No targets selected for cleaning", state.Window)
@@ -353,22 +388,13 @@ func startCacheClean(state *CacheCleanerState) {
 			))
 
 			go func() {
-				cleaned := 0
-				var cleanedBytes int64
-
-				for i, t := range selectedTargets {
-					// Clean each path for this target
-					for _, path := range t.Paths {
-						deleted, freed, _ := cleanPath(path, t.Patterns)
-						cleaned += deleted
-						cleanedBytes += freed
-					}
-
+				// Perform actual cleaning synchronously
+				cleaned, cleanedBytes := performCacheClean(selectedTargets, func(progress float64, currentLabel string) {
 					fyne.Do(func() {
-						progressBar.SetValue(float64(i+1) / float64(len(selectedTargets)))
-						progressLabel.SetText(fmt.Sprintf("Cleaned: %s", t.Label))
+						progressBar.SetValue(progress)
+						progressLabel.SetText(currentLabel)
 					})
-				}
+				})
 
 				state.CleanedCount = cleaned
 				state.CleanedBytes = cleanedBytes
@@ -383,6 +409,28 @@ func startCacheClean(state *CacheCleanerState) {
 		},
 		state.Window,
 	)
+}
+
+// performCacheClean executes the cleaning operation synchronously.
+// The onProgress callback allows updating UI or logging progress.
+func performCacheClean(selectedTargets []*cleaner.CleanTarget, onProgress func(progress float64, currentLabel string)) (int, int64) {
+	cleaned := 0
+	var cleanedBytes int64
+
+	for i, t := range selectedTargets {
+		// Clean each path for this target
+		for _, path := range t.Paths {
+			deleted, freed, _ := cleanPath(path, t.Patterns)
+			cleaned += deleted
+			cleanedBytes += freed
+		}
+
+		if onProgress != nil {
+			onProgress(float64(i+1)/float64(len(selectedTargets)), fmt.Sprintf("Cleaned: %s", t.Label))
+		}
+	}
+
+	return cleaned, cleanedBytes
 }
 
 // isProtectedPath returns true for system-protected directories
@@ -490,9 +538,9 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 		log.Printf("[CacheCleaner] Measured %s (%d files) in %s", fsutil.FormatBytes(measuredBytes), measuredCount, basePath)
 
 		// Now actually delete everything
-		if err := osRemoveAll(basePath); err != nil {
-			log.Printf("[CacheCleaner] Error deleting %s: %v", basePath, err)
-			return measuredCount, measuredBytes, err
+		if err := moveToTrash(basePath); err != nil {
+			log.Printf("[CacheCleaner] Fallback to permanent delete for %s: %v", basePath, err)
+			_ = osRemoveAll(basePath)
 		}
 		// Recreate the base directory
 		if err := os.MkdirAll(basePath, 0755); err != nil {
@@ -534,10 +582,11 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 			continue
 		}
 
-		// Delete the file/directory recursively
-		if err := osRemoveAll(fullPath); err != nil {
-			// Try trash as fallback for single files
-			_ = moveToTrash(fullPath)
+		// Delete the file/directory recursively using trash API by default
+		if err := moveToTrash(fullPath); err != nil {
+			// Fallback to permanent delete if trash fails
+			log.Printf("[CacheCleaner] Fallback to permanent delete for %s: %v", fullPath, err)
+			_ = osRemoveAll(fullPath)
 		}
 
 		deleted++
@@ -548,9 +597,14 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 	return deleted, freedBytes, nil
 }
 
+func getCleanCompleteSummary(cleanedCount int, cleanedBytes int64) (string, string) {
+	message := fmt.Sprintf("Cleaned %d cache locations", cleanedCount)
+	subMessage := fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(cleanedBytes))
+	return message, subMessage
+}
+
 func showCacheCleanComplete(state *CacheCleanerState) {
-	message := fmt.Sprintf("Cleaned %d cache locations", state.CleanedCount)
-	subMessage := fmt.Sprintf("Freed %s of disk space", fsutil.FormatBytes(state.CleanedBytes))
+	message, subMessage := getCleanCompleteSummary(state.CleanedCount, state.CleanedBytes)
 
 	backBtn := widget.NewButtonWithIcon("Scan Again", theme.ViewRefreshIcon(), func() {
 		state.updateContent(CacheCleanerWidget(state))
@@ -567,12 +621,16 @@ func showCacheCleanComplete(state *CacheCleanerState) {
 	))
 }
 
-// NewCacheCleanerState creates a new cache cleaner state
-func NewCacheCleanerState(window fyne.Window, pm *ProcessManager) *CacheCleanerState {
+// NewCacheCleanerState creates a new cache cleaner state.
+// If concurrency is 0, it defaults to 4.
+func NewCacheCleanerState(window fyne.Window, pm *ProcessManager, concurrency int) *CacheCleanerState {
+	if concurrency == 0 {
+		concurrency = 4
+	}
 	return &CacheCleanerState{
 		Window:          window,
 		ProcessManager:  pm,
 		SelectedTargets: make(map[string]bool),
-		Concurrency:     4, // default
+		Concurrency:     concurrency,
 	}
 }

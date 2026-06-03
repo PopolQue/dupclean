@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // CLIOptions configures the CLI renderer.
@@ -67,6 +67,16 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 	fmt.Println()
 
 	// Stage 2: Review and select
+	shouldProceed := runReviewStage(reader, result)
+	if !shouldProceed {
+		return
+	}
+
+	// Stage 3: Confirm and delete
+	runConfirmStage(reader, result, opts)
+}
+
+func runReviewStage(reader *bufio.Reader, result *ScanResult) bool {
 	fmt.Println("Select targets to clean. [space] toggle  [a] all  [n] none  [enter] confirm  [q] quit")
 	fmt.Println()
 
@@ -87,10 +97,10 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 
 		switch input {
 		case "", "enter":
-			goto stage3
+			return true
 		case "q", "quit":
 			fmt.Println("\nCancelled.")
-			return
+			return false
 		case "a":
 			selectTargets(result, true, false) // select safe/low only
 		case "A":
@@ -104,9 +114,9 @@ func RenderCLI(result *ScanResult, opts CLIOptions) {
 			}
 		}
 	}
+}
 
-stage3:
-	// Stage 3: Confirm and delete
+func runConfirmStage(reader *bufio.Reader, result *ScanResult, opts CLIOptions) {
 	selected := getSelectedTargets(result)
 	totalSize := getTotalSize(selected)
 

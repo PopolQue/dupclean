@@ -3,7 +3,7 @@ package gui
 import (
 	"testing"
 
-	"dupclean/internal/version"
+	"github.com/PopolQue/dupclean/internal/version"
 
 	"fyne.io/fyne/v2/test"
 )

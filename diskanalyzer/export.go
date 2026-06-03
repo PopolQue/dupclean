@@ -13,11 +13,6 @@ func ExportJSON(result *AnalysisResult, w io.Writer) error {
 	return enc.Encode(result)
 }
 
-// ExportJSONPretty writes the AnalysisResult as indented JSON.
-func ExportJSONPretty(result *AnalysisResult, w io.Writer) error {
-	return ExportJSON(result, w)
-}
-
 // ExportJSONCompact writes the AnalysisResult as compact JSON (no indentation).
 func ExportJSONCompact(result *AnalysisResult, w io.Writer) error {
 	enc := json.NewEncoder(w)

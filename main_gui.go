@@ -7,8 +7,8 @@ package main
 import (
 	"fmt"
 
-	"dupclean/cmd"
-	"dupclean/gui"
+	"github.com/PopolQue/dupclean/cmd"
+	"github.com/PopolQue/dupclean/gui"
 )
 
 func main() {

@@ -5,7 +5,7 @@
 package main
 
 import (
-	"dupclean/cmd"
+	"github.com/PopolQue/dupclean/cmd"
 )
 
 func main() {

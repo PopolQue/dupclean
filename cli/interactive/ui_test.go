@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"dupclean/internal/fsutil"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/scanner"
 )
 
 func TestFormatBytes(t *testing.T) {

@@ -12,9 +12,9 @@ import (
 )
 
 // detectDuplicatesEngine is the shared 4-stage duplicate detection logic
-func detectDuplicatesEngine(root string, opts Options, filter func(path string, info fs.FileInfo) bool) ([]DuplicateGroup, ScanStats, error) {
+func detectDuplicatesEngine(root string, opts Options, mode string, filter func(path string, info fs.FileInfo) bool) ([]DuplicateGroup, ScanStats, error) {
 	start := time.Now()
-	stats := ScanStats{}
+	stats := ScanStats{Mode: mode}
 
 	ctx := opts.Context
 	if ctx == nil {
@@ -136,7 +136,9 @@ func detectDuplicatesEngine(root string, opts Options, filter func(path string, 
 				Similarity: 100,
 			})
 			stats.TotalDupes += len(verifiedFiles) - 1
-			stats.WastedBytes += verifiedFiles[0].Size * int64(len(verifiedFiles)-1)
+			for i := 1; i < len(verifiedFiles); i++ {
+				stats.WastedBytes += verifiedFiles[i].Size
+			}
 		}
 	}
 
@@ -180,15 +182,20 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 		}()
 	}
 
-	for _, p := range allPaths {
-		jobs <- hashJob{path: p}
-	}
-	close(jobs)
-
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
+
+	for _, p := range allPaths {
+		select {
+		case <-ctx.Done():
+			close(jobs)
+			return make(map[string][]string)
+		case jobs <- hashJob{path: p}:
+		}
+	}
+	close(jobs)
 
 	outputGroups := make(map[string][]string)
 	count := 0

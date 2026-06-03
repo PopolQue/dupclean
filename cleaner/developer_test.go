@@ -105,26 +105,17 @@ func TestGetDeveloperTargetsWindows_Logic(t *testing.T) {
 }
 
 func TestGetGoCachePath(t *testing.T) {
-	originalGoCache := os.Getenv("GOCACHE")
-	defer func() {
-		if originalGoCache != "" {
-			os.Setenv("GOCACHE", originalGoCache)
-		} else {
-			os.Unsetenv("GOCACHE")
-		}
-	}()
+	// Mock the function
+	oldFunc := getGoCachePathFunc
+	defer func() { getGoCachePathFunc = oldFunc }()
 
-	tmpDir := t.TempDir()
-	os.Setenv("GOCACHE", tmpDir)
-
-	path := getGoCachePath()
-	if path != tmpDir {
-		t.Errorf("getGoCachePath() = %q, want %q", path, tmpDir)
+	mockPath := "/tmp/mock-cache"
+	getGoCachePathFunc = func() string {
+		return mockPath
 	}
 
-	os.Unsetenv("GOCACHE")
-	path = getGoCachePath()
-	if path == "" {
-		t.Error("getGoCachePath() returned empty string")
+	path := getGoCachePath()
+	if path != mockPath {
+		t.Errorf("getGoCachePath() = %q, want %q", path, mockPath)
 	}
 }

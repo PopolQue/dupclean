@@ -2,7 +2,8 @@
 
 ## Audio & Byte Mode (4-Stage Algorithm)
 
-1. **Size Pre-Filter** — Groups files by size (instant, skips 99% of non-duplicates)
+1. **Size Pre-Filter** — Groups files by size (instant, skips 99% of
+   non-duplicates)
 2. **Partial Hash** — Hashes first 8KB of potential matches (very fast)
 3. **Full SHA-256 Hash** — Hashes entire file content for exact matches
 4. **Byte Comparison** — Final verification to guarantee 100% accuracy
@@ -24,10 +25,10 @@ Up to **100x faster** than naive hashing because
 
 ### What it catches
 
-| | Yes | No |
-| - | - | -- |
-| Resized images | x | |
-| Re-encoded at different quality | x | |
-| Slight color adjustments | x | |
-| Cropped versions | x | |
-| Heavily edited or composite images | | x |
+|                                    | Yes | No  |
+| ---------------------------------- | --- | --- |
+| Resized images                     | x   |     |
+| Re-encoded at different quality    | x   |     |
+| Slight color adjustments           | x   |     |
+| Cropped versions                   | x   |     |
+| Heavily edited or composite images |     | x   |

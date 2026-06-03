@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"dupclean/internal/trash"
+	"github.com/PopolQue/dupclean/internal/trash"
 )
 
 func TestGetBrowserTargetsLinux(t *testing.T) {

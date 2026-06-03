@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"dupclean/internal/fsutil"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/scanner"
 )
 
 // TestAppState initialization
@@ -243,6 +243,10 @@ func TestKeepAndDelete_SingleFile(t *testing.T) {
 
 // Test keepAndDelete with multiple files keeping last
 func TestKeepAndDelete_KeepLastFile(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	tmpDir := t.TempDir()
 	file1 := filepath.Join(tmpDir, "file1.wav")
 	file2 := filepath.Join(tmpDir, "file2.wav")
@@ -285,6 +289,10 @@ func TestKeepAndDelete_KeepLastFile(t *testing.T) {
 
 // Test keepAndDelete removes group from list
 func TestKeepAndDelete_RemovesGroup(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	state := &AppState{
 		DeletedCount:      0,
 		FreedBytes:        0,

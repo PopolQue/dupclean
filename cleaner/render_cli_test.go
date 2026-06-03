@@ -3,7 +3,7 @@ package cleaner
 import (
 	"testing"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 func TestRenderCLI(t *testing.T) {

@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/PopolQue/dupclean/cleaner"
+	"fyne.io/fyne/v2/widget"
 )
 
 func TestIsProtectedPath(t *testing.T) {
@@ -81,6 +84,10 @@ func TestCleanPath_NonExistent(t *testing.T) {
 }
 
 func TestCleanPath_StarPattern(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	tmpDir := t.TempDir()
 
 	// Create test files
@@ -104,6 +111,10 @@ func TestCleanPath_StarPattern(t *testing.T) {
 }
 
 func TestCleanPath_SpecificPattern(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	tmpDir := t.TempDir()
 
 	// Create test files with different extensions
@@ -149,32 +160,209 @@ func TestCleanPath_EmptyPatterns(t *testing.T) {
 	}
 }
 
-func TestCacheCleanerState_Struct(t *testing.T) {
+func TestPerformCacheScan_Logic(t *testing.T) {
+	// Create a minimal state
 	state := &CacheCleanerState{
-		SelectedTargets: make(map[string]bool),
+		MinAgeStr:   "1h",
+		Concurrency: 1,
 	}
 
-	if state.SelectedTargets == nil {
-		t.Error("CacheCleanerState.SelectedTargets should be initialized")
+	result, err := performCacheScan(state)
+	if err != nil {
+		t.Fatalf("performCacheScan() error = %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("performCacheScan() returned nil result")
 	}
 }
 
-func TestCacheCleanerState_UpdateContent(t *testing.T) {
-	// This test would require a full GUI setup, so we just verify the method exists
-	// and doesn't panic with nil ContentContainer
-	state := &CacheCleanerState{
-		ContentContainer: nil, // nil should be handled gracefully
+func TestUpdateStateAfterScan(t *testing.T) {
+	state := &CacheCleanerState{}
+	result := &cleaner.ScanResult{
+		Targets: []*cleaner.CleanTarget{
+			{ID: "safe", TotalSize: 100, Risk: cleaner.RiskSafe},
+			{ID: "risky", TotalSize: 100, Risk: cleaner.RiskHigh},
+		},
+		TotalSize: 200,
 	}
 
-	// Should not panic
-	state.updateContent(nil)
+	updateStateAfterScan(state, result)
+
+	if state.TotalSize != 200 {
+		t.Errorf("TotalSize = %d, want 200", state.TotalSize)
+	}
+	if !state.SelectedTargets["safe"] {
+		t.Error("Target 'safe' should be selected")
+	}
+	if state.SelectedTargets["risky"] {
+		t.Error("Target 'risky' should not be selected")
+	}
+}
+
+func TestGroupTargetsByCategory(t *testing.T) {
+	targets := []*cleaner.CleanTarget{
+		{ID: "1", Category: "Browser", TotalSize: 100},
+		{ID: "2", Category: "System", TotalSize: 200},
+		{ID: "3", Category: "Browser", TotalSize: 0}, // Should be filtered
+	}
+
+	grouped := groupTargetsByCategory(targets)
+	if len(grouped) != 2 {
+		t.Errorf("groupTargetsByCategory() length = %d, want 2", len(grouped))
+	}
+	if len(grouped["Browser"]) != 1 {
+		t.Errorf("groupTargetsByCategory() Browser length = %d, want 1", len(grouped["Browser"]))
+	}
+}
+
+func TestGetSortedCategoryNames(t *testing.T) {
+	categories := map[string][]*cleaner.CleanTarget{
+		"System":  {},
+		"Browser": {},
+		"App":     {},
+	}
+
+	names := getSortedCategoryNames(categories)
+	expected := []string{"App", "Browser", "System"}
+	for i, name := range names {
+		if name != expected[i] {
+			t.Errorf("getSortedCategoryNames() at %d = %s, want %s", i, name, expected[i])
+		}
+	}
+}
+
+func TestGetRiskInfo(t *testing.T) {
+	tests := []struct {
+		risk           cleaner.Risk
+		expectedText   string
+		expectedImport widget.Importance
+	}{
+		{cleaner.RiskModerate, "Moderate", widget.WarningImportance},
+		{cleaner.RiskHigh, "High Risk", widget.DangerImportance},
+		{cleaner.RiskSafe, "Safe", widget.SuccessImportance},
+	}
+
+	for _, tc := range tests {
+		text, importance, _ := getRiskInfo(tc.risk)
+		if text != tc.expectedText {
+			t.Errorf("getRiskInfo(%v) text = %s, want %s", tc.risk, text, tc.expectedText)
+		}
+		if importance != tc.expectedImport {
+			t.Errorf("getRiskInfo(%v) importance = %v, want %v", tc.risk, importance, tc.expectedImport)
+		}
+	}
+}
+
+func TestToggleTargetSelection(t *testing.T) {
+	state := &CacheCleanerState{
+		Targets: []*cleaner.CleanTarget{
+			{ID: "1", TotalSize: 100},
+		},
+		SelectedTargets: map[string]bool{"1": false},
+	}
+	// Using dummy widgets as the logic doesn't actually depend on their state,
+	// only on the callbacks they trigger which we are mocking by calling the function directly.
+	toggleTargetSelection(state, "1", true, widget.NewLabel(""), widget.NewButton("", nil))
+
+	if !state.SelectedTargets["1"] {
+		t.Error("toggleTargetSelection() should set SelectedTargets['1'] to true")
+	}
+}
+
+func TestCalculateSelectedSize(t *testing.T) {
+	state := &CacheCleanerState{
+		Targets: []*cleaner.CleanTarget{
+			{ID: "1", TotalSize: 100},
+			{ID: "2", TotalSize: 200},
+			{ID: "3", TotalSize: 300},
+		},
+		SelectedTargets: map[string]bool{
+			"1": true,
+			"3": true,
+		},
+	}
+
+	size := calculateSelectedSize(state)
+	if size != 400 {
+		t.Errorf("calculateSelectedSize() = %d, want 400", size)
+	}
+}
+
+func TestGetSelectedTargets(t *testing.T) {
+	state := &CacheCleanerState{
+		Targets: []*cleaner.CleanTarget{
+			{ID: "1", TotalSize: 100},
+			{ID: "2", TotalSize: 200},
+			{ID: "3", TotalSize: 300},
+		},
+		SelectedTargets: map[string]bool{
+			"1": true,
+			"3": true,
+		},
+	}
+
+	targets, size := getSelectedTargets(state)
+	if size != 400 {
+		t.Errorf("getSelectedTargets() size = %d, want 400", size)
+	}
+	if len(targets) != 2 {
+		t.Errorf("getSelectedTargets() length = %d, want 2", len(targets))
+	}
+}
+
+func TestPerformCacheClean_Logic(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test files
+	writeFile(t, tmpDir, "file1.tmp", "content1")
+	writeFile(t, tmpDir, "file2.tmp", "content2")
+
+	targets := []*cleaner.CleanTarget{
+		{
+			Label:    "Test Target",
+			Paths:    []string{tmpDir},
+			Patterns: []string{"*.tmp"},
+		},
+	}
+
+	progressCalled := false
+	cleaned, cleanedBytes := performCacheClean(targets, func(progress float64, currentLabel string) {
+		progressCalled = true
+	})
+
+	if cleaned == 0 {
+		t.Error("performCacheClean() expected > 0 files cleaned")
+	}
+	if cleanedBytes == 0 {
+		t.Error("performCacheClean() expected > 0 bytes cleaned")
+	}
+	if !progressCalled {
+		t.Error("performCacheClean() expected progress callback to be called")
+	}
+}
+
+func TestGetCleanCompleteSummary(t *testing.T) {
+	message, subMessage := getCleanCompleteSummary(5, 1024*1024)
+	if message != "Cleaned 5 cache locations" {
+		t.Errorf("Unexpected message: %s", message)
+	}
+	if subMessage != "Freed 1.0 MB of disk space" {
+		t.Errorf("Unexpected subMessage: %s", subMessage)
+	}
 }
 
 func TestNewCacheCleanerState(t *testing.T) {
-	// We can't create a real fyne.Window in tests, so we just verify
-	// the function exists and the state is properly initialized
-	state := &CacheCleanerState{
-		SelectedTargets: make(map[string]bool),
+	// Test default concurrency
+	state := NewCacheCleanerState(nil, nil, 0)
+	if state.Concurrency != 4 {
+		t.Errorf("NewCacheCleanerState default concurrency = %d, want 4", state.Concurrency)
+	}
+
+	// Test custom concurrency
+	state2 := NewCacheCleanerState(nil, nil, 8)
+	if state2.Concurrency != 8 {
+		t.Errorf("NewCacheCleanerState custom concurrency = %d, want 8", state2.Concurrency)
 	}
 
 	if state.SelectedTargets == nil {

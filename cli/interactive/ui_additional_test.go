@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"dupclean/internal/fsutil"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/scanner"
 )
 
 // Test formatBytes additional edge cases not covered elsewhere

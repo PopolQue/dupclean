@@ -208,6 +208,11 @@ func isFileInUse(err error) bool {
 		return true
 	}
 
+	// Check for "busy"
+	if errors.Is(err, syscall.EBUSY) {
+		return true
+	}
+
 	// Platform-specific checks via error codes
 	if goos == "windows" {
 		var errno syscall.Errno

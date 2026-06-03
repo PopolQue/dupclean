@@ -78,7 +78,7 @@ func validatePath(path string) error {
 func moveToTrashMacOS(path string) error {
 	// Try using the `trash` CLI tool first (brew install trash)
 	if _, err := execLookPath("trash"); err == nil {
-		return execCommand("trash", path).Run()
+		return execCommand("trash", "--", path).Run()
 	}
 
 	// Fall back to AppleScript with proper escaping
@@ -91,12 +91,12 @@ func moveToTrashMacOS(path string) error {
 func moveToTrashLinux(path string) error {
 	// Try using gio (GNOME)
 	if _, err := execLookPath("gio"); err == nil {
-		return execCommand("gio", "trash", path).Run()
+		return execCommand("gio", "trash", "--", path).Run()
 	}
 
 	// Try using trash-cli
 	if _, err := execLookPath("trash"); err == nil {
-		return execCommand("trash", path).Run()
+		return execCommand("trash", "--", path).Run()
 	}
 
 	// Fallback to manual move with TOCTOU-safe implementation
@@ -177,7 +177,7 @@ func safeMoveToTrashDir(path, trashDir string) error {
 		}
 	}
 
-	return os.RemoveAll(path)
+	return fmt.Errorf("failed to move to trash: too many collisions in %s", trashDir)
 }
 
 // escapeAppleScriptString escapes special characters for AppleScript strings.
@@ -185,5 +185,8 @@ func escapeAppleScriptString(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "\"", "\\\"")
 	s = strings.ReplaceAll(s, "'", "\\'")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	s = strings.ReplaceAll(s, "\x00", "")
 	return s
 }

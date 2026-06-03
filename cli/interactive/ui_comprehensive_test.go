@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"dupclean/internal/fsutil"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/scanner"
 )
 
 // captureOutput captures output from a function using the package-level stdout

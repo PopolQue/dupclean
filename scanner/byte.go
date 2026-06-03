@@ -12,5 +12,5 @@ func NewByteScanner() *ByteScanner {
 // Scan implements the Scanner interface for general file duplicate detection
 func (s *ByteScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
 	// ByteScanner uses the generic engine without additional filters
-	return detectDuplicatesEngine(root, opts, nil)
+	return detectDuplicatesEngine(root, opts, "byte", nil)
 }

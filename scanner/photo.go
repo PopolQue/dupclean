@@ -7,7 +7,6 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -170,10 +169,13 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	for _, group := range groups {
 		if len(group.Files) >= 2 {
 			stats.TotalDupes += len(group.Files) - 1
-			stats.WastedBytes += group.Files[0].Size * int64(len(group.Files)-1)
+			for i := 1; i < len(group.Files); i++ {
+				stats.WastedBytes += group.Files[i].Size
+			}
 		}
 	}
 
+	stats.Mode = "photo"
 	stats.ScanDuration = time.Since(startTime)
 	return groups, stats, nil
 }
@@ -191,24 +193,16 @@ func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, er
 		return nil, nil, err
 	}
 
-	// Check dimensions before full decode to prevent OOM
-	cfg, _, err := image.DecodeConfig(f)
-	if err != nil {
-		return nil, nil, err
-	}
-	if cfg.Width > 20000 || cfg.Height > 20000 {
-		return nil, nil, fmt.Errorf("image dimensions too large: %dx%d", cfg.Width, cfg.Height)
-	}
-
-	// Seek back to start of file to fully decode
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return nil, nil, err
-	}
-
 	// Decode image (supports all formats registered via side-effect imports)
 	img, _, err := image.Decode(f)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Check dimensions after decode to prevent OOM
+	bounds := img.Bounds()
+	if bounds.Dx() > 20000 || bounds.Dy() > 20000 {
+		return nil, nil, fmt.Errorf("image dimensions too large: %dx%d", bounds.Dx(), bounds.Dy())
 	}
 
 	// Compute perceptual hash

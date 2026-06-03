@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"dupclean/internal/fsutil"
-	"dupclean/internal/trash"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/trash"
+	"github.com/PopolQue/dupclean/scanner"
 )
 
 var (
@@ -61,9 +61,13 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 	for i, group := range groups {
 		_, _ = fmt.Fprintf(stdout, "\n%s%s", colorCyan, strings.Repeat("─", 70))
 		_, _ = fmt.Fprintf(stdout, "%s\n", colorReset)
-		_, _ = fmt.Fprintf(stdout, "%s Group %d of %d%s%s • identical audio content • %s%s each%s\n",
+		modeLabel := stats.Mode
+		if modeLabel == "" {
+			modeLabel = "duplicate"
+		}
+		_, _ = fmt.Fprintf(stdout, "%s Group %d of %d%s%s • %s content • %s%s each%s\n",
 			colorBold+colorWhite, i+1, len(groups), colorReset,
-			colorGray, colorDim, fsutil.FormatBytes(group.Files[0].Size), colorReset)
+			colorGray, modeLabel, colorDim, fsutil.FormatBytes(group.Files[0].Size), colorReset)
 		_, _ = fmt.Fprintf(stdout, "%s%s%s\n", colorCyan, strings.Repeat("─", 70), colorReset)
 
 		// Sort files: prefer files higher in the directory tree (shorter path)
@@ -92,7 +96,11 @@ func Run(groups []scanner.DuplicateGroup, stats scanner.ScanStats) {
 		_, _ = fmt.Fprintf(stdout, " %s[q]%s Quit\n", colorYellow, colorReset)
 		_, _ = fmt.Fprintf(stdout, "\n %s>%s ", colorCyan, colorReset)
 
-		input, _ := reader.ReadString('\n')
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			_, _ = fmt.Fprintf(stdout, " %s Read error: %v%s\n", colorYellow, err, colorReset)
+			continue
+		}
 		input = strings.TrimSpace(strings.ToLower(input))
 
 		switch input {

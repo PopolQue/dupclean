@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // CLIOptions configures the CLI renderer output.

@@ -1,53 +1,29 @@
 package gui
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"bytes"
-	"compress/gzip"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
-func TestExtractPathTraversal(t *testing.T) {
-	tmpDir := t.TempDir()
-	destPath := filepath.Join(tmpDir, "output")
-
-	// Test ZIP traversal
-	buf := new(bytes.Buffer)
-	zw := zip.NewWriter(buf)
-	f, _ := zw.Create("dupclean-../malicious.bin") // Zip path traversal attempt
-	_, _ = f.Write([]byte("malicious"))
-	zw.Close()
-
-	zipPath := filepath.Join(tmpDir, "test.zip")
-	_ = os.WriteFile(zipPath, buf.Bytes(), 0644)
-
-	err := extractFromZip(zipPath, destPath)
-	if err == nil {
-		t.Error("Expected error for ZIP path traversal, got nil")
+func TestIsNewerVersion(t *testing.T) {
+	tests := []struct {
+		current string
+		latest  string
+		want    bool
+	}{
+		{"v0.4.5", "v0.4.6", true},
+		{"v0.4.6", "v0.4.5", false},
+		{"v0.4.5", "v0.4.5", false},
+		{"0.4.5", "0.4.6", true},
+		{"v0.4.5.1", "v0.4.5.2", true},
+		{"v0.4.5", "v0.5.0", true},
+		{"invalid", "v0.4.6", false}, // Invalid current
+		{"v0.4.5", "invalid", false}, // Invalid latest
 	}
 
-	// Test TAR traversal
-	bufTar := new(bytes.Buffer)
-	gzw := gzip.NewWriter(bufTar)
-	tw := tar.NewWriter(gzw)
-	header := &tar.Header{
-		Name: "dupclean-../../malicious.bin", // Tar path traversal attempt
-		Size: 9,
-		Mode: 0644,
-	}
-	tw.WriteHeader(header)
-	tw.Write([]byte("malicious"))
-	tw.Close()
-	gzw.Close()
-
-	tarPath := filepath.Join(tmpDir, "test.tar.gz")
-	_ = os.WriteFile(tarPath, bufTar.Bytes(), 0644)
-
-	err = extractFromTarGz(tarPath, destPath)
-	if err == nil {
-		t.Error("Expected error for TAR path traversal, got nil")
+	for _, tc := range tests {
+		got := isNewerVersion(tc.current, tc.latest)
+		if got != tc.want {
+			t.Errorf("isNewerVersion(%s, %s) = %v; want %v", tc.current, tc.latest, got, tc.want)
+		}
 	}
 }

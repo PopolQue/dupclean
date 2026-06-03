@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // TestSymlinkDetection_ByteScanner tests that symlinks are skipped

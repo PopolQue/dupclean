@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 // GetDeveloperTargets returns developer tool cache targets.
@@ -161,12 +162,16 @@ func getDeveloperTargetsWindows() []*CleanTarget {
 	return targets
 }
 
-// getGoCachePath returns the Go cache directory by running `go env GOCACHE`.
-func getGoCachePath() string {
+var getGoCachePathFunc = sync.OnceValue(func() string {
 	cmd := exec.Command("go", "env", "GOCACHE")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(string(output))
+})
+
+// getGoCachePath returns the Go cache directory.
+func getGoCachePath() string {
+	return getGoCachePathFunc()
 }

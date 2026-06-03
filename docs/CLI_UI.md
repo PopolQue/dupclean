@@ -1,6 +1,7 @@
 # CLI Interactive UI
 
-When scanning for duplicates in CLI mode, DupClean provides an interactive interface to review and manage duplicate groups.
+When scanning for duplicates in CLI mode, DupClean provides an interactive
+interface to review and manage duplicate groups.
 
 ## Interaction
 
@@ -13,7 +14,7 @@ For each duplicate group, you will see all copies with their:
 
 Then choose which copy to **keep** (others go to Trash), or **skip** the group.
 
-``` CLI
+```CLI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Group 1 of 4  (identical audio content)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -34,9 +35,9 @@ Then choose which copy to **keep** (others go to Trash), or **skip** the group.
 
 ## Controls
 
-| Input | Action |
-| ----- | ------ |
+| Input         | Action                         |
+| ------------- | ------------------------------ |
 | `1`, `2`, ... | Keep that file, trash the rest |
-| `s` or Enter | Skip this group |
-| `a` | Skip all remaining groups |
-| `q` | Quit |
+| `s` or Enter  | Skip this group                |
+| `a`           | Skip all remaining groups      |
+| `q`           | Quit                           |

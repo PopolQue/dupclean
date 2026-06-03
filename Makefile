@@ -41,9 +41,16 @@ lint:
 fmt:
 	go fmt ./...
 	goimports -w -local dupclean .
+	npx prettier --write "**/*.md"
+
+fmt-md:
+	npx prettier --write "**/*.md"
+
+lint-md:
+	npx markdownlint-cli "**/*.md" --ignore node_modules
 
 vet:
-	go vet -shadow ./...
+	go vet ./...
 
 clean:
 	rm -f $(BINARY)

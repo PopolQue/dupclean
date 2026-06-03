@@ -1,7 +1,7 @@
 package diskanalyzer
 
 import (
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 	"testing"
 )
 

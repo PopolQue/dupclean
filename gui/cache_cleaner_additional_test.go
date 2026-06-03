@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"dupclean/cleaner"
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/cleaner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // Test CacheCleanerState initialization
@@ -291,6 +291,10 @@ func TestIsProtectedPath_CaseSensitivity(t *testing.T) {
 
 // Test cleanPath with valid path
 func TestCleanPath_ValidPath(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	tmpDir := t.TempDir()
 
 	// Create a test file
@@ -342,6 +346,10 @@ func TestCleanPath_NonExistentPath(t *testing.T) {
 
 // Test cleanPath with specific pattern
 func TestCleanPath_SpecificPatternMatch(t *testing.T) {
+	oldTrash := moveToTrash
+	moveToTrash = func(path string) error { return nil }
+	defer func() { moveToTrash = oldTrash }()
+
 	tmpDir := t.TempDir()
 
 	// Create test files

@@ -1,6 +1,7 @@
 # Contributing to DupClean
 
-Thank you for considering contributing to DupClean! Here are the guidelines to follow.
+Thank you for considering contributing to DupClean! Here are the guidelines to
+follow.
 
 ## Development Setup
 
@@ -65,6 +66,12 @@ make lint
 
 # Format code
 make fmt
+
+# Format markdown
+make fmt-md
+
+# Lint markdown
+make lint-md
 ```
 
 ### 4. Commit Your Changes
@@ -193,4 +200,5 @@ Include:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the
+MIT License.

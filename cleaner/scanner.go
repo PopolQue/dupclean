@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // ScanOptions configures how scanning is performed.

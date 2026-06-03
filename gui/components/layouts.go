@@ -16,7 +16,7 @@ func ToolPage(title, subtitle string, content fyne.CanvasObject) fyne.CanvasObje
 
 // ToolPageWithFooter wraps a content in a standard tool layout with a fixed header and footer
 func ToolPageWithFooter(title, subtitle string, content fyne.CanvasObject, footer fyne.CanvasObject) fyne.CanvasObject {
-	header := SectionHeader(title, subtitle)
+	header := SectionHeader(title, subtitle, false)
 
 	// Ensure content is scrolled if it's not already
 	scrolledContent := content
@@ -65,21 +65,7 @@ func VerticalDivider() fyne.CanvasObject {
 
 // FixedTabLayout creates a rigid four-block layout: Header/Subheader, Options, Action Row, and Log/Menu
 func FixedTabLayout(title, subheader string, options fyne.CanvasObject, actionBtn *widget.Button, progressBar *widget.ProgressBar, logMenu fyne.CanvasObject) fyne.CanvasObject {
-	// Block 1: Header | Subheader
-	titleLabel := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	titleLabel.SizeName = theme.SizeNameHeadingText
-
-	subLabel := widget.NewLabelWithStyle(subheader, fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
-
-	headerRow := container.NewHBox(
-		titleLabel,
-		layout.NewSpacer(),
-		VerticalDivider(),
-		layout.NewSpacer(),
-		subLabel,
-		layout.NewSpacer(),
-	)
-	headerBlock := container.NewVBox(headerRow, widget.NewSeparator())
+	headerBlock := SectionHeader(title, subheader, true)
 
 	// Block 2: OPTIONS (Scrollable)
 	optionsBlock := container.NewVScroll(options)

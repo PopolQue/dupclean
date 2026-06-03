@@ -61,7 +61,7 @@ func NewScanError(path string, errType ScanErrorType, err error) *ScanError {
 	}
 }
 
-// NewSkippedError creates a new ScanError marked as skipped
+// NewSkippedError creates a new skipped error.
 func NewSkippedError(path string, errType ScanErrorType, err error) *ScanError {
 	return &ScanError{
 		Path:    path,
@@ -69,52 +69,4 @@ func NewSkippedError(path string, errType ScanErrorType, err error) *ScanError {
 		Err:     err,
 		Skipped: true,
 	}
-}
-
-// IsFileReadError checks if the error is a file read error
-func (e *ScanError) IsFileReadError() bool {
-	return e.Type == ErrFileRead
-}
-
-// IsHashError checks if the error is a hash error
-func (e *ScanError) IsHashError() bool {
-	return e.Type == ErrFileHash
-}
-
-// IsAccessError checks if the error is an access error
-func (e *ScanError) IsAccessError() bool {
-	return e.Type == ErrFileAccess
-}
-
-// IsSkipped checks if the file was skipped due to this error
-func (e *ScanError) IsSkipped() bool {
-	return e.Skipped
-}
-
-// ScanResult holds the result of a scan operation including any errors
-type ScanResult struct {
-	Groups []DuplicateGroup
-	Stats  ScanStats
-	Errors []*ScanError
-}
-
-// HasErrors returns true if the scan result contains any errors
-func (r *ScanResult) HasErrors() bool {
-	return len(r.Errors) > 0
-}
-
-// ErrorCount returns the number of errors in the scan result
-func (r *ScanResult) ErrorCount() int {
-	return len(r.Errors)
-}
-
-// SkippedCount returns the number of files that were skipped
-func (r *ScanResult) SkippedCount() int {
-	count := 0
-	for _, err := range r.Errors {
-		if err.Skipped {
-			count++
-		}
-	}
-	return count
 }

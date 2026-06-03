@@ -38,6 +38,7 @@ type ScanStats struct {
 	WastedBytes  int64
 	ScanDuration time.Duration
 	Errors       []*ScanError // Errors encountered during scanning
+	Mode         string       // Scanner mode used (e.g., "audio", "byte", "photo")
 }
 
 // ScanProgress holds progress information during scanning

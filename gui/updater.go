@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"dupclean/gui/components"
-	"dupclean/internal/version"
+	"github.com/PopolQue/dupclean/gui/components"
+	"github.com/PopolQue/dupclean/internal/version"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -155,8 +155,12 @@ func isNewerVersion(current, latest string) bool {
 
 	for i := 0; i < len(currParts) && i < len(lateParts); i++ {
 		var c, l int
-		_, _ = fmt.Sscanf(currParts[i], "%d", &c)
-		_, _ = fmt.Sscanf(lateParts[i], "%d", &l)
+		if _, err := fmt.Sscanf(currParts[i], "%d", &c); err != nil {
+			return false
+		}
+		if _, err := fmt.Sscanf(lateParts[i], "%d", &l); err != nil {
+			return false
+		}
 
 		if l > c {
 			return true
@@ -416,7 +420,7 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 		// If it's a permission error on macOS/Linux, give better instructions
 		if strings.Contains(err.Error(), "permission denied") {
 			if runtime.GOOS == "darwin" && strings.HasPrefix(executable, "/Applications/") {
-				return fmt.Errorf("permission denied (try running: sudo xattr -rd com.apple.quarantine %s && brew install PopolQue/dupclean/dupclean)", executable)
+				return fmt.Errorf("permission denied (try running: sudo xattr -rd com.apple.quarantine %s && brew install PopolQue/github.com/PopolQue/dupclean/dupclean)", executable)
 			}
 			return fmt.Errorf("%v (you may need administrative privileges)", err)
 		}

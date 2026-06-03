@@ -116,36 +116,30 @@ func squarify(nodes []*DirNode, bounds Rect, totalSize int64) [][]LayoutNode {
 
 		if bounds.W >= bounds.H {
 			// Horizontal layout
-			width := bounds.H
-			_ = width // unused for now
-
 			for _, node := range row {
-				height := float64(node.Node.TotalSize) / float64(total) * width
+				height := float64(node.Node.TotalSize) / float64(total) * bounds.H
 				positioned = append(positioned, LayoutNode{
 					Node: node.Node,
 					Rect: Rect{
 						X: bounds.X + offset,
 						Y: bounds.Y,
 						W: height,
-						H: width,
+						H: bounds.H,
 					},
 				})
 				offset += height
 			}
 		} else {
 			// Vertical layout
-			height := bounds.W
-			_ = height // unused for now
-
 			for _, node := range row {
-				width := float64(node.Node.TotalSize) / float64(total) * height
+				width := float64(node.Node.TotalSize) / float64(total) * bounds.W
 				positioned = append(positioned, LayoutNode{
 					Node: node.Node,
 					Rect: Rect{
 						X: bounds.X,
 						Y: bounds.Y + offset,
-						W: width,
-						H: height,
+						W: bounds.W,
+						H: width,
 					},
 				})
 				offset += width

@@ -29,14 +29,14 @@ func NewAudioScanner() *AudioScanner {
 
 // Scan implements the Scanner interface for audio files
 func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanStats, error) {
-	return detectDuplicatesEngine(root, opts, func(path string, info os.FileInfo) bool {
+	return detectDuplicatesEngine(root, opts, "audio", func(path string, info os.FileInfo) bool {
 		ext := strings.ToLower(filepath.Ext(info.Name()))
 		return audioExtensions[ext]
 	})
 }
 
-// Legacy function for backwards compatibility
-// Deprecated: Use AudioScanner.Scan() or ByteScanner.Scan() instead
+// FindDuplicates is a legacy function for backwards compatibility.
+// Deprecated: Use AudioScanner.Scan() or ByteScanner.Scan() instead.
 func FindDuplicates(folder string, includeAll bool, onProgress func(ScanProgress), ignoreFolders []string, ignoreExtensions []string) ([]DuplicateGroup, ScanStats, error) {
 	var scanner Scanner
 	if includeAll {

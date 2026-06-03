@@ -43,6 +43,10 @@ func RunGUI() {
 		ProcessManager:    pm,
 		FolderPath:        "",
 		ScanAll:           false,
+		IncludeHidden:     false,
+		FollowSymlinks:    false,
+		SimilarityPct:     90,
+		Depth:             2,
 		IsScanning:        false,
 		ProgressText:      "Ready",
 		ProgressValue:     0,
@@ -53,7 +57,7 @@ func RunGUI() {
 		playerDone:        make(chan struct{}, 1), // Buffered to prevent goroutine leak
 	}
 
-	cacheState := NewCacheCleanerState(w, pm)
+	cacheState := NewCacheCleanerState(w, pm, 0)
 	diskState := NewDiskAnalyzerState(w, pm)
 
 	log.Println("RunGUI: creating main layout with sidebar...")

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // WalkFilter defines a custom filter function for the filesystem walk.
@@ -53,6 +53,7 @@ func walkFs(ctx context.Context, root string, opts Options, visitedInodes map[ui
 
 		info, err := d.Info()
 		if err != nil {
+			stats.Errors = append(stats.Errors, NewSkippedError(path, ErrFileAccess, err))
 			return nil
 		}
 

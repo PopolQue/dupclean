@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"dupclean/diskanalyzer"
+	"github.com/PopolQue/dupclean/diskanalyzer"
 
 	"github.com/spf13/cobra"
 )

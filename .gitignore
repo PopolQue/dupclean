@@ -6,7 +6,7 @@ dupclean.app
 dupclean
 .qwen/
 coverage.txt
-internaldocs/
+
 **/.vscode/
 internal/.DS_Store
 .vscode
@@ -15,3 +15,6 @@ internal/.DS_Store
 GEMINI.md
 dupclean_gui
 fyne/
+**/node_modules
+.prettierrc
+coverage.out

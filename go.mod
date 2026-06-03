@@ -1,4 +1,4 @@
-module dupclean
+module github.com/PopolQue/dupclean
 
 go 1.25.0
 

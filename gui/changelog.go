@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"dupclean/internal/version"
+	"github.com/PopolQue/dupclean/internal/version"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"

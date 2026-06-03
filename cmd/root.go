@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dupclean/cli/interactive"
-	"dupclean/internal/version"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/cli/interactive"
+	"github.com/PopolQue/dupclean/internal/version"
+	"github.com/PopolQue/dupclean/scanner"
 
 	"github.com/spf13/cobra"
 )
@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 			}
 			fmt.Println("Error: GUI mode is not available in this build.")
 			fmt.Println("Please download the full version with GUI from:")
-			fmt.Println("https://github.com/PopolQue/dupclean/releases")
+			fmt.Println("https://github.com/PopolQue/github.com/PopolQue/dupclean/releases")
 			os.Exit(1)
 		}
 
@@ -43,12 +43,14 @@ var rootCmd = &cobra.Command{
 				LaunchGUI()
 				return
 			}
-			_ = cmd.Help()
+			if err := cmd.Help(); err != nil {
+				fmt.Println(err)
+			}
 			return
 		}
 
 		folder := args[0]
-		runDuplicateFinder(folder)
+		runDuplicateFinder(cmd, folder)
 	},
 }
 
@@ -73,7 +75,7 @@ func init() {
 	rootCmd.SetVersionTemplate("DupClean {{.Version}}\n")
 }
 
-func runDuplicateFinder(folder string) {
+func runDuplicateFinder(cmd *cobra.Command, folder string) {
 	mode := modeFlag
 	if allFlag {
 		mode = "byte"
@@ -109,6 +111,7 @@ func runDuplicateFinder(folder string) {
 		IncludeHidden: false,
 		MinSize:       0,
 		SimilarityPct: similarity,
+		Context:       cmd.Context(),
 	}
 
 	groups, stats, err := sc.Scan(absPath, opts)

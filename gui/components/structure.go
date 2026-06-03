@@ -10,7 +10,7 @@ import (
 )
 
 // SectionHeader creates a consistent header for each tool section
-func SectionHeader(title, subtitle string) fyne.CanvasObject {
+func SectionHeader(title, subtitle string, horizontal bool) fyne.CanvasObject {
 	titleLabel := widget.NewLabel(title)
 	titleLabel.TextStyle = fyne.TextStyle{Bold: true}
 	titleLabel.Importance = widget.HighImportance
@@ -22,6 +22,18 @@ func SectionHeader(title, subtitle string) fyne.CanvasObject {
 	accent := canvas.NewRectangle(theme.Color(theme.ColorNamePrimary))
 	accent.SetMinSize(fyne.NewSize(4, 32))
 	accent.CornerRadius = 2
+
+	if horizontal {
+		return container.NewVBox(
+			container.NewHBox(
+				accent,
+				titleLabel,
+				layout.NewSpacer(),
+				subtitleLabel,
+			),
+			widget.NewSeparator(),
+		)
+	}
 
 	return container.NewVBox(
 		container.NewHBox(

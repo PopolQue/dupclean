@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 )
 
 // MemoryWarningThreshold is the number of entries at which we warn about memory usage
@@ -21,12 +21,12 @@ const MemoryWarningThreshold = 100000
 // WalkOptions configures how the filesystem walk is performed.
 type WalkOptions struct {
 	FollowSymlinks bool
-	IncludeHidden  bool     // default false — skip dot files/folders
-	MinSize        int64    // skip files smaller than this (bytes)
-	MaxDepth       int      // 0 = unlimited
-	ExcludePaths   []string // glob patterns, e.g. "node_modules", "*.git"
-	Concurrency    int      // worker pool size; 0 = runtime.NumCPU()
-	MaxEntries     int      // Maximum number of entries to collect (0 = unlimited, recommended: 100000)
+	IncludeHidden  bool            // default false — skip dot files/folders
+	MinSize        int64           // skip files smaller than this (bytes)
+	MaxDepth       int             // 0 = unlimited
+	ExcludePaths   []string        // glob patterns, e.g. "node_modules", "*.git"
+	Concurrency    int             // worker pool size; 0 = runtime.NumCPU()
+	MaxEntries     int             // Maximum number of entries to collect (0 = unlimited, recommended: 100000)
 	Context        context.Context // Context for cancellation
 }
 
@@ -234,10 +234,14 @@ func statPass(root string, opts WalkOptions) ([]FileEntry, []error, error) {
 			}
 
 			if !d.IsDir() {
-				paths <- path
+				select {
+				case <-opts.Context.Done():
+					return opts.Context.Err()
+				case paths <- path:
+				}
 			}
 			return nil
-		}); err != nil {
+		}); err != nil && err != opts.Context.Err() {
 			log.Printf("Error walking directory: %v", err)
 		}
 		close(paths)

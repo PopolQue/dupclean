@@ -8,34 +8,36 @@ import (
 	"path/filepath"
 	"sync"
 
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/scanner"
+	"github.com/PopolQue/dupclean/internal/trash"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 )
 
 // getLogFilePath returns a platform-appropriate path for the log file.
-func getLogFilePath() string {
+// It accepts a getEnv function and a pathSeparator to facilitate testing.
+func getLogFilePath(getEnv func(string) string, pathSeparator rune) string {
 	// Try TMPDIR environment variable (Unix, macOS)
-	if tmpDir := os.Getenv("TMPDIR"); tmpDir != "" {
+	if tmpDir := getEnv("TMPDIR"); tmpDir != "" {
 		return filepath.Join(tmpDir, "dupclean.log")
 	}
 
 	// Try TEMP environment variable (Windows)
-	if tempDir := os.Getenv("TEMP"); tempDir != "" {
+	if tempDir := getEnv("TEMP"); tempDir != "" {
 		return filepath.Join(tempDir, "dupclean.log")
 	}
 
 	// Try TMP environment variable (fallback)
-	if tmpDir := os.Getenv("TMP"); tmpDir != "" {
+	if tmpDir := getEnv("TMP"); tmpDir != "" {
 		return filepath.Join(tmpDir, "dupclean.log")
 	}
 
 	// Platform-specific defaults
-	switch filepath.Separator {
+	switch pathSeparator {
 	case '\\':
 		// Windows default
-		return filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local", "Temp", "dupclean.log")
+		return filepath.Join(getEnv("USERPROFILE"), "AppData", "Local", "Temp", "dupclean.log")
 	default:
 		// Unix-like default
 		return "/tmp/dupclean.log"
@@ -44,7 +46,7 @@ func getLogFilePath() string {
 
 // SetupLogging configures log output to a file and returns an error if setup fails.
 func SetupLogging() error {
-	logPath := getLogFilePath()
+	logPath := getLogFilePath(os.Getenv, filepath.Separator)
 
 	// Ensure directory exists
 	logDir := filepath.Dir(logPath)
@@ -69,6 +71,8 @@ type ProcessManager struct {
 	isAnyProcessRunning    bool
 	registeredStartButtons []*widget.Button
 }
+
+var moveToTrash = trash.MoveToTrash
 
 // NewProcessManager creates a new instance.
 func NewProcessManager() *ProcessManager {
@@ -109,6 +113,10 @@ type AppState struct {
 	ContentContainer   *fyne.Container // Reference to content area (preserves sidebar)
 	FolderPath         string
 	ScanAll            bool
+	IncludeHidden      bool
+	FollowSymlinks     bool
+	SimilarityPct      int
+	Depth              int
 	IsScanning         bool
 	ProgressText       string
 	ProgressValue      float64

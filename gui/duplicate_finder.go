@@ -10,11 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"dupclean/cleaner"
-	"dupclean/gui/components"
-	"dupclean/internal/fsutil"
-	"dupclean/internal/trash"
-	"dupclean/scanner"
+	"github.com/PopolQue/dupclean/cleaner"
+	"github.com/PopolQue/dupclean/gui/components"
+	"github.com/PopolQue/dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/scanner"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -25,14 +24,13 @@ import (
 )
 
 var (
-	moveToTrash    = trash.MoveToTrash
-	findDuplicates = scanner.FindDuplicates
 	goos           = runtime.GOOS
 	userHomeDir    = os.UserHomeDir
-	absPath        = filepath.Abs
-	pathSeparator  = string(filepath.Separator)
-	osRemoveAll    = os.RemoveAll
-	safeToDelete   = func(f scanner.FileInfo) (bool, error) {
+
+	absPath       = filepath.Abs
+	pathSeparator = string(filepath.Separator)
+	osRemoveAll   = os.RemoveAll
+	safeToDelete  = func(f scanner.FileInfo) (bool, error) {
 		info, err := os.Stat(f.Path)
 		if err != nil {
 			return false, err // file gone or inaccessible
@@ -66,35 +64,46 @@ func DuplicateFinderWidget(state *AppState, mode string) fyne.CanvasObject {
 
 	// Mode-specific options
 	var modeOptions *widget.Form
-	switch mode {
-	case "photo":
+	if mode == "photo" {
 		similaritySlider := widget.NewSlider(50, 100)
-		similaritySlider.SetValue(90)
-		similarityLabel := widget.NewLabel("90%")
+		similaritySlider.SetValue(float64(state.SimilarityPct))
+		similarityLabel := widget.NewLabel(fmt.Sprintf("%d%%", state.SimilarityPct))
 		similaritySlider.OnChanged = func(v float64) {
+			state.mu.Lock()
+			state.SimilarityPct = int(v)
+			state.mu.Unlock()
 			similarityLabel.SetText(fmt.Sprintf("%d%%", int(v)))
 		}
 		modeOptions = widget.NewForm(
 			widget.NewFormItem("Similarity", container.NewBorder(nil, nil, nil, similarityLabel, similaritySlider)),
 		)
-	case "audio":
-		modeOptions = widget.NewForm(
-			widget.NewFormItem("Depth", widget.NewSelect([]string{"Fast", "Deep", "Exhaustive"}, func(s string) {})),
-		)
-	default:
-		modeOptions = widget.NewForm(
-			widget.NewFormItem("Method", widget.NewSelect([]string{"MD5", "SHA256", "XXHash"}, func(s string) {})),
-		)
 	}
 
 	// Scan settings
-	scanHiddenCheck := widget.NewCheck("Scan hidden files", func(b bool) {})
-	followSymlinksCheck := widget.NewCheck("Follow symlinks", func(b bool) {})
+	scanHiddenCheck := widget.NewCheck("Scan hidden files", func(b bool) {
+		state.mu.Lock()
+		state.IncludeHidden = b
+		state.mu.Unlock()
+	})
+	scanHiddenCheck.SetChecked(state.IncludeHidden)
+
+	followSymlinksCheck := widget.NewCheck("Follow symlinks", func(b bool) {
+		state.mu.Lock()
+		state.FollowSymlinks = b
+		state.mu.Unlock()
+	})
+	followSymlinksCheck.SetChecked(state.FollowSymlinks)
+
 	scanSettings := container.NewHBox(scanHiddenCheck, followSymlinksCheck)
 
+	var scanSettingsOptions []fyne.CanvasObject
+	if modeOptions != nil {
+		scanSettingsOptions = append(scanSettingsOptions, modeOptions)
+	}
+	scanSettingsOptions = append(scanSettingsOptions, scanSettings)
+
 	optionsCard := widget.NewCard("Scan Settings", "Configure how we identify duplicates", container.NewVBox(
-		modeOptions,
-		scanSettings,
+		scanSettingsOptions...,
 	))
 
 	ignoreCard := createOptionsCard(state) // Existing ignore rules card
@@ -337,12 +346,28 @@ func startScan(state *AppState) {
 
 		state.mu.RLock()
 		folderPath := state.FolderPath
-		scanAll := state.ScanAll
 		ignoreFolders := state.IgnoreFolders
 		ignoreExtensions := state.IgnoreExtensions
 		state.mu.RUnlock()
 
-		groups, stats, err := findDuplicates(folderPath, scanAll, progressCallback, ignoreFolders, ignoreExtensions)
+		// Get scanner based on mode
+		mode := state.CurrentMode
+		sc, ok := scanner.GetScanner(mode)
+		if !ok {
+			log.Printf("[startScan] Unknown mode: %s", mode)
+			return
+		}
+
+		opts := scanner.Options{
+			IncludeHidden:    state.IncludeHidden,
+			MinSize:          0,
+			SimilarityPct:    state.SimilarityPct,
+			IgnoreFolders:    ignoreFolders,
+			IgnoreExtensions: ignoreExtensions,
+			OnProgress:       progressCallback,
+		}
+
+		groups, stats, err := sc.Scan(folderPath, opts)
 		if err != nil {
 			state.mu.Lock()
 			state.IsScanning = false
@@ -400,19 +425,35 @@ func verifyDeletionSafety(path string) error {
 	if path == "" {
 		return fmt.Errorf("empty path")
 	}
+
 	abs, err := absPath(path)
 	if err != nil {
 		return err
 	}
+	abs = filepath.Clean(abs)
 
-	// Don't allow deleting root or home directory
-	if abs == "/" || abs == `\` {
+	// Don't allow deleting root directory
+	if abs == "/" || abs == `\` || abs == `C:\` || abs == `c:\` {
 		return fmt.Errorf("cannot delete root directory")
 	}
 
+	// Don't allow deleting home directory
 	home, err := userHomeDir()
-	if err == nil && abs == home {
+	if err == nil && abs == filepath.Clean(home) {
 		return fmt.Errorf("cannot delete home directory")
+	}
+
+	// Block protected system paths
+	protectedPaths := []string{
+		"/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64",
+		"/media", "/mnt", "/opt", "/proc", "/root", "/run", "/sbin",
+		"/srv", "/sys", "/tmp", "/usr", "/var",
+		"C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)", "C:\\Users",
+	}
+	for _, p := range protectedPaths {
+		if abs == p {
+			return fmt.Errorf("cannot delete protected path: %s", p)
+		}
 	}
 
 	return nil
@@ -453,7 +494,13 @@ func cleanSelected(state *AppState) {
 					skippedFiles = append(skippedFiles, f.Name)
 					continue
 				}
-				if err := moveToTrash(f.Path); err == nil {
+				if err := moveToTrash(f.Path); err != nil {
+					log.Printf("[cleanSelected] Failed to trash %s: %v", f.Path, err)
+					skippedCount++
+					skippedFiles = append(skippedFiles, f.Name)
+					// Optionally notify the user
+					// dialog.ShowError(err, state.Window)
+				} else {
 					deletedCount++
 					freedBytes += f.Size
 				}
@@ -573,13 +620,14 @@ func keepAndDeleteLocked(state *AppState, keepIndex int, files []scanner.FileInf
 			continue
 		}
 
-		if err := moveToTrash(f.Path); err == nil {
-			state.DeletedCount++
-			state.FreedBytes += f.Size
-		} else {
+		if err := moveToTrash(f.Path); err != nil {
 			log.Printf("[keepAndDeleteLocked] Failed to trash %s: %v", f.Path, err)
 			state.SkippedCount++
 			state.SkippedFiles = append(state.SkippedFiles, f.Name)
+			// Optionally notify the user
+		} else {
+			state.DeletedCount++
+			state.FreedBytes += f.Size
 		}
 	}
 

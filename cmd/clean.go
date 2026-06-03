@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"dupclean/cleaner"
-	"dupclean/internal/fsutil"
+	"github.com/PopolQue/dupclean/cleaner"
+	"github.com/PopolQue/dupclean/internal/fsutil"
 
 	"github.com/spf13/cobra"
 )

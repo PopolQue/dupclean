@@ -1,7 +1,6 @@
 package diskanalyzer
 
 import (
-	"dupclean/internal/fsutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,30 +25,6 @@ func TestExportJSON(t *testing.T) {
 		t.Errorf("ExportJSON() error = %v", err)
 	}
 
-	if len(buf.data) == 0 {
-		t.Error("Expected non-empty output")
-	}
-}
-
-func TestExportJSONPretty(t *testing.T) {
-	result := &AnalysisResult{
-		TotalSize: 1024,
-		FileCount: 10,
-		Root: &DirNode{
-			Path: "/test",
-		},
-		AllFiles:      make([]FileEntry, 0),
-		TypeBreakdown: make(map[string]int64),
-		ScannedAt:     time.Now(),
-	}
-
-	var buf bufferWriter
-	err := ExportJSONPretty(result, &buf)
-	if err != nil {
-		t.Errorf("ExportJSONPretty() error = %v", err)
-	}
-
-	// Pretty print should have indentation
 	if len(buf.data) == 0 {
 		t.Error("Expected non-empty output")
 	}
@@ -147,31 +122,6 @@ func TestFindPathToRoot_NilNode(t *testing.T) {
 	if len(path) != 0 {
 		t.Errorf("Expected empty path for nil node, got %d nodes", len(path))
 	}
-}
-
-func TestGetInode(t *testing.T) {
-	tmpFile := filepath.Join(t.TempDir(), "test.txt")
-	if err := os.WriteFile(tmpFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	info, err := os.Stat(tmpFile)
-	if err != nil {
-		t.Fatalf("Failed to stat file: %v", err)
-	}
-
-	inode, ok := fsutil.GetInode(tmpFile, info)
-	if !ok {
-		t.Error("Expected inode to be retrieved")
-	}
-	if inode == 0 {
-		t.Error("Expected non-zero inode")
-	}
-}
-
-func TestGetInode_NilInfo(t *testing.T) {
-	// Skip this test - getInode panics on nil input
-	t.Skip("getInode does not handle nil FileInfo")
 }
 
 func TestNewAnalysisResult(t *testing.T) {

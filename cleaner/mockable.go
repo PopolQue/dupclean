@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"dupclean/internal/trash"
+	"github.com/PopolQue/dupclean/internal/trash"
 )
 
 // vars for testing to allow mocking OS behaviors
