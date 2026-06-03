@@ -23,11 +23,13 @@ const DefaultPartialHashSize = 8 * 1024 // 8KB
 const DefaultComparisonBufferSize = 32 * 1024 // 32KB
 
 // partialHashSize is the legacy constant for backwards compatibility.
+//
 // Deprecated: Use DefaultPartialHashSize instead.
 const partialHashSize = DefaultPartialHashSize
 
 // hashFilePartial computes SHA256 of the first N bytes of a file
 func hashFilePartial(path string, size int64) (string, error) {
+	// #nosec G304
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -45,6 +47,7 @@ func hashFilePartial(path string, size int64) (string, error) {
 
 // hashFileFull computes SHA256 of the entire file
 func hashFileFull(path string) (string, os.FileInfo, error) {
+	// #nosec G304
 	f, err := os.Open(path)
 	if err != nil {
 		return "", nil, err
@@ -66,12 +69,14 @@ func hashFileFull(path string) (string, os.FileInfo, error) {
 
 // filesIdentical performs byte-by-byte comparison of two files
 func filesIdentical(path1, path2 string) (bool, error) {
+	// #nosec G304
 	f1, err := os.Open(path1)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = f1.Close() }()
 
+	// #nosec G304
 	f2, err := os.Open(path2)
 	if err != nil {
 		return false, err

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 )
 
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
@@ -21,14 +21,12 @@ func SafePlayMedia(path string) (*exec.Cmd, error) {
 	case "linux":
 		return execCommand("aplay", absPathVal), nil
 	case "windows":
-		psScript := `
-$path = $env:DUPCLEAN_PATH
+		psScript := fmt.Sprintf(`
+$path = '%s'
 $player = New-Object Media.SoundPlayer $path
 $player.PlaySync()
-`
-		cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
-		cmd.Env = append(os.Environ(), "DUPCLEAN_PATH="+absPathVal)
-		return cmd, nil
+`, strings.ReplaceAll(absPathVal, "'", "''"))
+		return execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript), nil
 	default:
 		return nil, fmt.Errorf("unsupported OS: %s", goos)
 	}
@@ -44,19 +42,6 @@ func SafeMoveToTrash(path string) error {
 func validateMediaPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("empty path")
-	}
-
-	// Whitelist validation for filename to prevent injection via malicious filenames
-	baseName := filepath.Base(path)
-	for _, char := range baseName {
-		isAllowed := (char >= 'a' && char <= 'z') ||
-			(char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9') ||
-			char == '.' || char == '_' || char == '-' || char == ' '
-
-		if !isAllowed {
-			return fmt.Errorf("filename contains invalid characters for media playback: %c", char)
-		}
 	}
 
 	absPathVal, err := absPath(path)

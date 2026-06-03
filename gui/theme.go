@@ -32,12 +32,9 @@ func (m *dupCleanTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVarian
 		case theme.ColorNameSeparator:
 			return color.NRGBA{R: 0x2a, G: 0x2b, B: 0x60, A: 0xff}
 		}
-	} else {
+	} else if name == theme.ColorNamePrimary {
 		// Light theme fallback or adaptation
-		switch name {
-		case theme.ColorNamePrimary:
-			return color.NRGBA{R: 0xa8, G: 0x55, B: 0xf7, A: 0xff}
-		}
+		return color.NRGBA{R: 0xa8, G: 0x55, B: 0xf7, A: 0xff}
 	}
 
 	return theme.DefaultTheme().Color(name, variant)

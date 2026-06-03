@@ -91,7 +91,7 @@ func Delete(entries []EntryInfo, opts DeleteOptions) (*DeleteResult, error) {
 	wg.Wait()
 	close(results)
 
-	var deletedCount atomic.Int32
+	var deletedCount atomic.Int64
 	var freedBytes atomic.Int64
 
 	for r := range results {
@@ -105,7 +105,7 @@ func Delete(entries []EntryInfo, opts DeleteOptions) (*DeleteResult, error) {
 				result.Skipped++
 			}
 		} else {
-			deletedCount.Add(int32(r.Deleted))
+			deletedCount.Add(int64(r.Deleted))
 			freedBytes.Add(r.FreedBytes)
 		}
 

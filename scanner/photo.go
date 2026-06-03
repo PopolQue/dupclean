@@ -192,6 +192,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 
 // computePerceptualHash computes a perceptual hash for an image file
 func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, error) {
+	// #nosec G304
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, nil, err

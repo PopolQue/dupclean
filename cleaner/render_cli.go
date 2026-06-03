@@ -128,11 +128,12 @@ func runConfirmStage(reader *bufio.Reader, result *ScanResult, opts CLIOptions) 
 	fmt.Println()
 	fmt.Printf("Ready to clean %s across %d targets.\n", fsutil.FormatBytes(totalSize), len(selected))
 
-	if opts.DryRun {
+	switch {
+	case opts.DryRun:
 		fmt.Println("DRY RUN - No files will be deleted")
-	} else if opts.Permanent {
+	case opts.Permanent:
 		fmt.Println("Files will be PERMANENTLY deleted (not recoverable from Trash)")
-	} else {
+	default:
 		fmt.Println("Files will be moved to Trash (recoverable)")
 	}
 

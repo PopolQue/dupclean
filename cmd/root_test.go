@@ -26,7 +26,7 @@ func TestRunDuplicateFinder(t *testing.T) {
 }
 
 func TestExecuteDuplicateFinder_InvalidPath(t *testing.T) {
-	//...
+	// ...
 
 	cmd := &cobra.Command{}
 	_, _, err := executeDuplicateFinder(cmd, "/nonexistent", "byte", 90)

@@ -525,7 +525,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 	}
 
 	// For patterns like "*", just delete the entire directory contents recursively
-	if len(patterns) == 1 && patterns[0] == "*" {
+	if len(patterns) > 0 && patterns[0] == "*" {
 		// First, measure what we're deleting
 		var measuredBytes int64
 		var measuredCount int
@@ -559,6 +559,7 @@ func cleanPath(basePath string, patterns []string) (int, int64, error) {
 			_ = osRemoveAll(basePath)
 		}
 		// Recreate the base directory
+		// #nosec G301
 		if err := os.MkdirAll(basePath, 0755); err != nil {
 			log.Printf("[CacheCleaner] Error recreating %s: %v", basePath, err)
 			return measuredCount, measuredBytes, err

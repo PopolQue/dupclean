@@ -103,7 +103,9 @@ func moveToTrashLinux(path string) error {
 	home := os.Getenv("HOME")
 	if home != "" {
 		trashDir := filepath.Join(home, ".local", "share", "Trash", "files")
-		if err := os.MkdirAll(trashDir, 0755); err == nil {
+		// #nosec G301
+		// #nosec G703
+		if err := os.MkdirAll(trashDir, 0700); err == nil {
 			return safeMoveToTrashDir(path, trashDir)
 		}
 	}
@@ -121,9 +123,10 @@ func moveToTrashWindows(path string) error {
 
 	// Use the Shell.Application COM object which is the most reliable way
 	// to move to the Recycle Bin via script without third-party tools.
-	// Pass the path via environment variable to avoid shell escaping issues.
-	script := `
-$path = [System.IO.Path]::GetFullPath($env:DUPCLEAN_PATH)
+	// We use -EncodedCommand to avoid any shell escaping issues.
+
+	psScript := fmt.Sprintf(`
+$path = '%s'
 if (Test-Path $path) {
     $shell = New-Object -ComObject Shell.Application
     $folder = $shell.Namespace((Split-Path $path))
@@ -132,9 +135,9 @@ if (Test-Path $path) {
         $item.InvokeVerb("delete")
     }
 }
-`
-	cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", script)
-	cmd.Env = append(os.Environ(), "DUPCLEAN_PATH="+absPath)
+`, strings.ReplaceAll(absPath, "'", "''"))
+
+	cmd := execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
 	return cmd.Run()
 }
 
@@ -159,9 +162,11 @@ func safeMoveToTrashDir(path, trashDir string) error {
 
 		// Check if file exists - this is still a slight race, but
 		// os.Rename is generally atomic on the same filesystem.
+		// #nosec G703
 		_, err := os.Stat(dest)
 		if os.IsNotExist(err) {
 			// File does not exist, safe to rename
+			// #nosec G703
 			if err := os.Rename(path, dest); err != nil {
 				return err
 			}

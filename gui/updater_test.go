@@ -201,7 +201,7 @@ func TestIsValidUpdateURL(t *testing.T) {
 		expected bool
 	}{
 		{"https://github.com/PopolQue/dupclean/releases", true},
-		{"https://github.com/PopolQue/dupclean/archive/v0.4.9.0.tar.gz", true},
+		{"https://github.com/PopolQue/dupclean/archive/v0.4.9.tar.gz", true},
 		{"https://raw.githubusercontent.com/PopolQue/dupclean/main/README.md", true},
 		{"https://malicious.com", false},
 		{":", false},

@@ -74,17 +74,15 @@ func MeasureDir(root string, patterns []string, minAge time.Duration) (*MeasureR
 			if matched {
 				dirMatched[path] = true
 			}
-		} else {
-			if matched {
-				result.FileCount++
-				result.TotalSize += info.Size()
-				result.Entries = append(result.Entries, EntryInfo{
-					Path:    path,
-					Size:    info.Size(),
-					ModTime: info.ModTime(),
-					IsDir:   false,
-				})
-			}
+		} else if matched {
+			result.FileCount++
+			result.TotalSize += info.Size()
+			result.Entries = append(result.Entries, EntryInfo{
+				Path:    path,
+				Size:    info.Size(),
+				ModTime: info.ModTime(),
+				IsDir:   false,
+			})
 		}
 
 		// Always update parent directory sizes for rollup

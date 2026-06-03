@@ -21,7 +21,7 @@ type changelogEntry struct {
 
 var fullChangelog = []changelogEntry{
 	{
-		version: "v0.4.9.0",
+		version: "v0.4.9",
 		highlights: `- **Performance Benchmarking**: Added comprehensive benchmark suites across all core packages to track and optimize execution speed and memory efficiency.
 - **UI Architecture Refactor**: Unified layout across all tools with fixed headers and action footers, ensuring primary controls remain visible while scrolling through large datasets.
 - **Enhanced Safety**: Integrated a robust deletion safety check into the GUI to prevent accidental deletion of critical system or home directory paths.
@@ -29,7 +29,7 @@ var fullChangelog = []changelogEntry{
 - **Quality Polish**: Resolved all remaining linting issues and fixed Windows-specific path normalization bugs in the test suite.`,
 	},
 	{
-		version: "v0.4.8.0",
+		version: "v0.4.8",
 		highlights: `- **Massive Test Coverage**: Achieved 90%+ coverage across all safety-critical backend packages and significantly improved UI test logic.
 - **Improved Accuracy**: Fixed a bug where failed file trashing was still counted as successful in the completion screen.
 - **CI Stability**: Resolved cross-platform test failures on Windows runners by improving system-level mocking.

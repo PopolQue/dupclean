@@ -8,11 +8,15 @@ linters:
     - ineffassign
     - staticcheck
     - unused
+    - gosec
+    - gocritic
+    - bodyclose
   exclusions:
     rules:
       - path: '(.+)_test\.go'
         linters:
           - errcheck
+          - gosec
 
 formatters:
   enable:

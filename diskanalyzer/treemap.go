@@ -155,12 +155,16 @@ func squarify(nodes []*DirNode, bounds Rect, totalSize int64) [][]LayoutNode {
 
 	for len(remainingNodes) > 0 {
 		node := remainingNodes[0]
-		newRow := append(currentRow, LayoutNode{Node: node})
 		newSize := currentRowSize + node.TotalSize
 
 		// Check if adding this node worsens the aspect ratio
 		currentWorst := worstAspectRatio(currentRow, currentRowSize)
-		newWorst := worstAspectRatio(newRow, newSize)
+		// We can't easily avoid the allocation without restructuring more, but we can make it idiomatic.
+		// Since we're trying to fix specifically 'append result not assigned to the same slice',
+		// let's create a temporary slice for the lookahead.
+		candidateRow := append([]LayoutNode(nil), currentRow...)
+		candidateRow = append(candidateRow, LayoutNode{Node: node})
+		newWorst := worstAspectRatio(candidateRow, newSize)
 
 		if len(currentRow) > 0 && newWorst >= currentWorst {
 			// Current row is better, finalize it
@@ -183,7 +187,7 @@ func squarify(nodes []*DirNode, bounds Rect, totalSize int64) [][]LayoutNode {
 			currentRowSize = 0
 		} else {
 			// Add node to current row
-			currentRow = newRow
+			currentRow = candidateRow
 			currentRowSize = newSize
 			remainingNodes = remainingNodes[1:]
 		}

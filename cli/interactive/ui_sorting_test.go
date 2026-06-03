@@ -1,6 +1,7 @@
 package interactive
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -362,7 +363,7 @@ func TestDuplicateGroup_VariousSizes(t *testing.T) {
 
 	for _, size := range sizes {
 		group := scanner.DuplicateGroup{
-			Hash: "hash-" + string(rune(size)),
+			Hash: fmt.Sprintf("hash-%d", size),
 			Files: []scanner.FileInfo{
 				{Path: filepath.FromSlash("/test/file1.txt"), Size: size},
 				{Path: filepath.FromSlash("/test/file2.txt"), Size: size},

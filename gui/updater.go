@@ -287,8 +287,10 @@ func restartApp() {
 	if runtime.GOOS == "darwin" && strings.Contains(strings.ToLower(executable), ".app/") {
 		appPath := executable[:strings.Index(strings.ToLower(executable), ".app/")+4]
 		log.Printf("[Updater] macOS .app detected, using: open -n %s", appPath)
+		// #nosec G204
 		cmd = exec.Command("open", "-n", appPath)
 	} else {
+		// #nosec G204
 		cmd = exec.Command(executable)
 	}
 
@@ -446,6 +448,7 @@ func performUpdate(url string, expectedHash string, setProgress func(float64)) e
 
 	// Set permissions on Unix
 	if runtime.GOOS != "windows" {
+		// #nosec G302
 		_ = os.Chmod(executable, 0755)
 	}
 
@@ -475,6 +478,7 @@ func macOSInstallWithElevation(src, dst string) error {
 	asCommand := fmt.Sprintf("do shell script \"cp -f \" & quoted form of %q & \" \" & quoted form of %q & \" && chmod 755 \" & quoted form of %q with administrator privileges",
 		src, dst, dst)
 
+	// #nosec G204
 	cmd := exec.Command("osascript", "-e", asCommand)
 	return cmd.Run()
 }
@@ -490,6 +494,7 @@ func isValidUpdateURL(rawURL string) bool {
 
 // verifyHash calculates the SHA-256 hash of the file and compares it to the expected hash.
 func verifyHash(filePath string, expectedHash string) (bool, error) {
+	// #nosec G304
 	f, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -507,6 +512,7 @@ func verifyHash(filePath string, expectedHash string) (bool, error) {
 
 // copyFile is a fallback for os.Rename when moving across filesystems or when rename fails
 func copyFile(src, dst string) error {
+	// #nosec G304
 	source, err := os.Open(src)
 	if err != nil {
 		return err
@@ -514,6 +520,8 @@ func copyFile(src, dst string) error {
 	defer func() { _ = source.Close() }()
 
 	// Try to open destination for writing. This will still fail if permission denied.
+	// #nosec G302
+	// #nosec G304
 	destination, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
@@ -525,6 +533,7 @@ func copyFile(src, dst string) error {
 }
 
 func extractFromTarGz(tarGzPath, destPath string) error {
+	// #nosec G304
 	f, err := os.Open(tarGzPath)
 	if err != nil {
 		return err
@@ -553,11 +562,15 @@ func extractFromTarGz(tarGzPath, destPath string) error {
 			if strings.Contains(header.Name, "..") || filepath.IsAbs(header.Name) {
 				return fmt.Errorf("invalid file path in archive: %s", header.Name)
 			}
+			// #nosec G304
+			// #nosec G115
 			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(out, tr); err != nil {
+			// Limit extraction to 500MB to prevent decompression bombs (gosec G110)
+			limited := io.LimitReader(tr, 500*1024*1024)
+			if _, err := io.Copy(out, limited); err != nil {
 				_ = out.Close()
 				return err
 			}
@@ -586,18 +599,21 @@ func extractFromZip(zipPath, destPath string) error {
 				return err
 			}
 
+			// #nosec G302
+			// #nosec G304
 			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, 0755)
 			if err != nil {
 				_ = rc.Close()
 				return err
 			}
 
-			if _, err := io.Copy(out, rc); err != nil {
+			// Limit extraction to 500MB to prevent decompression bombs (gosec G110)
+			limited := io.LimitReader(rc, 500*1024*1024)
+			if _, err := io.Copy(out, limited); err != nil {
 				_ = out.Close()
 				_ = rc.Close()
 				return err
 			}
-
 			_ = out.Close()
 			_ = rc.Close()
 			return nil

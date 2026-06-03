@@ -36,6 +36,7 @@ func (s *AudioScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 }
 
 // FindDuplicates is a legacy function for backwards compatibility.
+//
 // Deprecated: Use AudioScanner.Scan() or ByteScanner.Scan() instead.
 func FindDuplicates(folder string, includeAll bool, onProgress func(ScanProgress), ignoreFolders []string, ignoreExtensions []string) ([]DuplicateGroup, ScanStats, error) {
 	var scanner Scanner
