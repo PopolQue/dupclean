@@ -1,6 +1,6 @@
 module github.com/PopolQue/dupclean
 
-go 1.25.0
+go 1.25.11
 
 require (
 	fyne.io/fyne/v2 v2.7.3
