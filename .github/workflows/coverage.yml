@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -47,22 +50,28 @@ jobs:
       - name: Run Test
         run: |
           go test -v ./... -covermode=set -coverprofile=coverage.out
-          go tool cover -func=coverage.out > coverage_func.txt
-          # Generate non-GUI coverage
-          go test -coverprofile=coverage-nogui.out $(go list ./... | grep -v gui)
+          
+          # Generate non-GUI coverage (excluding GUI and interactive CLI packages)
+          # Scope: cleaner, diskanalyzer, internal, scanner
+          CORE_PACKAGES=$(go list ./... | grep -vE "gui|interactive|cmd|^github.com/PopolQue/dupclean$")
+          go test -coverprofile=coverage-nogui.out $CORE_PACKAGES
 
+      - name: Update README Badges
+        run: |
+          # Calculate Total Coverage
+          TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          COLOR="red"
+          if [ $(awk "BEGIN {print ($TOTAL >= 80 ? 1 : 0)}") -eq 1 ]; then COLOR="green"; elif [ $(awk "BEGIN {print ($TOTAL >= 50 ? 1 : 0)}") -eq 1 ]; then COLOR="yellow"; fi
+          
+          # Calculate Core Coverage
+          CORE=$(go tool cover -func=coverage-nogui.out | grep total | awk '{print $3}' | sed 's/%//')
+          COLOR_CORE="red"
+          if [ $(awk "BEGIN {print ($CORE >= 80 ? 1 : 0)}") -eq 1 ]; then COLOR_CORE="green"; elif [ $(awk "BEGIN {print ($CORE >= 50 ? 1 : 0)}") -eq 1 ]; then COLOR_CORE="yellow"; fi
 
-      - name: Go Coverage Badge
-        uses: tj-actions/coverage-badge-go@v3
-        with:
-          filename: coverage.out
-          text: "Coverage"
-
-      - name: Go Coverage Badge (No GUI)
-        uses: tj-actions/coverage-badge-go@v3
-        with:
-          filename: coverage-nogui.out
-          text: "Coverage (no GUI)"
+          # Inject into README.md
+          sed -i "s|!\[Coverage\](https://img.shields.io/badge/Coverage-[0-9.]*%25-[a-z]*)|![Coverage](https://img.shields.io/badge/Coverage-$TOTAL%25-$COLOR)|" README.md
+          sed -i "s|!\[Coverage (no GUI)\](https://img.shields.io/badge/Coverage_(no_GUI)-[0-9.]*%25-[a-z]*)|![Coverage (no GUI)](https://img.shields.io/badge/Coverage_(no_GUI)-$CORE%25-$COLOR_CORE)|" README.md
+        continue-on-error: true
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v17
