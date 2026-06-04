@@ -46,7 +46,7 @@ jobs:
 
       - name: Run Test
         run: |
-          go test -v ./... -covermode=count -coverprofile=coverage.out
+          go test -v ./... -covermode=set -coverprofile=coverage.out
           go tool cover -func=coverage.out > coverage_func.txt
           # Generate non-GUI coverage
           go test -coverprofile=coverage-nogui.out $(go list ./... | grep -v gui)
@@ -58,7 +58,6 @@ jobs:
           filename: coverage.out
           text: "Coverage"
           pattern: '!\[Coverage\]\(https://img\.shields\.io/badge/Coverage-([0-9.]+)%25-([a-z]+)\)'
-
 
       - name: Go Coverage Badge (No GUI)
         uses: tj-actions/coverage-badge-go@v3
