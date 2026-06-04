@@ -2,8 +2,8 @@
 
 [![Build & Release](https://github.com/PopolQue/dupclean/actions/workflows/release.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/release.yml)
 [![Tests](https://github.com/PopolQue/dupclean/actions/workflows/test.yml/badge.svg)](https://github.com/PopolQue/dupclean/actions/workflows/test.yml)
-![Coverage](https://img.shields.io/badge/Coverage-0%25-red)
-![Coverage (no GUI)](https://img.shields.io/badge/Coverage_(no_GUI)-0%25-red)
+![Coverage](https://img.shields.io/badge/Coverage-69.8%25-yellow)
+![Coverage (no GUI)](https://img.shields.io/badge/Coverage_(no_GUI)-89.1%25-green)
 
 A fast, content-aware disk cleanup suite for music producers, DJs,
 photographers, developers, and anyone with a messy hard drive.
