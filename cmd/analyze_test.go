@@ -26,3 +26,13 @@ func TestExecuteAnalyze(t *testing.T) {
 		t.Errorf("Expected no error for valid path, got %v", err)
 	}
 }
+
+func TestRunAnalyze(t *testing.T) {
+	tmpDir := t.TempDir()
+	cmd := &cobra.Command{}
+
+	err := runAnalyze(cmd, tmpDir)
+	if err != nil {
+		t.Errorf("runAnalyze failed: %v", err)
+	}
+}

@@ -83,6 +83,7 @@ func Scan(targets []*CleanTarget, opts ScanOptions) (*ScanResult, error) {
 	var wg sync.WaitGroup
 	for i := 0; i < opts.Concurrency; i++ {
 		wg.Add(1)
+		// exits when jobs channel is closed and drained or ctx is cancelled
 		go func() {
 			defer wg.Done()
 			defer func() {

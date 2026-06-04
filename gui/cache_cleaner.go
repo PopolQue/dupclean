@@ -36,7 +36,7 @@ type CacheCleanerState struct {
 	MinAgeStr              string
 	Concurrency            int
 	cacheCleanerComponents *cacheCleanerComponents
-	mu                     sync.Mutex
+	mu                     sync.RWMutex
 	FailedCleanPaths       []string
 }
 
@@ -62,7 +62,9 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	minAgeEntry.SetPlaceHolder("e.g. 24h, 7d")
 	minAgeEntry.SetText(state.MinAgeStr)
 	minAgeEntry.OnChanged = func(s string) {
+		state.mu.Lock()
 		state.MinAgeStr = s
+		state.mu.Unlock()
 	}
 
 	// Performance options
@@ -71,7 +73,9 @@ func CacheCleanerWidget(state *CacheCleanerState) fyne.CanvasObject {
 	workerLabel := widget.NewLabel(fmt.Sprintf("%d", state.Concurrency))
 	workerSlider.OnChanged = func(v float64) {
 		val := int(v)
+		state.mu.Lock()
 		state.Concurrency = val
+		state.mu.Unlock()
 		workerLabel.SetText(fmt.Sprintf("%d", val))
 	}
 	workerContainer := container.NewBorder(nil, nil, nil, workerLabel, workerSlider)
@@ -129,6 +133,7 @@ func startCacheScan(state *CacheCleanerState) {
 	comp.progressBar.Show()
 	comp.progressBar.SetValue(0)
 
+	// exits when scan completes or error is handled
 	go func() {
 		result, err := performCacheScan(state)
 		if err != nil {
@@ -167,8 +172,13 @@ func updateStateAfterScan(state *CacheCleanerState, result *cleaner.ScanResult) 
 }
 
 func performCacheScan(state *CacheCleanerState) (*cleaner.ScanResult, error) {
+	state.mu.Lock()
+	minAgeStr := state.MinAgeStr
+	concurrency := state.Concurrency
+	state.mu.Unlock()
+
 	// Parse min age
-	minAge, err := fsutil.ParseDuration(state.MinAgeStr)
+	minAge, err := fsutil.ParseDuration(minAgeStr)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +208,7 @@ func performCacheScan(state *CacheCleanerState) (*cleaner.ScanResult, error) {
 	// Scan each target
 	comp := state.cacheCleanerComponents
 	opts := cleaner.ScanOptions{
-		Concurrency: state.Concurrency,
+		Concurrency: concurrency,
 		MinAge:      minAge,
 		OnProgress: func(progress cleaner.Progress) {
 			if comp != nil {
@@ -239,7 +249,9 @@ func displayCacheResults(state *CacheCleanerState) {
 	accordion := widget.NewAccordion()
 
 	// Group by category
+	state.mu.Lock()
 	categories := groupTargetsByCategory(state.Targets)
+	state.mu.Unlock()
 
 	// Sort categories
 	catNames := getSortedCategoryNames(categories)
@@ -277,7 +289,10 @@ func displayCacheResults(state *CacheCleanerState) {
 
 	buttonRow := components.ActionFooter(cancelBtn, totalLabel, cleanBtn)
 
-	subtitle := fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(state.TotalSize))
+	state.mu.RLock()
+	totalSize := state.TotalSize
+	state.mu.RUnlock()
+	subtitle := fmt.Sprintf("Found %s of cleanable caches", fsutil.FormatBytes(totalSize))
 	state.updateContent(components.ToolPageWithFooter("Scan Results", subtitle, accordion, buttonRow))
 }
 
@@ -293,7 +308,9 @@ func getRiskInfo(risk cleaner.Risk) (string, widget.Importance, fyne.Resource) {
 }
 
 func toggleTargetSelection(state *CacheCleanerState, targetID string, checked bool, totalLabel *widget.Label, cleanBtn *widget.Button) {
+	state.mu.Lock()
 	state.SelectedTargets[targetID] = checked
+	state.mu.Unlock()
 	updateCacheTotal(state, totalLabel, cleanBtn)
 }
 
@@ -307,7 +324,10 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 	targetCheck := widget.NewCheck(fmt.Sprintf("%s (%s)", target.Label, fsutil.FormatBytes(target.TotalSize)), func(checked bool) {
 		toggleTargetSelection(state, target.ID, checked, totalLabel, cleanBtn)
 	})
+
+	state.mu.Lock()
 	targetCheck.SetChecked(state.SelectedTargets[target.ID])
+	state.mu.Unlock()
 
 	// Description
 	descLabel := widget.NewLabel(target.Description)
@@ -321,6 +341,8 @@ func createCacheTargetCard(state *CacheCleanerState, target *cleaner.CleanTarget
 }
 
 func calculateSelectedSize(state *CacheCleanerState) int64 {
+	state.mu.Lock()
+	defer state.mu.Unlock()
 	var selectedSize int64
 	for _, t := range state.Targets {
 		if state.SelectedTargets[t.ID] {
@@ -349,6 +371,8 @@ func updateCacheTotal(state *CacheCleanerState, totalLabel *widget.Label, cleanB
 }
 
 func getSelectedTargets(state *CacheCleanerState) ([]*cleaner.CleanTarget, int64) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
 	var selectedSize int64
 	var selectedTargets []*cleaner.CleanTarget
 	for _, t := range state.Targets {
@@ -396,6 +420,7 @@ func startCacheClean(state *CacheCleanerState) {
 				progressBar,
 			))
 
+			// exits when cleaning completes
 			go func() {
 				// Perform actual cleaning synchronously
 				cleaned, cleanedBytes, failedPaths := performCacheClean(selectedTargets, func(progress float64, currentLabel string) {

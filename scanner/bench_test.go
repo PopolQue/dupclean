@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/corona10/goimagehash"
 )
 
 func BenchmarkHashFilePartial(b *testing.B) {
@@ -45,6 +43,7 @@ func BenchmarkHashFileFull(b *testing.B) {
 			}
 
 			b.ResetTimer()
+			b.ReportAllocs() // Explicitly report allocations
 			for i := 0; i < b.N; i++ {
 				_, _, _ = hashFileFull(path)
 			}
@@ -104,24 +103,24 @@ func BenchmarkBKTreeSearch(b *testing.B) {
 	for _, count := range counts {
 		b.Run(fmt.Sprintf("Size_%d", count), func(b *testing.B) {
 			tree := NewBKTree()
-			var hashes []*goimagehash.ImageHash
 
 			// Seed tree with slightly different hashes
 			for i := 0; i < count; i++ {
-				h := goimagehash.NewImageHash(uint64(i), goimagehash.PHash)
-				hashes = append(hashes, h)
+				h := PHash(i)
 				tree.Add(hashedPhoto{
 					path: fmt.Sprintf("/path/%d", i),
 					hash: h,
 				})
 			}
 
-			searchHash := hashes[len(hashes)/2]
+			searchHash := PHash(count / 2)
 			maxDistance := 6 // ~90% similarity
+			results := make([]hashedPhoto, 0, 100)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = tree.Search(searchHash, maxDistance)
+				results = results[:0]
+				tree.Search(searchHash, maxDistance, &results)
 			}
 		})
 	}

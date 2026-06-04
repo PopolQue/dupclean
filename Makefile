@@ -2,7 +2,7 @@
 
 BINARY = dupclean
 APP_ID = com.dupclean.app
-INSTALL_PATH = /usr/local/bin/$(BINARY)
+INSTALL_PATH = $(HOME)/bin/$(BINARY)
 
 build:
 	go build -o $(BINARY) .
@@ -13,12 +13,13 @@ build-gui:
 	@echo "✅ Built GUI: ./$(BINARY)"
 
 install: build
-	@echo "Installing dupclean CLI..."
-	sudo mv $(BINARY) $(INSTALL_PATH)
+	@echo "Installing dupclean CLI to $(HOME)/bin..."
+	@mkdir -p $(HOME)/bin
+	mv $(BINARY) $(INSTALL_PATH)
 	@echo "✅ Installed to $(INSTALL_PATH)"
 
 uninstall:
-	sudo rm -f $(INSTALL_PATH)
+	rm -f $(INSTALL_PATH)
 	@echo "🗑  Uninstalled CLI."
 
 run:
@@ -29,6 +30,9 @@ test:
 
 test-verbose:
 	go test -v ./...
+
+bench:
+	go test -bench=. -benchmem ./...
 
 coverage:
 	go test -race -coverprofile=coverage.out -covermode=atomic ./...

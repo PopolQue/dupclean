@@ -1,9 +1,5 @@
 package scanner
 
-import (
-	"github.com/corona10/goimagehash"
-)
-
 // bkTreeNode represents a node in the BK-Tree
 type bkTreeNode struct {
 	photo    hashedPhoto
@@ -23,10 +19,6 @@ func NewBKTree() *BKTree {
 
 // Add inserts a hashed photo into the BK-Tree
 func (t *BKTree) Add(photo hashedPhoto) {
-	if photo.hash == nil {
-		return
-	}
-
 	if t.root == nil {
 		t.root = &bkTreeNode{
 			photo:    photo,
@@ -37,16 +29,8 @@ func (t *BKTree) Add(photo hashedPhoto) {
 
 	curr := t.root
 	for {
-		distance, err := photo.hash.Distance(curr.photo.hash)
-		if err != nil {
-			// In practice, goimagehash.Distance only fails if hash types differ
-			return
-		}
+		distance, _ := photo.hash.Distance(curr.photo.hash)
 
-		// If distance is 0, we could either store multiple photos at the node
-		// or just treat them as identical. For our purposes, we can have nodes
-		// with distance 0 if we want, but usually Hamming distance > 0 for different nodes.
-		// If distance is 0, they are essentially the same hash.
 		if next, ok := curr.children[distance]; ok {
 			curr = next
 		} else {
@@ -60,33 +44,27 @@ func (t *BKTree) Add(photo hashedPhoto) {
 }
 
 // Search finds all photos in the tree within the given maximum Hamming distance
-func (t *BKTree) Search(hash *goimagehash.ImageHash, maxDistance int) []hashedPhoto {
-	if t.root == nil || hash == nil {
-		return nil
+// It appends results to the provided slice to avoid allocations.
+func (t *BKTree) Search(hash PHash, maxDistance int, results *[]hashedPhoto) {
+	if t.root == nil {
+		return
 	}
 
-	var results []hashedPhoto
-	queue := []*bkTreeNode{t.root}
+	// Use a small local array for the queue to avoid heap allocation for small trees
+	// For larger trees, this may still grow, but it's a significant improvement.
+	queue := make([]*bkTreeNode, 0, 16)
+	queue = append(queue, t.root)
 
 	for len(queue) > 0 {
-		curr := queue[0]
-		queue = queue[1:]
+		curr := queue[len(queue)-1]
+		queue = queue[:len(queue)-1]
 
-		distance, err := hash.Distance(curr.photo.hash)
-		if err != nil {
-			continue
-		}
+		distance, _ := hash.Distance(curr.photo.hash)
 
 		if distance <= maxDistance {
-			results = append(results, curr.photo)
+			*results = append(*results, curr.photo)
 		}
 
-		// Only search children that could possibly contain matches
-		// according to the triangle inequality:
-		// distance(curr, target) = d
-		// For any child node at distance(curr, child) = d_child
-		// matches must satisfy |d - d_child| <= maxDistance
-		// so d - maxDistance <= d_child <= d + maxDistance
 		minD := distance - maxDistance
 		maxD := distance + maxDistance
 
@@ -96,6 +74,4 @@ func (t *BKTree) Search(hash *goimagehash.ImageHash, maxDistance int) []hashedPh
 			}
 		}
 	}
-
-	return results
 }

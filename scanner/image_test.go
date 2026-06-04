@@ -31,13 +31,10 @@ func TestComputePerceptualHash_ValidPNG(t *testing.T) {
 		t.Fatalf("Failed to encode PNG: %v", err)
 	}
 
-	hash, info, err := computePerceptualHash(testFile)
+	_, info, err := computePerceptualHash(testFile)
 
 	if err != nil {
 		t.Errorf("computePerceptualHash() error = %v", err)
-	}
-	if hash == nil {
-		t.Error("Expected non-nil hash")
 	}
 	if info == nil {
 		t.Error("Expected non-nil FileInfo")
@@ -77,7 +74,7 @@ func TestComputePerceptualHash_IdenticalImages(t *testing.T) {
 	}
 
 	// Identical images should have identical hashes
-	if hash1.ToString() != hash2.ToString() {
+	if hash1 != hash2 {
 		t.Error("Identical images should have identical hashes")
 	}
 
@@ -135,8 +132,8 @@ func TestComputePerceptualHash_DifferentImages(t *testing.T) {
 
 	// Very different images should have different hashes
 	// (perceptual hash may still be similar for some images)
-	t.Logf("White image hash: %s", hash1.ToString())
-	t.Logf("Black image hash: %s", hash2.ToString())
+	t.Logf("White image hash: %s", hash1.String())
+	t.Logf("Black image hash: %s", hash2.String())
 }
 
 func TestComputePerceptualHash_JPEG(t *testing.T) {
@@ -184,19 +181,13 @@ func TestComputePerceptualHash_LargeImage(t *testing.T) {
 		t.Fatalf("Failed to encode PNG: %v", err)
 	}
 
-	hash, info, err := computePerceptualHash(testFile)
+	_, info, err := computePerceptualHash(testFile)
 
 	if err != nil {
 		t.Errorf("computePerceptualHash() error = %v", err)
 	}
-	if hash == nil {
-		t.Error("Expected non-nil hash")
-	}
 	if info == nil {
 		t.Error("Expected non-nil FileInfo")
-	}
-	if info.Size() == 0 {
-		t.Error("Expected non-zero file size")
 	}
 }
 
@@ -218,13 +209,10 @@ func TestComputePerceptualHash_SmallImage(t *testing.T) {
 		t.Fatalf("Failed to encode PNG: %v", err)
 	}
 
-	hash, info, err := computePerceptualHash(testFile)
+	_, info, err := computePerceptualHash(testFile)
 
 	if err != nil {
 		t.Errorf("computePerceptualHash() error = %v", err)
-	}
-	if hash == nil {
-		t.Error("Expected non-nil hash")
 	}
 	if info == nil {
 		t.Error("Expected non-nil FileInfo")

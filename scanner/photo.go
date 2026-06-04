@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corona10/goimagehash"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
@@ -105,7 +104,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	}
 	type photoHashResult struct {
 		path string
-		hash *goimagehash.ImageHash
+		hash PHash
 		info os.FileInfo
 		err  error
 	}
@@ -116,6 +115,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	var wg sync.WaitGroup
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
+		// exits when jobs channel is closed and drained or ctx is cancelled
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
@@ -139,6 +139,7 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 	}
 	close(jobs)
 
+	// exits when waitgroup finishes
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -191,35 +192,35 @@ func (s *PhotoScanner) Scan(root string, opts Options) ([]DuplicateGroup, ScanSt
 }
 
 // computePerceptualHash computes a perceptual hash for an image file
-func computePerceptualHash(path string) (*goimagehash.ImageHash, os.FileInfo, error) {
+func computePerceptualHash(path string) (PHash, os.FileInfo, error) {
 	// #nosec G304
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	defer func() { _ = f.Close() }()
 
 	info, err := f.Stat()
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	// Decode image (supports all formats registered via side-effect imports)
 	img, _, err := image.Decode(f)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	// Check dimensions after decode to prevent OOM
 	bounds := img.Bounds()
-	if bounds.Dx() > 20000 || bounds.Dy() > 20000 {
-		return nil, nil, fmt.Errorf("image dimensions too large: %dx%d", bounds.Dx(), bounds.Dy())
+	if bounds.Dx() > 8000 || bounds.Dy() > 8000 {
+		return 0, nil, fmt.Errorf("image dimensions too large: %dx%d", bounds.Dx(), bounds.Dy())
 	}
 
 	// Compute perceptual hash
-	hash, err := goimagehash.PerceptionHash(img)
+	hash, err := PerceptionHash(img)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	return hash, info, nil
@@ -240,6 +241,9 @@ func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup 
 	used := make(map[string]bool)
 	groups := make([]DuplicateGroup, 0)
 
+	// Preallocate a slice for search results to reuse
+	searchRes := make([]hashedPhoto, 0, 32)
+
 	// Calculate maximum Hamming distance for our similarity threshold
 	// 64-bit hash, 90% similarity = max 6 bits different
 	maxDistance := int((100 - s.SimilarityPct) * 64 / 100)
@@ -253,11 +257,12 @@ func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup 
 		}
 
 		// Find similar photos using BK-Tree
-		similar := tree.Search(photo.hash, maxDistance)
+		searchRes = searchRes[:0]
+		tree.Search(photo.hash, maxDistance, &searchRes)
 
 		// Filter out photos that are already used
 		var groupPhotos []hashedPhoto
-		for _, p := range similar {
+		for _, p := range searchRes {
 			if !used[p.path] {
 				groupPhotos = append(groupPhotos, p)
 			}
@@ -266,7 +271,7 @@ func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup 
 		// Only add groups with 2+ photos
 		if len(groupPhotos) >= 2 {
 			group := DuplicateGroup{
-				Hash:       photo.hash.ToString(),
+				Hash:       photo.hash.String(),
 				Files:      make([]FileInfo, 0, len(groupPhotos)),
 				Similarity: 100,
 			}
@@ -276,7 +281,7 @@ func (s *PhotoScanner) groupBySimilarity(photos []hashedPhoto) []DuplicateGroup 
 					Name:    filepath.Base(p.path),
 					Size:    p.info.Size(),
 					ModTime: p.info.ModTime(),
-					Hash:    p.hash.ToString(),
+					Hash:    p.hash.String(),
 				})
 				used[p.path] = true
 			}

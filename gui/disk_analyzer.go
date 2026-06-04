@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/PopolQue/dupclean/diskanalyzer"
 	"github.com/PopolQue/dupclean/gui/components"
@@ -18,6 +19,7 @@ import (
 
 // DiskAnalyzerState holds the state for the disk analyzer widget
 type DiskAnalyzerState struct {
+	mu               sync.RWMutex
 	Window           fyne.Window
 	ProcessManager   *ProcessManager
 	FolderPath       string
@@ -35,17 +37,27 @@ type diskAnalyzerComponents struct {
 
 // updateContent updates the content container (preserves sidebar)
 func (state *DiskAnalyzerState) updateContent(content fyne.CanvasObject) {
-	if state.ContentContainer != nil {
-		state.ContentContainer.Objects = []fyne.CanvasObject{content}
-		state.ContentContainer.Refresh()
+	state.mu.RLock()
+	container := state.ContentContainer
+	state.mu.RUnlock()
+
+	if container != nil {
+		container.Objects = []fyne.CanvasObject{content}
+		container.Refresh()
 	}
 }
 
 // DiskAnalyzerWidget creates the disk analyzer UI component
 func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 	// Options
-	picker := components.FolderPicker("Select a folder to analyze...", state.FolderPath, false, state.Window, func(path string) {
+	state.mu.RLock()
+	folderPath := state.FolderPath
+	state.mu.RUnlock()
+
+	picker := components.FolderPicker("Select a folder to analyze...", folderPath, false, state.Window, func(path string) {
+		state.mu.Lock()
 		state.FolderPath = path
+		state.mu.Unlock()
 	})
 	targetCard := widget.NewCard("Target Folder", "Select the directory you want to analyze", picker)
 
@@ -94,6 +106,8 @@ func DiskAnalyzerWidget(state *DiskAnalyzerState) fyne.CanvasObject {
 }
 
 func validateAnalysisPath(state *DiskAnalyzerState) error {
+	state.mu.RLock()
+	defer state.mu.RUnlock()
 	if state.FolderPath == "" {
 		return fmt.Errorf("please select a folder")
 	}
@@ -101,9 +115,13 @@ func validateAnalysisPath(state *DiskAnalyzerState) error {
 }
 
 func handleAnalysisResult(state *DiskAnalyzerState, result *diskanalyzer.AnalysisResult, err error) {
+	state.mu.Lock()
 	comp := state.components
 	state.ProcessManager.SetProcessRunning(false)
 	state.IsAnalyzing = false
+	state.Result = result
+	state.mu.Unlock()
+
 	comp.analyzeBtn.Enable()
 	comp.progressBar.Hide()
 
@@ -113,13 +131,15 @@ func handleAnalysisResult(state *DiskAnalyzerState, result *diskanalyzer.Analysi
 		return
 	}
 
-	state.Result = result
 	displayAnalysisResults(state)
 }
 
 func prepareDiskAnalysisUI(state *DiskAnalyzerState) {
 	state.ProcessManager.SetProcessRunning(true)
+	state.mu.Lock()
 	state.IsAnalyzing = true
+	state.mu.Unlock()
+
 	comp := state.components
 	comp.analyzeBtn.Disable()
 	comp.progressLabel.SetText("Analyzing filesystem...")
@@ -135,6 +155,7 @@ func startDiskAnalysis(state *DiskAnalyzerState) {
 
 	prepareDiskAnalysisUI(state)
 
+	// exits when analysis completes
 	go func() {
 		result, err := performDiskAnalysis(state)
 
@@ -151,7 +172,11 @@ func performDiskAnalysis(state *DiskAnalyzerState) (*diskanalyzer.AnalysisResult
 	opts.MaxEntries = 100000 // Safety limit
 	opts.Context = context.Background()
 
-	result, _, err := diskWalker(state.FolderPath, opts)
+	state.mu.RLock()
+	folderPath := state.FolderPath
+	state.mu.RUnlock()
+
+	result, _, err := diskWalker(folderPath, opts)
 	return result, err
 }
 
@@ -168,7 +193,10 @@ func prepareAnalysisViewData(result *diskanalyzer.AnalysisResult) AnalysisViewDa
 }
 
 func displayAnalysisResults(state *DiskAnalyzerState) {
+	state.mu.RLock()
 	result := state.Result
+	state.mu.RUnlock()
+
 	if result == nil {
 		return
 	}

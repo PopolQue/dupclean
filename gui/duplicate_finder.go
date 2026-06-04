@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -376,6 +377,7 @@ func startScan(state *AppState) {
 	prog.bar.Show()
 	prog.bar.SetValue(0)
 
+	// exits when scan completes or error is handled
 	go func() {
 		progressCallback := func(progress scanner.ScanProgress) {
 			fyne.Do(func() {
@@ -704,8 +706,11 @@ func SmartCleanAll(state *AppState) {
 func playFile(state *AppState, path string, onComplete func()) {
 	stopPlayback(state)
 
-	cmd, err := cleaner.SafePlayMedia(path)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+
+	cmd, err := cleaner.SafePlayMedia(ctx, path)
 	if err != nil {
+		cancel()
 		log.Printf("[playFile] Error: %v", err)
 		return
 	}
@@ -715,6 +720,7 @@ func playFile(state *AppState, path string, onComplete func()) {
 	state.CurrentPlayer = cmd
 	state.PlayingPath = path
 	state.StopPlayer = func() {
+		cancel()
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
@@ -729,23 +735,9 @@ func playFile(state *AppState, path string, onComplete func()) {
 	}
 	state.mu.Unlock()
 
+	// exits when player command finishes or is cancelled
 	go func() {
-		err := cmd.Start()
-		if err == nil {
-			// Wait for process to exit or be killed
-			done := make(chan error, 1)
-			go func() { done <- cmd.Wait() }()
-
-			select {
-			case <-done:
-				// Process finished normally
-			case <-time.After(30 * time.Minute):
-				// Timeout reached
-				if cmd.Process != nil {
-					_ = cmd.Process.Kill()
-				}
-			}
-		}
+		_ = cmd.Wait()
 
 		state.mu.Lock()
 		if state.CurrentPlayer == cmd {
@@ -759,6 +751,8 @@ func playFile(state *AppState, path string, onComplete func()) {
 		default:
 		}
 		state.mu.Unlock()
+
+		cancel() // Ensure resources are freed
 		if onComplete != nil {
 			onComplete()
 		}

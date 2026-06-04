@@ -109,12 +109,13 @@ func TestScanStatsStruct(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_EmptyFolder(t *testing.T) {
+func TestScanner_EmptyFolder(t *testing.T) {
 	tmpDir := t.TempDir()
+	scanner := NewAudioScanner()
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 0 {
@@ -125,15 +126,16 @@ func TestFindDuplicates_EmptyFolder(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_NoAudioFiles(t *testing.T) {
+func TestScanner_NoAudioFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("hello"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file.pdf"), []byte("world"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 0 {
@@ -144,15 +146,16 @@ func TestFindDuplicates_NoAudioFiles(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_ScanAllFiles(t *testing.T) {
+func TestScanner_ScanAllFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("hello"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file.pdf"), []byte("world"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, true, nil, []string{}, []string{})
+	scanner := NewByteScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{IncludeHidden: false})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if stats.TotalScanned != 2 {
@@ -163,16 +166,17 @@ func TestFindDuplicates_ScanAllFiles(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_NoDuplicates(t *testing.T) {
+func TestScanner_NoDuplicates(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), []byte("content2"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file3.wav"), []byte("content3"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 0 {
@@ -183,7 +187,7 @@ func TestFindDuplicates_NoDuplicates(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_WithDuplicates(t *testing.T) {
+func TestScanner_WithDuplicates(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content1 := []byte("identical content 1")
@@ -194,9 +198,10 @@ func TestFindDuplicates_WithDuplicates(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file3.wav"), content2, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file4.wav"), content2, 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 2 {
@@ -219,7 +224,7 @@ func TestFindDuplicates_WithDuplicates(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_ThreeWayDuplicate(t *testing.T) {
+func TestScanner_ThreeWayDuplicate(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := []byte("same content three times")
@@ -228,9 +233,10 @@ func TestFindDuplicates_ThreeWayDuplicate(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file3.wav"), content, 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -244,7 +250,7 @@ func TestFindDuplicates_ThreeWayDuplicate(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_PreservesOriginal(t *testing.T) {
+func TestScanner_PreservesOriginal(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := []byte("original content")
@@ -252,9 +258,10 @@ func TestFindDuplicates_PreservesOriginal(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "original.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "duplicate.wav"), content, 0644)
 
-	groups, _, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, _, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -275,15 +282,16 @@ func TestFindDuplicates_PreservesOriginal(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_SkipsHiddenFiles(t *testing.T) {
+func TestScanner_SkipsHiddenFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, ".hidden.wav"), []byte("hidden"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "visible.wav"), []byte("visible"), 0644)
 
-	_, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, stats, err := scanner.Scan(tmpDir, Options{IncludeHidden: false})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if stats.TotalScanned != 1 {
@@ -291,16 +299,17 @@ func TestFindDuplicates_SkipsHiddenFiles(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_SkipsHiddenDirectories(t *testing.T) {
+func TestScanner_SkipsHiddenDirectories(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.Mkdir(filepath.Join(tmpDir, ".hidden"), 0755)
 	os.WriteFile(filepath.Join(tmpDir, ".hidden", "file.wav"), []byte("hidden dir"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "visible.wav"), []byte("visible"), 0644)
 
-	_, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, stats, err := scanner.Scan(tmpDir, Options{IncludeHidden: false})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if stats.TotalScanned != 1 {
@@ -308,7 +317,7 @@ func TestFindDuplicates_SkipsHiddenDirectories(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_NestedDirectories(t *testing.T) {
+func TestScanner_NestedDirectories(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	subDir1 := filepath.Join(tmpDir, "subdir1")
@@ -322,9 +331,10 @@ func TestFindDuplicates_NestedDirectories(t *testing.T) {
 	os.WriteFile(filepath.Join(subDir1, "file2.wav"), content, 0644)
 	os.WriteFile(filepath.Join(subDir2, "file3.wav"), content, 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -338,16 +348,17 @@ func TestFindDuplicates_NestedDirectories(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_DifferentSizesNoDuplicates(t *testing.T) {
+func TestScanner_DifferentSizesNoDuplicates(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "small.wav"), []byte("a"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "medium.wav"), []byte("ab"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "large.wav"), []byte("abc"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 0 {
@@ -361,7 +372,7 @@ func TestFindDuplicates_DifferentSizesNoDuplicates(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_WastedBytesCalculation(t *testing.T) {
+func TestScanner_WastedBytesCalculation(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := []byte("x")
@@ -371,9 +382,10 @@ func TestFindDuplicates_WastedBytesCalculation(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file3.wav"), content, 0644)
 
-	_, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	expectedWasted := fileSize * 2
@@ -462,10 +474,11 @@ func TestHashFile_NonExistentFile(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_InvalidPath(t *testing.T) {
-	groups, stats, err := FindDuplicates("/nonexistent/path/to/folder", false, nil, []string{}, []string{})
+func TestScanner_InvalidPath(t *testing.T) {
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan("/nonexistent/path/to/folder", Options{})
 	if err != nil {
-		t.Logf("FindDuplicates returned error for invalid path: %v", err)
+		t.Logf("Scan() returned error for invalid path: %v", err)
 	}
 	if len(groups) != 0 {
 		t.Errorf("Expected 0 groups for invalid path, got %d", len(groups))
@@ -475,7 +488,7 @@ func TestFindDuplicates_InvalidPath(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_CaseInsensitiveExtension(t *testing.T) {
+func TestScanner_CaseInsensitiveExtension(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := []byte("test content")
@@ -484,9 +497,10 @@ func TestFindDuplicates_CaseInsensitiveExtension(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file3.Wav"), content, 0644)
 
-	groups, _, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, _, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -497,7 +511,7 @@ func TestFindDuplicates_CaseInsensitiveExtension(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_MixedAudioAndNonAudio(t *testing.T) {
+func TestScanner_MixedAudioAndNonAudio(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	audioContent := []byte("audio content")
@@ -508,9 +522,10 @@ func TestFindDuplicates_MixedAudioAndNonAudio(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file3.txt"), nonAudioContent, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file4.txt"), nonAudioContent, 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -521,7 +536,7 @@ func TestFindDuplicates_MixedAudioAndNonAudio(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_ScanAllMixedFiles(t *testing.T) {
+func TestScanner_ScanAllMixedFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	wavContent := []byte("same wav content")
@@ -532,9 +547,10 @@ func TestFindDuplicates_ScanAllMixedFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file3.txt"), txtContent, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file4.txt"), txtContent, 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, true, nil, []string{}, []string{})
+	scanner := NewByteScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{IncludeHidden: false})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 2 {
@@ -545,18 +561,20 @@ func TestFindDuplicates_ScanAllMixedFiles(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_FileInfoPopulated(t *testing.T) {
+func TestScanner_FileInfoPopulated(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := []byte("test content for info")
 	originalTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.Local)
-	os.Chtimes(filepath.Join(tmpDir, "file1.wav"), originalTime, originalTime)
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), content, 0644)
+	os.Chtimes(filepath.Join(tmpDir, "file1.wav"), originalTime, originalTime)
+	os.Chtimes(filepath.Join(tmpDir, "file2.wav"), originalTime, originalTime)
 
-	groups, _, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, _, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	for _, group := range groups {
@@ -577,14 +595,15 @@ func TestFindDuplicates_FileInfoPopulated(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_ScanDurationRecorded(t *testing.T) {
+func TestScanner_ScanDurationRecorded(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
 
-	_, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	// ScanDuration should be recorded (>= 0, may be 0 for very fast scans)
@@ -615,7 +634,7 @@ func TestScanProgressStruct(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_WithProgressCallback(t *testing.T) {
+func TestScanner_WithProgressCallback(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
@@ -632,16 +651,17 @@ func TestFindDuplicates_WithProgressCallback(t *testing.T) {
 		}
 	}
 
-	_, _, err := FindDuplicates(tmpDir, false, progressCallback, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, _, err := scanner.Scan(tmpDir, Options{OnProgress: progressCallback})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 	if !progressCalled {
 		t.Error("Progress callback should have been called")
 	}
 }
 
-func TestFindDuplicates_IgnoreExtensions(t *testing.T) {
+func TestScanner_IgnoreExtensions(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
@@ -649,9 +669,10 @@ func TestFindDuplicates_IgnoreExtensions(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file3.mp3"), []byte("content1"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file4.mp3"), []byte("content1"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{".mp3"})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{IgnoreExtensions: []string{".mp3"}})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -662,15 +683,16 @@ func TestFindDuplicates_IgnoreExtensions(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_IgnoreExtensionsUpperCase(t *testing.T) {
+func TestScanner_IgnoreExtensionsUpperCase(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("content1"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file2.WAV"), []byte("content1"), 0644)
 
-	groups, _, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, _, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 1 {
@@ -757,15 +779,16 @@ func TestScanStats_Zero(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_SameSizeDifferentContent(t *testing.T) {
+func TestScanner_SameSizeDifferentContent(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.wav"), []byte("aaaa"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), []byte("bbbb"), 0644)
 
-	groups, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	groups, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	if len(groups) != 0 {
@@ -776,7 +799,7 @@ func TestFindDuplicates_SameSizeDifferentContent(t *testing.T) {
 	}
 }
 
-func TestFindDuplicates_LargeWastedBytes(t *testing.T) {
+func TestScanner_LargeWastedBytes(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	content := make([]byte, 10*1024*1024)
@@ -785,9 +808,10 @@ func TestFindDuplicates_LargeWastedBytes(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "file2.wav"), content, 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file3.wav"), content, 0644)
 
-	_, stats, err := FindDuplicates(tmpDir, false, nil, []string{}, []string{})
+	scanner := NewAudioScanner()
+	_, stats, err := scanner.Scan(tmpDir, Options{})
 	if err != nil {
-		t.Fatalf("FindDuplicates() error = %v", err)
+		t.Fatalf("Scan() error = %v", err)
 	}
 
 	expectedWasted := int64(10*1024*1024) * 2

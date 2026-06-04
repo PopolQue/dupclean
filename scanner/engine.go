@@ -168,6 +168,7 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 	var wg sync.WaitGroup
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
+		// exits when jobs channel is closed and drained or ctx is cancelled
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -192,6 +193,7 @@ func runConcurrentHashStage(ctx context.Context, allPaths []string, concurrency 
 		}()
 	}
 
+	// exits when waitgroup finishes
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {

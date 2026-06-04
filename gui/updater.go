@@ -35,20 +35,55 @@ const (
 	githubRepo = "PopolQue/dupclean"
 )
 
-// HTTPClient interface for mocking network requests.
+// HTTPClient abstracts the Get method for testing.
 type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
 var (
-	githubAPI                = "https://api.github.com/repos/" + githubRepo + "/releases/latest"
 	defaultClient HTTPClient = &http.Client{
 		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
 	}
+	githubAPI = fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
 )
+
+// UpdaterServices abstracts OS, Network, and Command execution for testing.
+type UpdaterServices interface {
+	Executable() (string, error)
+	Stat(path string) (os.FileInfo, error)
+	Open(path string) (*os.File, error)
+	CreateTemp(dir, pattern string) (*os.File, error)
+	Remove(path string) error
+	Rename(oldpath, newpath string) error
+	Chmod(name string, mode os.FileMode) error
+	Exec(name string, arg ...string) *exec.Cmd
+	HTTPGet(url string) (*http.Response, error)
+}
+
+// RealUpdaterServices implements UpdaterServices using standard library packages.
+type RealUpdaterServices struct{}
+
+func (s *RealUpdaterServices) Executable() (string, error)           { return os.Executable() }
+func (s *RealUpdaterServices) Stat(path string) (os.FileInfo, error) { return os.Stat(path) }
+
+// #nosec G304
+func (s *RealUpdaterServices) Open(path string) (*os.File, error) { return os.Open(path) }
+func (s *RealUpdaterServices) CreateTemp(dir, pattern string) (*os.File, error) {
+	return os.CreateTemp(dir, pattern)
+}
+func (s *RealUpdaterServices) Remove(path string) error { return os.Remove(path) }
+func (s *RealUpdaterServices) Rename(oldpath, newpath string) error {
+	return os.Rename(oldpath, newpath)
+}
+func (s *RealUpdaterServices) Chmod(name string, mode os.FileMode) error { return os.Chmod(name, mode) }
+
+// #nosec G204
+func (s *RealUpdaterServices) Exec(name string, arg ...string) *exec.Cmd {
+	return exec.Command(name, arg...)
+}
+func (s *RealUpdaterServices) HTTPGet(url string) (*http.Response, error) {
+	return defaultClient.Get(url)
+}
 
 type GitHubRelease struct {
 	TagName string `json:"tag_name"`
@@ -89,6 +124,7 @@ func UpdaterWidget(state *UpdaterState) fyne.CanvasObject {
 		checkBtn.Disable()
 		statusLabel.SetText("Checking GitHub for updates...")
 
+		// exits when the update check completes
 		go func() {
 			release, err := checkForUpdates()
 
@@ -254,6 +290,7 @@ func downloadAndInstallUpdate(state *UpdaterState, release *GitHubRelease) {
 	), state.Window)
 	progressDialog.Show()
 
+	// exits when update installation completes
 	go func() {
 		err := performUpdate(downloadURL, assetDigest, progressBar.SetValue)
 

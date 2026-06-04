@@ -4,14 +4,12 @@ import (
 	"context"
 	"os"
 	"time"
-
-	"github.com/corona10/goimagehash"
 )
 
 // hashedPhoto holds a photo path with its computed perceptual hash
 type hashedPhoto struct {
 	path string
-	hash *goimagehash.ImageHash
+	hash PHash
 	info os.FileInfo
 }
 

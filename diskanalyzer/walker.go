@@ -134,6 +134,7 @@ func statPass(root string, opts WalkOptions, onEntry func(FileEntry), onError fu
 	var wg sync.WaitGroup
 	for i := 0; i < opts.Concurrency; i++ {
 		wg.Add(1)
+		// exits when paths channel is closed and drained or ctx is cancelled
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -211,6 +212,7 @@ func statPass(root string, opts WalkOptions, onEntry func(FileEntry), onError fu
 	}
 
 	// Feeder goroutine - walks directory and feeds paths to workers
+	// exits when walk finishes or context cancelled
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -263,6 +265,7 @@ func statPass(root string, opts WalkOptions, onEntry func(FileEntry), onError fu
 	}()
 
 	// Collector goroutine - gathers results
+	// exits when waitgroup finishes
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {

@@ -218,6 +218,7 @@ func TestScanner_CancelDuringWalk(t *testing.T) {
 
 	// Start scan in goroutine
 	done := make(chan bool, 1)
+	// exits when scanner.Scan returns
 	go func() {
 		_, _, _ = scanner.Scan(tmpDir, opts)
 		done <- true

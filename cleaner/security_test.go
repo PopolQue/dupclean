@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -15,12 +16,12 @@ func TestSafePlayMedia_Logic(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Mock execCommand to avoid actually running anything
-	oldExec := execCommand
-	execCommand = func(name string, arg ...string) *exec.Cmd {
-		return exec.Command("true")
+	// Mock execCommandContext to avoid actually running anything
+	oldExecCtx := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
 	}
-	defer func() { execCommand = oldExec }()
+	defer func() { execCommandContext = oldExecCtx }()
 
 	oldOS := goos
 	defer func() { goos = oldOS }()
@@ -30,7 +31,7 @@ func TestSafePlayMedia_Logic(t *testing.T) {
 	for _, p := range platforms {
 		t.Run("Platform_"+p, func(t *testing.T) {
 			goos = p
-			cmd, err := SafePlayMedia(testFile)
+			cmd, err := SafePlayMedia(context.Background(), testFile)
 
 			if p == "unsupported" {
 				if err == nil {

@@ -61,6 +61,7 @@ func Delete(entries []EntryInfo, opts DeleteOptions) (*DeleteResult, error) {
 	var wg sync.WaitGroup
 	for i := 0; i < opts.Concurrency; i++ {
 		wg.Add(1)
+		// exits when jobs channel is closed and drained
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -232,7 +233,10 @@ func isFileInUse(err error) bool {
 		}
 	}
 
-	// Fallback to string matching for localized systems and wrapped errors
+	// Fallback to string matching for localized systems and wrapped errors where
+	// typed syscall error inspection might not be fully transparent.
+	// While brittle, this provides a necessary catch-all for various OS
+	// reporting styles across different versions and locales.
 	errStr := strings.ToLower(err.Error())
 	substrs := []string{
 		"busy",

@@ -3,17 +3,15 @@ package scanner
 import (
 	"os"
 	"testing"
-
-	"github.com/corona10/goimagehash"
 )
 
 func TestBKTree(t *testing.T) {
 	// Create some dummy hashes
 	// hash1 and hash2 will have distance 2
 	// hash1 and hash3 will have distance 10
-	h1 := goimagehash.NewImageHash(0, goimagehash.PHash)
-	h2 := goimagehash.NewImageHash(3, goimagehash.PHash)    // bits 0 and 1 set
-	h3 := goimagehash.NewImageHash(1023, goimagehash.PHash) // bits 0-9 set
+	h1 := PHash(0)
+	h2 := PHash(3)    // bits 0 and 1 set
+	h3 := PHash(1023) // bits 0-9 set
 
 	p1 := hashedPhoto{path: "p1", hash: h1, info: &dummyFileInfo{name: "p1"}}
 	p2 := hashedPhoto{path: "p2", hash: h2, info: &dummyFileInfo{name: "p2"}}
@@ -25,7 +23,8 @@ func TestBKTree(t *testing.T) {
 	tree.Add(p3)
 
 	// Search for p1 with distance 2
-	results := tree.Search(h1, 2)
+	results := make([]hashedPhoto, 0)
+	tree.Search(h1, 2, &results)
 	if len(results) != 2 {
 		t.Errorf("Expected 2 results, got %d", len(results))
 	}
@@ -46,14 +45,16 @@ func TestBKTree(t *testing.T) {
 	}
 
 	// Search for p1 with distance 10
-	results = tree.Search(h1, 10)
+	results = results[:0]
+	tree.Search(h1, 10, &results)
 	if len(results) != 3 {
 		t.Errorf("Expected 3 results, got %d", len(results))
 	}
 
 	// Search for something that matches nothing
-	h4 := goimagehash.NewImageHash(0xFFFFFFFF00000000, goimagehash.PHash)
-	results = tree.Search(h4, 0)
+	h4 := PHash(0xFFFFFFFF00000000)
+	results = results[:0]
+	tree.Search(h4, 0, &results)
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results, got %d", len(results))
 	}

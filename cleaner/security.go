@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,7 +9,7 @@ import (
 )
 
 // SafePlayMedia plays a media file using OS-native commands with proper escaping.
-func SafePlayMedia(path string) (*exec.Cmd, error) {
+func SafePlayMedia(ctx context.Context, path string) (*exec.Cmd, error) {
 	if err := validateMediaPath(path); err != nil {
 		return nil, err
 	}
@@ -17,16 +18,16 @@ func SafePlayMedia(path string) (*exec.Cmd, error) {
 
 	switch goos {
 	case "darwin":
-		return execCommand("afplay", absPathVal), nil
+		return execCommandContext(ctx, "afplay", absPathVal), nil
 	case "linux":
-		return execCommand("aplay", absPathVal), nil
+		return execCommandContext(ctx, "aplay", absPathVal), nil
 	case "windows":
 		psScript := fmt.Sprintf(`
 $path = '%s'
 $player = New-Object Media.SoundPlayer $path
 $player.PlaySync()
 `, strings.ReplaceAll(absPathVal, "'", "''"))
-		return execCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript), nil
+		return execCommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command", psScript), nil
 	default:
 		return nil, fmt.Errorf("unsupported OS: %s", goos)
 	}

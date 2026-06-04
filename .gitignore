@@ -1,20 +1,19 @@
-/.DS_Store
+# System & Editor
+.DS_Store
+.vscode/
+.prettierrc
+
+# Build & Project Artifacts
 /dist/
 /fyne-cross/
-/dupclean.app/
-dupclean.app
-dupclean
-.qwen/
-coverage.txt
-coverage*.out
+/dupclean
+/dupclean_gui
+*.test
+*.out
 
-**/.vscode/
-internal/.DS_Store
-.vscode
-.vscode/changelists.json
-**/fyne
-GEMINI.md
-dupclean_gui
-fyne/
-**/node_modules
-.prettierrc
+# Dependencies
+**/node_modules/
+**/fyne/
+
+# Misc
+.qwen/

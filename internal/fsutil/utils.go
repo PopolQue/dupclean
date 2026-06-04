@@ -36,7 +36,7 @@ func ParseDuration(s string) (time.Duration, error) {
 		daysStr := strings.TrimSuffix(s, "d")
 		days, err := strconv.Atoi(daysStr)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("parsing days duration %q: %w", daysStr, err)
 		}
 		return time.Duration(days) * 24 * time.Hour, nil
 	}

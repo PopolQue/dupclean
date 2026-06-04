@@ -25,19 +25,36 @@ func TestRenderByType(t *testing.T) {
 	}
 }
 
-func TestRenderCLI(t *testing.T) {
-	root := &DirNode{Name: "root", Path: "/", TotalSize: 1024}
+func TestRenderCLI_Comprehensive(t *testing.T) {
+	root := &DirNode{Name: "root", Path: "/", TotalSize: 1000}
+	root.Files = []FileEntry{
+		{Name: "f1.txt", Size: 600, Path: "/f1.txt", ModTime: time.Now().AddDate(0, 0, -10)},
+		{Name: "f2.log", Size: 400, Path: "/f2.log", ModTime: time.Now().AddDate(0, 0, -2)},
+	}
 	result := &AnalysisResult{
 		Root:      root,
-		TotalSize: 1024,
+		TotalSize: 1000,
+		AllFiles:  root.Files,
 	}
-	opts := CLIOptions{Depth: 1}
+	opts := CLIOptions{
+		TopN:      1,
+		OlderThan: 5,
+		MinSize:   100,
+		Depth:     1,
+	}
 
 	buf := new(bytes.Buffer)
 	RenderCLI(buf, result, opts)
 
-	if !strings.Contains(buf.String(), "/  —  1.0 KB") {
-		t.Errorf("RenderCLI output missing header: %s", buf.String())
+	output := buf.String()
+	if !strings.Contains(output, "Top largest files") {
+		t.Errorf("RenderCLI missing TopFiles: %s", output)
+	}
+	if !strings.Contains(output, "Files older than 5 days") {
+		t.Errorf("RenderCLI missing OldFiles: %s", output)
+	}
+	if !strings.Contains(output, "f1.txt") {
+		t.Errorf("RenderCLI missing tree output: %s", output)
 	}
 }
 

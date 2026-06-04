@@ -21,3 +21,30 @@ func TestPrepareClean(t *testing.T) {
 		t.Error("Expected error for invalid minAge")
 	}
 }
+
+func TestRunClean(t *testing.T) {
+	// Set test-friendly state
+	cleanDryRun = true
+	cleanYes = true
+	cleanMinAge = ""
+	cleanWorkers = 0
+	cleanCategory = ""
+	cleanTargetIDs = []string{}
+
+	// Test: No targets found
+	cleanCategory = "nonexistent"
+	err := runClean()
+	if err != nil {
+		t.Errorf("runClean failed for empty targets: %v", err)
+	}
+
+	// Reset for next test
+	cleanMinAge = ""
+
+	// Test: successful scan (mocked via dry-run/yes)
+	// This will call cleaner.Scan() if targets exist
+	err = runClean()
+	if err != nil {
+		t.Errorf("runClean failed for scan: %v", err)
+	}
+}
