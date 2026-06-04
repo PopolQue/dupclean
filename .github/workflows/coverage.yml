@@ -53,26 +53,24 @@ jobs:
 
 
       - name: Go Coverage Badge
-        uses: tj-actions/coverage-badge-go@v3
+        uses: tj-actions/coverage-badge-go@v4
         with:
           filename: coverage.out
           text: "Coverage"
-          pattern: '!\[Coverage\]\(https://img\.shields\.io/badge/Coverage-([0-9.]+)%25-([a-z]+)\)'
 
       - name: Go Coverage Badge (No GUI)
-        uses: tj-actions/coverage-badge-go@v3
+        uses: tj-actions/coverage-badge-go@v4
         with:
           filename: coverage-nogui.out
           text: "Coverage (no GUI)"
-          pattern: '!\[Coverage \(no GUI\)\]\(https://img\.shields\.io/badge/Coverage_\(no_GUI\)-([0-9.]+)%25-([a-z]+)\)'
-
 
       - name: Verify Changed files
-        uses: tj-actions/verify-changed-files@v17
+        uses: tj-actions/verify-changed-files@v21
         id: verify-changed-files
         with:
           files: README.md
           safe_output: 'true'
+
 
 
       - name: Commit changes
